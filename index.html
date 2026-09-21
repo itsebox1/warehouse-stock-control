@@ -75,6 +75,8 @@
           async function(decodedText) {
             result.textContent = "Looking up product: " + decodedText;
             const apiUrl = "https://script.google.com/macros/s/AKfycbxSsV0MNM0CpXsAGTePC-94XuDNfGgjg1U3Jww7zN_dofWuqBSbSeZEtpVRdys7leDi/exec";
+
+try{
 const response = await fetch(
   apiUrl + "?page=api&sku=" + encodeURIComponent(decodedText.trim())
 );
@@ -95,6 +97,10 @@ document.getElementById("productDetails").textContent =
             }
 
             button.disabled = false;
+ } catch (error) {
+  result.textContent = "Lookup error: " + String(error.message || error);
+}
+ 
           },
           function(errorMessage) {
             // Keep scanning until a QR code is found.
