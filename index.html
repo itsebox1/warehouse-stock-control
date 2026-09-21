@@ -73,7 +73,18 @@
             qrbox: { width: 220, height: 220 }
           },
           async function(decodedText) {
-            result.textContent = "QR code: " + decodedText;
+            result.textContent = "Looking up product: " + decodedText;
+            const apiUrl = "https://script.google.com/macros/s/AKfycbxSsV0MNM0CpXsAGTePC-94XuDNfGgjg1U3Jww7zN_dofWuqBSbSeZEtpVRdys7leDi/exec";
+const response = await fetch(
+  apiUrl + "?page=api&sku=" + encodeURIComponent(decodedText.trim())
+);
+const product = await response.json();
+
+document.getElementById("productDetails").textContent =
+  product
+    ? `${product.name} | QB Stock: ${product.qbStock} | Actual Qty: ${product.actualQty} | Difference: ${product.difference}`
+    : "Product not found";
+
 
             if (scanner && scanner.isScanning) {
               await scanner.stop();
