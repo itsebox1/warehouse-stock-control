@@ -4,9 +4,97 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Warehouse Stock Control</title>
+
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 24px;
+      background: #f7f9fc;
+      color: #203247;
+    }
+
+    button {
+      background: #244b72;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 16px;
+      font-size: 17px;
+      width: 100%;
+      margin: 12px 0;
+    }
+
+    #reader {
+      width: 100%;
+      max-width: 450px;
+      margin-top: 16px;
+    }
+
+    #result {
+      overflow-wrap: anywhere;
+      margin-top: 16px;
+    }
+  </style>
 </head>
+
 <body>
-  <h1>Warehouse Stock Control</h1>
-  <p>App setup successful.</p>
+  <h2>Warehouse Stock Control</h2>
+
+  <p>Scan a product QR code:</p>
+
+  <button id="scanButton" onclick="startScanner()">
+    📷 Scan QR Code
+  </button>
+
+  <div id="reader"></div>
+
+  <p id="result">Ready to scan.</p>
+
+  <script>
+    let scanner = null;
+
+    async function startScanner() {
+      const result = document.getElementById("result");
+      const button = document.getElementById("scanButton");
+
+      button.disabled = true;
+      result.textContent = "Opening camera...";
+
+      try {
+        scanner = new Html5Qrcode("reader");
+
+        await scanner.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 220, height: 220 }
+          },
+          async function(decodedText) {
+            result.textContent = "QR code: " + decodedText;
+
+            if (scanner && scanner.isScanning) {
+              await scanner.stop();
+            }
+
+            button.disabled = false;
+          },
+          function(errorMessage) {
+            // Keep scanning until a QR code is found.
+          }
+        );
+
+        result.textContent = "Point the camera at a QR code.";
+
+      } catch (error) {
+        result.textContent =
+          "Camera error: " + String(error.message || error);
+
+        button.disabled = false;
+      }
+    }
+  </script>
 </body>
 </html>
+
