@@ -77,12 +77,39 @@
             const apiUrl = "https://script.google.com/macros/s/AKfycbxSsV0MNM0CpXsAGTePC-94XuDNfGgjg1U3Jww7zN_dofWuqBSbSeZEtpVRdys7leDi/exec";
 
 try{
-const response = await fetch(
-  apiUrl + "?page=api&sku=" + encodeURIComponent(decodedText.trim())
-);
-const product = await response.json().catch(error => {
-  result.textContent = "Product lookup error: " + error.message;
-  throw error;
+
+const product = await new Promise((resolve, reject) => {
+  const callbackName = "warehouseProductCallback";
+  const script = document.createElement("script");
+
+  const timeout = setTimeout(() => {
+    cleanup();
+    reject(new Error("Product lookup timed out"));
+  }, 15000);
+
+  function cleanup() {
+    clearTimeout(timeout);
+    delete window[callbackName];
+    script.remove();
+  }
+
+  window[callbackName] = function (data) {
+    cleanup();
+    resolve(data);
+  };
+script.onerror = function () {
+  cleanup();
+  reject(new Error("Could not load product details"));
+};
+
+script.src =
+  apiUrl +
+  "?page=api&sku=" +
+  encodeURIComponent(decodedText.trim()) +
+  "&callback=" +
+  callbackName;
+
+document.body.appendChild(script);
 });
 
 
