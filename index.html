@@ -112,11 +112,32 @@ script.src =
 document.body.appendChild(script);
 });
 
+const details = document.getElementById("productDetails");
 
-document.getElementById("productDetails").textContent =
-  product
-    ? `${product.name} | QB Stock: ${product.qbStock} | Actual Qty: ${product.actualQty} | Difference: ${product.difference}`
-    : "Product not found";
+if (product && product.sku) {
+  details.innerHTML = `
+    <div style="padding:20px; background:#f3f6fa; border-radius:12px; margin-top:15px; color:#222;">
+
+      <h2 style="margin-top:0;">${product.name}</h2>
+
+      <p><strong>SKU:</strong> ${product.sku}</p>
+
+      <hr>
+
+      <p><strong>QuickBooks Stock:</strong> ${product.qbStock}</p>
+
+      <p><strong>Actual Quantity:</strong> ${product.actualQty}</p>
+
+      <p><strong>Difference:</strong> ${product.difference}</p>
+
+      <p><strong>Last Counted:</strong> ${product.lastCounted || "Not counted yet"}</p>
+
+    </div>
+  `;
+} else {
+  details.textContent = "Product not found";
+}
+
 
 
             if (scanner && scanner.isScanning) {
