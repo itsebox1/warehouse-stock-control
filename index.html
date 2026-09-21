@@ -40,6 +40,31 @@
 </head>
 
 <body>
+  <div id="loginScreen" style="display:none;">
+  <h2>Staff Sign In</h2>
+
+  <input
+    type="email"
+    id="loginEmail"
+    placeholder="Email address"
+    autocomplete="username"
+    style="width:100%;padding:12px;box-sizing:border-box;margin-bottom:12px;"
+  >
+
+  <input
+    type="password"
+    id="loginPassword"
+    placeholder="Password"
+    autocomplete="current-password"
+    style="width:100%;padding:12px;box-sizing:border-box;margin-bottom:12px;"
+  >
+
+  <button id="loginButton">Sign In</button>
+
+  <p id="loginMessage"></p>
+</div>
+<div id="stockApp" style="display:none;">
+
   <h2>Warehouse Stock Control</h2>
 
   <p>Scan a product QR code:</p>
@@ -52,7 +77,7 @@
 
   <p id="result">Ready to scan.</p>
   <div id="productDetails"></div>
-
+</div>
   <script>
     let scanner = null;
 
@@ -168,7 +193,8 @@ if (product && product.sku) {
 <script type="module">
   // Import the functions you need from the SDKs you need
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-  // TODO: Add SDKs for Firebase products that you want to use
+  /import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+/ TODO: Add SDKs for Firebase products that you want to use
   // https://firebase.google.com/docs/web/setup#available-libraries
 
   // Your web app's Firebase configuration
@@ -183,6 +209,25 @@ if (product && product.sku) {
 
   // Initialize Firebase
   const app = initializeApp(firebaseConfig);
+  const auth = getauth(app);
+  onAuthStateChanged(auth, (user) => {
+  document.getElementById("loginScreen").style.display = user ? "none" : "block";
+  document.getElementById("stockApp").style.display = user ? "block" : "none";
+});
+ document.getElementById("loginButton").addEventListener("click", async () => {
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  const message = document.getElementById("loginMessage");
+
+  message.textContent = "Signing in...";
+
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    message.textContent = "";
+  } catch (error) {
+    message.textContent = "Sign-in failed: " + error.message;
+  }
+}); 
 </script>
 </body>
 </html>
