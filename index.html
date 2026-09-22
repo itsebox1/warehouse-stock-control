@@ -73,6 +73,19 @@
     📷 Scan QR Code
   </button>
 
+  <p>Or enter a SKU manually:</p>
+
+<input
+  type="text"
+  id="manualSku"
+  placeholder="Enter product SKU"
+  style="width:100%; padding:14px; box-sizing:border-box; font-size:17px;"
+>
+
+<button id="findSkuButton" onclick="findManualSku()">
+  Find Product
+</button>
+
   <div id="reader"></div>
 
   <p id="result">Ready to scan.</p>
@@ -212,6 +225,18 @@ if (product && product.sku) {
         button.disabled = false;
       }
     }
+  function findManualSku() {
+  const sku = document.getElementById("manualSku").value.trim();
+
+  if (!sku) {
+    document.getElementById("result").textContent =
+      "Please enter a product SKU.";
+    return;
+  }
+
+  decodedText(sku);
+}
+
   </script>
 <script type="module">
   // Import the functions you need from the SDKs you need
