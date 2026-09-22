@@ -320,6 +320,14 @@ function findManualSku() {
         ? auth.currentUser.email
         : null;
 };
+window.getCurrentStaffToken = async function() {
+  if (!auth.currentUser) {
+    throw new Error("Please sign in first.");
+  }
+
+  return await auth.currentUser.getIdToken();
+};
+  
   
   onAuthStateChanged(auth, (user) => {
   document.getElementById("loginScreen").style.display = user ? "none" : "block";
