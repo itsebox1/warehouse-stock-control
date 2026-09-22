@@ -91,142 +91,198 @@
   <p id="result">Ready to scan.</p>
   <div id="productDetails"></div>
 </div>
-  <script>
-    let scanner = null;
+<script>
+let scanner = null;
+let lookupInProgress = false;
 
-    async function startScanner() {
-      const result = document.getElementById("result");
-      const button = document.getElementById("scanButton");
+const apiUrl =
+  "https://script.google.com/macros/s/AKfycbxSsV0MNM0CpXsAGTePC-94XuDNfGgjg1U3Jww7zN_dofWuqBSbSeZEtpVRdys7leDi/exec";
 
-      button.disabled = true;
-      result.textContent = "Opening camera...";
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, character => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[character]);
+}
 
-      try {
-        scanner = new Html5Qrcode("reader");
+async function lookupProduct(sku) {
+  const result = document.getElementById("result");
+  const details = document.getElementById("productDetails");
 
-        await scanner.start(
-          { facingMode: "environment" },
-          {
-            fps: 10,
-            qrbox: { width: 220, height: 220 }
-          },
-          async function(decodedText) {
-            result.textContent = "Looking up product: " + decodedText;
-            const apiUrl = "https://script.google.com/macros/s/AKfycbxSsV0MNM0CpXsAGTePC-94XuDNfGgjg1U3Jww7zN_dofWuqBSbSeZEtpVRdys7leDi/exec";
+  sku = String(sku).trim();
 
-try{
-
-const product = await new Promise((resolve, reject) => {
-  const callbackName = "warehouseProductCallback";
-  const script = document.createElement("script");
-
-  const timeout = setTimeout(() => {
-    cleanup();
-    reject(new Error("Product lookup timed out"));
-  }, 15000);
-
-  function cleanup() {
-    clearTimeout(timeout);
-    delete window[callbackName];
-    script.remove();
+  if (!sku) {
+    result.textContent = "Please enter a product SKU.";
+    return;
   }
 
-  window[callbackName] = function (data) {
-    console.log("PRODUCT CALLBACK RECEIVED:", data);
-    cleanup();
-    resolve(data);
-  };
-script.onerror = function () {
+  if (lookupInProgress) return;
 
-  cleanup();
-  reject(new Error("Could not load product details"));
-};
+  lookupInProgress = true;
+  details.textContent = "";
+  result.textContent = "Looking up product: " + sku;
 
-script.src =
-  apiUrl +
-  "?page=api&sku=" +
-  encodeURIComponent(decodedText.trim()) +
-  "&callback=" +
-  callbackName;
+  try {
+    const product = await new Promise((resolve, reject) => {
+      const callbackName = "warehouseProductCallback";
+      const script = document.createElement("script");
 
-document.body.appendChild(script);
-});
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error("Product lookup timed out"));
+      }, 15000);
 
-const details = document.getElementById("productDetails");
-
-if (product && product.sku) {
-  details.innerHTML = `
-    <div style="padding:20px; background:#f3f6fa; border-radius:12px; margin-top:15px; color:#222;">
-
-      <h2 style="margin-top:0;">${product.name}</h2>
-
-      <p><strong>SKU:</strong> ${product.sku}</p>
-
-      <hr>
-
-      <p><strong>QuickBooks Stock:</strong> ${product.qbStock}</p>
-
-      <p><strong>Actual Quantity:</strong> ${product.actualQty}</p>
-      <label for="actualQtyInput"><strong>New Actual Quantity:</strong></label>
-
-<input
-  type="number"
-  id="actualQtyInput"
-  min="0"
-  step="1"
-  value="${product.actualQty ?? ''}"
-  style="width:100%;padding:12px;font-size:18px;margin-top:10px;box-sizing:border-box;"
->
-
-<button
-  id="saveCountButton"
-  type="button"
-  style="width:100%;padding:15px;margin-top:15px;background:#29496b;color:white;border:none;border-radius:8px;font-size:18px;"
->
-  Save Count
-</button>
-
-<p id="saveMessage"></p>
-
-
-      <p><strong>Difference:</strong> ${product.difference}</p>
-
-      <p><strong>Last Counted:</strong> ${product.lastCounted || "Not counted yet"}</p>
-
-    </div>
-  `;
-} else {
-  details.textContent = "Product not found";
-}
-
-
-
-            if (scanner && scanner.isScanning) {
-              await scanner.stop();
-            }
-
-            button.disabled = false;
- } catch (error) {
-  result.textContent = "Lookup error: " + String(error.message || error);
-}
- 
-          },
-          function(errorMessage) {
-            // Keep scanning until a QR code is found.
-          }
-        );
-
-        result.textContent = "Point the camera at a QR code.";
-
-      } catch (error) {
-        result.textContent =
-          "Scanner or product lookup error: " + String(error.message || error);
-
-        button.disabled = false;
+      function cleanup() {
+        clearTimeout(timeout);
+        delete window[callbackName];
+        script.remove();
       }
+
+      window[callbackName] = function(data) {
+        cleanup();
+        resolve(data);
+      };
+
+      script.onerror = function() {
+        cleanup();
+        reject(new Error("Could not load product details"));
+      };
+
+      script.src =
+        apiUrl +
+        "?page=api&sku=" +
+        encodeURIComponent(sku) +
+        "&callback=" +
+        callbackName;
+
+      document.body.appendChild(script);
+    });
+
+    if (product && product.sku) {
+      details.innerHTML = `
+        <div style="padding:20px;background:#f3f6fa;border-radius:12px;margin-top:15px;color:#222;">
+
+          <h2>${escapeHtml(product.name)}</h2>
+
+          <p><strong>SKU:</strong> ${escapeHtml(product.sku)}</p>
+
+          <hr>
+
+          <p><strong>QuickBooks Stock:</strong>
+            ${escapeHtml(product.qbStock)}</p>
+
+          <p><strong>Actual Quantity:</strong>
+            ${escapeHtml(product.actualQty)}</p>
+
+          <label for="actualQtyInput">
+            <strong>New Actual Quantity:</strong>
+          </label>
+
+          <input
+            type="number"
+            id="actualQtyInput"
+            min="0"
+            step="1"
+            style="width:100%;padding:12px;font-size:18px;margin-top:10px;box-sizing:border-box;"
+          >
+
+          <button
+            id="saveCountButton"
+            type="button"
+            style="width:100%;padding:15px;margin-top:15px;background:#29496b;color:white;border:none;border-radius:8px;font-size:18px;"
+          >
+            Save Count
+          </button>
+
+          <p id="saveMessage"></p>
+
+          <p><strong>Difference:</strong>
+            ${escapeHtml(product.difference)}</p>
+
+          <p><strong>Last Counted:</strong>
+            ${escapeHtml(product.lastCounted || "Not counted yet")}</p>
+
+        </div>
+      `;
+
+      document.getElementById("actualQtyInput").value =
+        product.actualQty ?? "";
+
+      result.textContent = "Product found: " + product.sku;
+
+    } else {
+      details.textContent = "Product not found";
+      result.textContent = "No matching product for SKU: " + sku;
     }
-  function findManualSku() {
-  const sku = document.getElementById("manualSku").value.trim();
+
+  } catch (error) {
+    result.textContent =
+      "Lookup error: " + String(error.message || error);
+
+  } finally {
+    lookupInProgress = false;
+  }
+}
+
+async function startScanner() {
+  const result = document.getElementById("result");
+  const button = document.getElementById("scanButton");
+
+  button.disabled = true;
+  result.textContent = "Opening camera...";
+
+  try {
+    scanner = new Html5Qrcode("reader");
+
+    await scanner.start(
+      { facingMode: "environment" },
+      {
+        fps: 10,
+        qrbox: { width: 220, height: 220 }
+      },
+
+      async function(decodedText) {
+        if (lookupInProgress) return;
+
+        try {
+          if (scanner && scanner.isScanning) {
+            await scanner.stop();
+          }
+
+          await lookupProduct(decodedText);
+
+        } catch (error) {
+          result.textContent =
+            "Scanner error: " + String(error.message || error);
+
+        } finally {
+          button.disabled = false;
+        }
+      },
+
+      function(errorMessage) {
+        // Continue scanning until a QR code is found.
+      }
+    );
+
+    if (scanner && scanner.isScanning) {
+      result.textContent = "Point the camera at a QR code.";
+    }
+
+  } catch (error) {
+    result.textContent =
+      "Scanner error: " + String(error.message || error);
+
+    button.disabled = false;
+  }
+}
+
+function findManualSku() {
+  const sku =
+    document.getElementById("manualSku").value.trim();
 
   if (!sku) {
     document.getElementById("result").textContent =
@@ -234,10 +290,10 @@ if (product && product.sku) {
     return;
   }
 
-  decodedText(sku);
+  lookupProduct(sku);
 }
-
-  </script>
+</script>
+  
 <script type="module">
   // Import the functions you need from the SDKs you need
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
