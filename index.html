@@ -119,10 +119,12 @@ const product = await new Promise((resolve, reject) => {
   }
 
   window[callbackName] = function (data) {
+    console.log("PRODUCT CALLBACK RECEIVED:", data);
     cleanup();
     resolve(data);
   };
 script.onerror = function () {
+
   cleanup();
   reject(new Error("Could not load product details"));
 };
