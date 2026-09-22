@@ -210,6 +210,13 @@ if (product && product.sku) {
   // Initialize Firebase
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
+  
+    window.getCurrentStaffEmail = function() {
+      return auth.currentUser
+        ? auth.currentUser.email
+        : null;
+};
+  
   onAuthStateChanged(auth, (user) => {
   document.getElementById("loginScreen").style.display = user ? "none" : "block";
   document.getElementById("stockApp").style.display = user ? "block" : "none";
