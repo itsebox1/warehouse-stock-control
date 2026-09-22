@@ -154,6 +154,27 @@ if (product && product.sku) {
       <p><strong>QuickBooks Stock:</strong> ${product.qbStock}</p>
 
       <p><strong>Actual Quantity:</strong> ${product.actualQty}</p>
+      <label for="actualQtyInput"><strong>New Actual Quantity:</strong></label>
+
+<input
+  type="number"
+  id="actualQtyInput"
+  min="0"
+  step="1"
+  value="${product.actualQty ?? ''}"
+  style="width:100%;padding:12px;font-size:18px;margin-top:10px;box-sizing:border-box;"
+>
+
+<button
+  id="saveCountButton"
+  type="button"
+  style="width:100%;padding:15px;margin-top:15px;background:#29496b;color:white;border:none;border-radius:8px;font-size:18px;"
+>
+  Save Count
+</button>
+
+<p id="saveMessage"></p>
+
 
       <p><strong>Difference:</strong> ${product.difference}</p>
 
