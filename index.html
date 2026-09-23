@@ -213,6 +213,8 @@ async function lookupProduct(sku) {
 
       result.textContent = "Product found: " + product.sku;
 
+      document.getElementById("saveCountButton").onclick = () => saveProductCount(product);
+
     } else {
       details.textContent = "Product not found";
       result.textContent = "No matching product for SKU: " + sku;
@@ -292,6 +294,59 @@ function findManualSku() {
 
   lookupProduct(sku);
 }
+ async function saveProductCount(product) {
+  const input = document.getElementById("actualQtyInput");
+  const button = document.getElementById("saveCountButton");
+  const message = document.getElementById("saveMessage");
+
+  const quantity = input.value.trim();
+
+  if (
+    quantity === "" ||
+    !Number.isSafeInteger(Number(quantity)) ||
+    Number(quantity) < 0
+  ) {
+    message.textContent = "Please enter a valid whole-number quantity.";
+    return;
+  }
+
+  button.disabled = true;
+  message.textContent = "Saving count...";
+
+  try {
+    const idToken = await window.getCurrentStaffToken();
+
+    await fetch(apiUrl, {
+      method: "POST",
+      mode: "no-cors",
+      headers: {
+        "Content-Type": "text/plain"
+      },
+      body: JSON.stringify({
+        action: "saveCount",
+        sku: product.sku,
+        quantity: Number(quantity),
+        idToken: idToken
+      })
+    });
+
+    message.textContent =
+      "Save request sent. Checking the updated stock...";
+
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    await lookupProduct(product.sku);
+
+  } catch (error) {
+    message.textContent =
+      "Save request could not be sent: " +
+      String(error.message || error);
+
+  } finally {
+    button.disabled = false;
+  }
+}
+ 
 </script>
   
 <script type="module">
