@@ -380,7 +380,8 @@ function findManualSku() {
         action: "saveCount",
         sku: product.sku,
         quantity: Number(quantity),
-        idToken: idToken
+        idToken: idToken,
+        countType: document.querySelector('input[name="countType"]:checked').value
       })
     });
 
