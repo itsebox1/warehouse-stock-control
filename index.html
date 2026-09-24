@@ -103,7 +103,28 @@
 
   <p id="loginMessage"></p>
 </div>
+
+ <div id="welcomeScreen" style="display:none;">
+
+  <h2>Warehouse Stock Control</h2>
+
+  <p id="welcomeUser">Checking sign-in...</p>
+
+  <button onclick="showStockScreen()">
+    📦 Stock
+  </button>
+
+  <button onclick="showReportsScreen()">
+    📋 Reports
+  </button>
+
+</div>
+ 
 <div id="stockApp" style="display:none;">
+
+  <button onclick="showWelcomeScreen()">
+  🏠 Home
+</button>
 
   <h2>Warehouse Stock Control</h2>
 
@@ -155,6 +176,27 @@
 </button>
  
 </div>
+
+<div id="reportsScreen" style="display:none;">
+
+  <button onclick="showWelcomeScreen()">
+    🏠 Home
+  </button>
+
+  <h2>Stock Count Reports</h2>
+
+  <p>Select a report to view or print.</p>
+
+  <button>
+    📋 ST — Stock Take Report
+  </button>
+
+  <button>
+    📊 SC — Stock Count Report
+  </button>
+
+</div>
+  
 <script>
 let scanner = null;
 let lookupInProgress = false;
@@ -424,7 +466,25 @@ document.getElementById("nextProductButton").style.display = "block";
 
   document.getElementById("nextProductButton").style.display = "none";
 } 
- 
+
+function showWelcomeScreen() {
+  document.getElementById("welcomeScreen").style.display = "block";
+  document.getElementById("stockApp").style.display = "none";
+  document.getElementById("reportsScreen").style.display = "none";
+}
+
+function showStockScreen() {
+  document.getElementById("welcomeScreen").style.display = "none";
+  document.getElementById("stockApp").style.display = "block";
+  document.getElementById("reportsScreen").style.display = "none";
+}
+
+function showReportsScreen() {
+  document.getElementById("welcomeScreen").style.display = "none";
+  document.getElementById("stockApp").style.display = "none";
+  document.getElementById("reportsScreen").style.display = "block";
+}
+  
 </script>
   
 <script type="module">
@@ -464,7 +524,19 @@ window.getCurrentStaffToken = async function() {
   
   onAuthStateChanged(auth, (user) => {
   document.getElementById("loginScreen").style.display = user ? "none" : "block";
-  document.getElementById("stockApp").style.display = user ? "block" : "none";
+
+document.getElementById("welcomeUser").textContent = user
+  ? "Signed in as " + user.email
+  : "Not signed in";
+
+if (user) {
+  showWelcomeScreen();
+} else {
+  document.getElementById("welcomeScreen").style.display = "none";
+  document.getElementById("stockApp").style.display = "none";
+  document.getElementById("reportsScreen").style.display = "none";
+}
+
 });
  document.getElementById("loginButton").addEventListener("click", async () => {
   const email = document.getElementById("loginEmail").value.trim();
