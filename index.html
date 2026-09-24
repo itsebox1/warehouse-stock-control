@@ -554,7 +554,29 @@ async function generateStockReport() {
 
 form.method = "POST";
 form.action = apiUrl;
-form.target = "_blank";
+const reportWindow = window.open("", "_blank");
+
+reportWindow.document.write(`
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Generating Report</title>
+  </head>
+  <body style="
+    font-family: Arial, sans-serif;
+    text-align: center;
+    padding-top: 100px;
+    color: #244b72;
+  ">
+    <h2>Please wait…</h2>
+    <p>Generating your stock report</p>
+  </body>
+  </html>
+`);
+reportWindow.document.close();
+form.target = reportWindow.name = "stockReportWindow";
+
 
 const fields = {
   action: "openStockReport",
