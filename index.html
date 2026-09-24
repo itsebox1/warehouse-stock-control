@@ -226,7 +226,24 @@
   </button>
 
 </div>
+  
+<div id="reportDisplayScreen" style="display:none;">
 
+  <button onclick="showReportsScreen()">
+    ← Back to Reports
+  </button>
+
+  <h2 id="reportDisplayTitle"></h2>
+
+  <p id="reportDisplayDates"></p>
+
+  <button onclick="window.print()">
+    Print / Save PDF
+  </button>
+
+  <div id="reportDisplayContent"></div>
+
+</div>
   
 <script>
 let scanner = null;
