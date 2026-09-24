@@ -190,15 +190,42 @@
 
   <p>Select a report to view or print.</p>
 
-  <button>
+  <button oneclick="showReportOptions('ST')">
     📋 ST — Stock Take Report
   </button>
 
-  <button>
+  <button oneclick="showReportOptions('SC')">
     📊 SC — Stock Count Report
   </button>
 
 </div>
+
+<div id="reportOptionsScreen" style="display:none;">
+
+  <button onclick="showReportsScreen()">
+    ← Back to Reports
+  </button>
+
+  <h2 id="reportOptionsTitle"></h2>
+
+  <p>Select the period you want to report on.</p>
+
+  <label for="reportDateFrom">Date From:</label>
+  <input type="date" id="reportDateFrom">
+
+  <br><br>
+
+  <label for="reportDateTo">Date To:</label>
+  <input type="date" id="reportDateTo">
+
+  <br><br>
+
+  <button onclick="generateStockReport()">
+    📄 Generate Report
+  </button>
+
+</div>
+
   
 <script>
 let scanner = null;
@@ -474,19 +501,38 @@ function showWelcomeScreen() {
   document.getElementById("welcomeScreen").style.display = "block";
   document.getElementById("stockApp").style.display = "none";
   document.getElementById("reportsScreen").style.display = "none";
+  document.getElementById("reportOptionsScreen").style.display = "none";
 }
 
 function showStockScreen() {
   document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("stockApp").style.display = "block";
   document.getElementById("reportsScreen").style.display = "none";
+  document.getElementById("reportOptionsScreen").style.display = "none";
 }
 
 function showReportsScreen() {
   document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("stockApp").style.display = "none";
   document.getElementById("reportsScreen").style.display = "block";
+  document.getElementById("reportOptionsScreen").style.display = "none";
 }
+
+ let selectedReportType = "";
+
+function showReportOptions(type) {
+  selectedReportType = type;
+
+  document.getElementById("welcomeScreen").style.display = "none";
+  document.getElementById("stockApp").style.display = "none";
+  document.getElementById("reportsScreen").style.display = "none";
+  document.getElementById("reportOptionsScreen").style.display = "block";
+
+  document.getElementById("reportOptionsTitle").textContent =
+    type === "ST"
+      ? "ST — Stock Take Report"
+      : "SC — Stock Count Report";
+} 
   
 </script>
   
