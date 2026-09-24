@@ -534,6 +534,30 @@ function showReportOptions(type) {
       : "SC — Stock Count Report";
 } 
   
+async function generateStockReport() {
+  const dateFrom = document.getElementById("reportDateFrom").value;
+  const dateTo = document.getElementById("reportDateTo").value;
+
+  if (!dateFrom || !dateTo) {
+    alert("Please select both dates.");
+    return;
+  }
+
+  if (dateFrom > dateTo) {
+    alert("Date From must not be later than Date To.");
+    return;
+  }
+
+  alert(
+    selectedReportType +
+    " report selected from " +
+    dateFrom +
+    " to " +
+    dateTo
+  );
+}
+
+
 </script>
   
 <script type="module">
