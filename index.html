@@ -548,7 +548,18 @@ async function generateStockReport() {
     alert("Date From must not be later than Date To.");
     return;
   }
-  
+
+  document.getElementById("reportOptionsScreen").innerHTML = `
+  <div id="reportLoading" style="
+    text-align:center;
+    padding:40px 15px;
+    color:#244b72;
+  ">
+    <h2>Please wait...</h2>
+    <p>Generating your stock report</p>
+  </div>
+`;
+
   const idToken = await window.getCurrentStaffToken();
  const form = document.createElement("form");
 
