@@ -395,19 +395,17 @@ function findManualSku() {
       })
     });
 
-    message.textContent =
-      "Save request sent. Checking the updated stock...";
-
-    await new Promise(resolve => setTimeout(resolve, 2000));
-
-    await lookupProduct(product.sku);
+    message.textContent = "Save request sent.";
 
 document.getElementById("productDetails").innerHTML = "";
 
+document.getElementById("manualSku").value = "";
+
 document.getElementById("result").textContent =
-  "✅ Saved " + product.sku;
+  "Count submitted for " + product.sku;
 
 document.getElementById("nextProductButton").style.display = "block";
+
 
   } catch (error) {
     message.textContent =
