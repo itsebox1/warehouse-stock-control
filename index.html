@@ -401,7 +401,13 @@ function findManualSku() {
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     await lookupProduct(product.sku);
-    document.getElementById("nextProductButton").style.display = "block";
+
+document.getElementById("productDetails").innerHTML = "";
+
+document.getElementById("result").textContent =
+  "✅ Saved " + product.sku;
+
+document.getElementById("nextProductButton").style.display = "block";
 
   } catch (error) {
     message.textContent =
