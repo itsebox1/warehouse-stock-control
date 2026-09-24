@@ -143,7 +143,17 @@
   <div id="reader"></div>
 
   <p id="result">Ready to scan.</p>
+  
   <div id="productDetails"></div>
+  
+ <button
+  id="nextProductButton"
+  onclick="scanNextProduct()"
+  style="display:none; margin-top:16px;"
+>
+  📷 Scan Next Product
+</button>
+ 
 </div>
 <script>
 let scanner = null;
@@ -391,6 +401,7 @@ function findManualSku() {
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     await lookupProduct(product.sku);
+    document.getElementById("nextProductButton").style.display = "block";
 
   } catch (error) {
     message.textContent =
@@ -401,6 +412,14 @@ function findManualSku() {
     button.disabled = false;
   }
 }
+
+ function scanNextProduct() {
+  document.getElementById("productDetails").innerHTML = "";
+  document.getElementById("manualSku").value = "";
+  document.getElementById("result").textContent = "Ready to scan.";
+
+  document.getElementById("nextProductButton").style.display = "none";
+} 
  
 </script>
   
