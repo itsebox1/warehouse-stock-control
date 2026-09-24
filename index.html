@@ -566,7 +566,7 @@ async function generateStockReport() {
     return;
   }
 
-  document.getElementById("reportOptionsScreen").innerHTML = `
+  document.getElementById("reportOptionsScreen").insertAdjacentHTML("beforeend", '
   <div id="reportLoading" style="
     text-align:center;
     padding:40px 15px;
@@ -575,7 +575,8 @@ async function generateStockReport() {
     <h2>Please wait...</h2>
     <p>Generating your stock report</p>
   </div>
-`;
+);
+try {  
 const REPORT_WORKER_URL =
   "https://warehouse-stock-reports.tmerry.workers.dev";
   const idToken = await window.getCurrentStaffToken();
@@ -596,11 +597,16 @@ const report = await response.json();
 if (!response.ok || !report.success) {
   throw new Error(report.error || "Unable to generate report.");
 }
-document.getElementById("reportOptionsScreen").innerHTML =
-  "<h2>Stock report ready</h2>" +
-  "<p>" + report.records.length + " records found.</p>";
+document.getElementById("reportLoading")?.remove();
 
-}
+alert("Stock report ready. " + report.records.length + " records found.");
+
+ } catch (error) {
+    document.getElementById("reportLoading")?.remove();
+
+    alert("Report error: " + error.message);
+  }
+
 
 
 </script>
