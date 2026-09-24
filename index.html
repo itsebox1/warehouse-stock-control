@@ -576,55 +576,30 @@ async function generateStockReport() {
     <p>Generating your stock report</p>
   </div>
 `;
-
+const REPORT_WORKER_URL =
+  "https://warehouse-stock-reports.tmerry.workers.dev";
   const idToken = await window.getCurrentStaffToken();
- const form = document.createElement("form");
+  const response = await fetch(REPORT_WORKER_URL, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    countType: selectedReportType,
+    dateFrom: dateFrom,
+    dateTo: dateTo,
+    idToken: idToken
+  })
+});
+const report = await response.json();
 
-form.method = "POST";
-form.action = apiUrl;
-const reportWindow = window.open("", "_blank");
-
-reportWindow.document.write(`
-  <!DOCTYPE html>
-  <html>
-  <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Generating Report</title>
-  </head>
-  <body style="
-    font-family: Arial, sans-serif;
-    text-align: center;
-    padding-top: 100px;
-    color: #244b72;
-  ">
-    <h2>Please wait…</h2>
-    <p>Generating your stock report</p>
-  </body>
-  </html>
-`);
-reportWindow.document.close();
-form.target = reportWindow.name = "stockReportWindow";
-
-
-const fields = {
-  action: "openStockReport",
-  countType: selectedReportType,
-  dateFrom: dateFrom,
-  dateTo: dateTo,
-  idToken: idToken
-};
-
-for (const [name, value] of Object.entries(fields)) {
-  const input = document.createElement("input");
-  input.type = "hidden";
-  input.name = name;
-  input.value = value;
-  form.appendChild(input);
+if (!response.ok || !report.success) {
+  throw new Error(report.error || "Unable to generate report.");
 }
+document.getElementById("reportOptionsScreen").innerHTML =
+  "<h2>Stock report ready</h2>" +
+  "<p>" + report.records.length + " records found.</p>";
 
-document.body.appendChild(form);
-form.submit();
-form.remove();
 }
 
 
