@@ -156,6 +156,8 @@
   <div id="stockTakeList"></div>
   
 </div>
+
+<div id="countingScreen" style="display:none;">
   
 <div class="count-type-selector">
   <label>
@@ -203,6 +205,8 @@
 </button>
  
 </div>
+
+</div> 
 
 <div id="reportsScreen" style="display:none;">
 
@@ -535,6 +539,8 @@ function findManualSku() {
 
     document.getElementById("finishStockTakeButton").style.display = "block";
 
+    showCountingScreen();
+
   } catch (error) {
     status.textContent =
       "Error: " + String(error.message || error);
@@ -689,9 +695,17 @@ function showStockScreen() {
   document.getElementById("reportsScreen").style.display = "none";
   document.getElementById("reportOptionsScreen").style.display = "none";
 
+  document.getElementById("stockTakeSession").style.display = "block";
+document.getElementById("countingScreen").style.display = "none";
+
     loadStockTakeList();
 }
-
+  
+function showCountingScreen() {
+  document.getElementById("stockTakeSession").style.display = "none";
+  document.getElementById("countingScreen").style.display = "block";
+}
+  
 function showReportsScreen() {
   document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("stockApp").style.display = "none";
