@@ -841,6 +841,10 @@ async function generateStockReport() {
 
 const dateFrom = document.getElementById("reportDateFrom").value;
 const dateTo = document.getElementById("reportDateTo").value;
+const stReportNumber =
+  selectedReportType === "ST"
+    ? document.getElementById("stReportNumber").value.trim().toUpperCase()
+    : "";  
 
 const countedBy = document.getElementById("scCountedBy").value.trim();
 const sku = document.getElementById("scSku").value.trim();
@@ -894,6 +898,7 @@ const REPORT_WORKER_URL =
   dateTo: dateTo,
   countedBy: countedBy,
   sku: sku,
+  stReportNumber: stReportNumber,
   idToken: idToken
 })
 });
