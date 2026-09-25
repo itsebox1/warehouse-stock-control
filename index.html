@@ -601,7 +601,14 @@ if (!response.ok || !report.success) {
 document.getElementById("reportLoading")?.remove();
 
 console.log("STOCK REPORT DATA:", report);
-  alert("Stock report ready. " + report.records.length + " records found.");
+  document.getElementById("reportOptionsScreen").insertAdjacentHTML(
+  "beforeend",
+  `<div id="reportResults" style="padding:20px;">
+    <h2>Stock Report</h2>
+    <p>${report.records.length} records found.</p>
+  </div>`
+);
+
 
  } catch (error) {
     document.getElementById("reportLoading")?.remove();
