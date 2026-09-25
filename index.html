@@ -160,6 +160,11 @@
 
 <div id="countingScreen" style="display:none;">
   
+  <p id="activeStockTakeNumber"
+   style="font-weight:bold; font-size:20px; color:#304B70;">
+</p>
+
+  
 <div class="count-type-selector">
   <label>
     <input type="radio" name="countType" value="ST" checked>
@@ -721,6 +726,11 @@ document.getElementById("countingScreen").style.display = "none";
 function showCountingScreen() {
   document.getElementById("stockTakeSession").style.display = "none";
   document.getElementById("countingScreen").style.display = "block";
+
+  const reportNumber = localStorage.getItem("activeStockTake");
+
+  document.getElementById("activeStockTakeNumber").textContent =
+    reportNumber ? "Current Stock Take: " + reportNumber : "";
 }
   
 function showReportsScreen() {
