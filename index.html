@@ -601,7 +601,8 @@ if (!response.ok || !report.success) {
 document.getElementById("reportLoading")?.remove();
 
 console.log("STOCK REPORT DATA:", report);
-  document.getElementById("reportOptionsScreen").insertAdjacentHTML(
+document.getElementById("reportResults")?.remove();
+document.getElementById("reportOptionsScreen").insertAdjacentHTML(
   "beforeend",
 `<div id="reportResults" style="padding:20px;">
   <h2>${selectedReportType} — Stock Report</h2>
