@@ -133,7 +133,26 @@
   <h2>Warehouse Stock Control</h2>
 
   <p>Select ST (Stock Take) or SC (Stock Count).</p>
+<div id="stockTakeSession" style="padding:15px; margin:15px 0; border:1px solid #ccc; border-radius:8px;">
 
+  <h3>ST — Stock Take Session</h3>
+
+  <p id="stockTakeStatus">No stock take currently started.</p>
+
+  <button id="startStockTakeButton" onclick="startStockTake()">
+    Start New Stock Take
+  </button>
+
+  <button id="finishStockTakeButton"
+          onclick="finishStockTake()"
+          style="display:none;">
+    Finish Stock Take
+  </button>
+
+  <p id="stockTakeReportNumber"></p>
+
+</div>
+  
 <div class="count-type-selector">
   <label>
     <input type="radio" name="countType" value="ST" checked>
@@ -472,7 +491,55 @@ function findManualSku() {
 
   lookupProduct(sku);
 }
- async function saveProductCount(product) {
+ 
+  async function startStockTake() {
+  const button = document.getElementById("startStockTakeButton");
+  const status = document.getElementById("stockTakeStatus");
+
+  button.disabled = true;
+  status.textContent = "Starting new stock take...";
+
+  try {
+    const idToken = await window.getCurrentStaffToken();
+
+    const response = await fetch(
+      "https://warehouse-stock-reports.tmerry.workers.dev",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action: "startStockTake",
+          idToken: idToken
+        })
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || "Unable to start stock take.");
+    }
+
+    status.textContent = "Stock take in progress.";
+
+    document.getElementById("stockTakeReportNumber").textContent =
+      "Report Number: " + result.reportNumber;
+
+    document.getElementById("startStockTakeButton").style.display = "none";
+
+    document.getElementById("finishStockTakeButton").style.display = "block";
+
+  } catch (error) {
+    status.textContent =
+      "Error: " + String(error.message || error);
+
+    button.disabled = false;
+  }
+}
+
+  async function saveProductCount(product) {
   const input = document.getElementById("actualQtyInput");
   const button = document.getElementById("saveCountButton");
   const message = document.getElementById("saveMessage");
