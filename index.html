@@ -670,8 +670,19 @@ async function loadStockTakeList() {
       const resume = document.createElement("button");
       resume.textContent = "Resume";
       resume.onclick = () => {
-        alert("Resume " + stockTake.reportNumber);
-      };
+  localStorage.setItem(
+    "activeStockTake",
+    stockTake.reportNumber
+  );
+
+  document.getElementById("stockTakeStatus").textContent =
+    "Stock take in progress.";
+
+  document.getElementById("stockTakeReportNumber").textContent =
+    "Report Number: " + stockTake.reportNumber;
+
+  showCountingScreen();
+};
 
       const finish = document.createElement("button");
       finish.textContent = "Finish";
