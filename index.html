@@ -113,12 +113,28 @@
 </h2>
 
   <p id="welcomeUser">Checking sign-in...</p>
+   <p style="text-align:center; margin-top:25px;">
+  Select ST (Stock Take) or SC (Stock Count).
+</p>
 
-  <button onclick="showStockScreen()">
+<div class="count-type-selector">
+  <label>
+    <input type="radio" name="homeCountType" value="ST" checked>
+    ST — Stock Take
+  </label>
+
+  <label>
+    <input type="radio" name="homeCountType" value="SC">
+    SC — Stock Count
+  </label>
+</div>
+
+
+  <button onclick="openSelectedStock()">
     📦 Stock
   </button>
 
-  <button onclick="showReportsScreen()">
+  <button onclick="openSelectedReports()">
     📋 Reports
   </button>
 
@@ -722,6 +738,23 @@ document.getElementById("countingScreen").style.display = "none";
 
     loadStockTakeList();
 }
+
+function openSelectedStock() {
+  const selectedType = document.querySelector(
+    'input[name="homeCountType"]:checked'
+  ).value;
+
+  showStockScreen();
+
+  const stockType = document.querySelector(
+    `input[name="countType"][value="${selectedType}"]`
+  );
+
+  if (stockType) {
+    stockType.checked = true;
+    stockType.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+}
   
 function showCountingScreen() {
   document.getElementById("stockTakeSession").style.display = "none";
@@ -731,6 +764,15 @@ function showCountingScreen() {
 
   document.getElementById("activeStockTakeNumber").textContent =
     reportNumber ? "Current Stock Take: " + reportNumber : "";
+}
+
+function openSelectedReports() {
+  const selectedType = document.querySelector(
+    'input[name="homeCountType"]:checked'
+  ).value;
+
+  showReportsScreen();
+  showReportOptions(selectedType);
 }
   
 function showReportsScreen() {
