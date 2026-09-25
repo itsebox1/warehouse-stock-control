@@ -209,6 +209,29 @@
 
   <h2 id="reportOptionsTitle"></h2>
 
+  <div id="scSearchOptions" style="display:none; margin-bottom:20px;">
+
+  <label for="scSearchBy">Search By:</label>
+
+  <select id="scSearchBy" onchange="changeSCSearch()">
+    <option value="date">Date Range</option>
+    <option value="staff">Counted By</option>
+    <option value="sku">SKU</option>
+  </select>
+
+  <div id="scStaffSearch" style="display:none; margin-top:15px;">
+    <label for="scCountedBy">Counted By:</label>
+    <input type="text" id="scCountedBy" placeholder="Enter staff name">
+  </div>
+
+  <div id="scSkuSearch" style="display:none; margin-top:15px;">
+    <label for="scSku">SKU:</label>
+    <input type="text" id="scSku" placeholder="Enter SKU">
+  </div>
+
+</div>
+
+  <div id="scDateSearch">
   <p>Select the period you want to report on.</p>
 
   <label for="reportDateFrom">Date From:</label>
@@ -220,6 +243,7 @@
   <input type="date" id="reportDateTo">
 
   <br><br>
+  </div>
 
   <button onclick="generateStockReport()">
     📄 Generate Report
@@ -536,10 +560,29 @@ function showReportsScreen() {
   document.getElementById("reportOptionsScreen").style.display = "none";
 }
 
+ function changeSCSearch() {
+  const searchBy = document.getElementById("scSearchBy").value;
+
+  document.getElementById("scStaffSearch").style.display =
+    searchBy === "staff" ? "block" : "none";
+
+  document.getElementById("scSkuSearch").style.display =
+    searchBy === "sku" ? "block" : "none";
+
+  document.getElementById("scDateSearch").style.display =
+    searchBy === "date" ? "block" : "none";
+}
+ 
  let selectedReportType = "";
 
 function showReportOptions(type) {
   selectedReportType = type;
+document.getElementById("scSearchOptions").style.display =
+  type === "SC" ? "block" : "none";
+
+document.getElementById("scSearchBy").value = "date";
+
+changeSCSearch();
 
   document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("stockApp").style.display = "none";
@@ -553,18 +596,37 @@ function showReportOptions(type) {
 } 
   
 async function generateStockReport() {
-  const dateFrom = document.getElementById("reportDateFrom").value;
-  const dateTo = document.getElementById("reportDateTo").value;
+ const searchBy = selectedReportType === "SC"
+  ? document.getElementById("scSearchBy").value
+  : "date";
 
+const dateFrom = document.getElementById("reportDateFrom").value;
+const dateTo = document.getElementById("reportDateTo").value;
+
+const countedBy = document.getElementById("scCountedBy").value.trim();
+const sku = document.getElementById("scSku").value.trim();
+
+if (searchBy === "date") {
   if (!dateFrom || !dateTo) {
     alert("Please select both dates.");
     return;
   }
+}
 
-  if (dateFrom > dateTo) {
-    alert("Date From must not be later than Date To.");
-    return;
-  }
+  if (searchBy === "date" && dateFrom > dateTo) {
+  alert("Date From must not be later than Date To.");
+  return;
+}
+
+if (searchBy === "staff" && !countedBy) {
+  alert("Please enter a staff name.");
+  return;
+}
+
+if (searchBy === "sku" && !sku) {
+  alert("Please enter a SKU.");
+  return;
+}
 
   document.getElementById("reportOptionsScreen").insertAdjacentHTML("beforeend", `
   <div id="reportLoading" style="
@@ -586,12 +648,15 @@ const REPORT_WORKER_URL =
     "Content-Type": "application/json"
   },
   body: JSON.stringify({
-    action: "getStockReport",
-    countType: selectedReportType,
-    dateFrom: dateFrom,
-    dateTo: dateTo,
-    idToken: idToken
-  })
+  action: "getStockReport",
+  countType: selectedReportType,
+  searchBy: searchBy,
+  dateFrom: dateFrom,
+  dateTo: dateTo,
+  countedBy: countedBy,
+  sku: sku,
+  idToken: idToken
+})
 });
 const report = await response.json();
 
