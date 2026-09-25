@@ -137,9 +137,10 @@
 
   <h3>ST — Stock Take Session</h3>
 
-  <p id="stockTakeStatus">No stock take currently started.</p>
+<p id="stockTakeStatus" style="display:none;"></p>
   
   <div id="stockTakeSessionsList"></div>
+  <br>
 
   <button id="startStockTakeButton" onclick="startStockTake()">
     Start New Stock Take
@@ -628,7 +629,7 @@ function showWelcomeScreen() {
   document.getElementById("reportOptionsScreen").style.display = "none";
 }
 async function loadStockTakeList() {
-  const list = document.getElementById("stockTakeList");
+  const list = document.getElementById("stockTakeSessionsList");
 
   list.textContent = "Loading stock takes...";
 
@@ -658,7 +659,7 @@ async function loadStockTakeList() {
     list.innerHTML = "";
 
     if (!result.stockTakes.length) {
-      list.textContent = "No unfinished stock takes.";
+      list.textContent = "No stock takes currently started.";
       return;
     }
 
