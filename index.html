@@ -586,6 +586,7 @@ const REPORT_WORKER_URL =
     "Content-Type": "application/json"
   },
   body: JSON.stringify({
+    action: "getStockReport",
     countType: selectedReportType,
     dateFrom: dateFrom,
     dateTo: dateTo,
