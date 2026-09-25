@@ -616,6 +616,72 @@ function showWelcomeScreen() {
   document.getElementById("reportsScreen").style.display = "none";
   document.getElementById("reportOptionsScreen").style.display = "none";
 }
+async function loadStockTakeList() {
+  const list = document.getElementById("stockTakeList");
+
+  list.textContent = "Loading stock takes...";
+
+  try {
+    const idToken = await window.getCurrentStaffToken();
+
+    const response = await fetch(
+      "https://warehouse-stock-reports.tmerry.workers.dev",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action: "listStockTakes",
+          idToken: idToken
+        })
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || "Unable to load stock takes.");
+    }
+
+    list.innerHTML = "";
+
+    if (!result.stockTakes.length) {
+      list.textContent = "No unfinished stock takes.";
+      return;
+    }
+
+    result.stockTakes.forEach(stockTake => {
+      const row = document.createElement("div");
+      row.style.margin = "12px 0";
+      row.style.padding = "12px";
+      row.style.border = "1px solid #ccc";
+      row.style.borderRadius = "8px";
+
+      const number = document.createElement("strong");
+      number.textContent = stockTake.reportNumber;
+
+      const resume = document.createElement("button");
+      resume.textContent = "Resume";
+      resume.onclick = () => {
+        alert("Resume " + stockTake.reportNumber);
+      };
+
+      const finish = document.createElement("button");
+      finish.textContent = "Finish";
+      finish.onclick = () => {
+        alert("Finish " + stockTake.reportNumber);
+      };
+
+      row.append(number, resume, finish);
+      list.appendChild(row);
+    });
+
+  } catch (error) {
+    list.textContent =
+      "Error loading stock takes: " + error.message;
+  }
+}
 
 function showStockScreen() {
   document.getElementById("welcomeScreen").style.display = "none";
