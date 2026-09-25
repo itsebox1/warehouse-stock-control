@@ -538,8 +538,12 @@ function findManualSku() {
     document.getElementById("startStockTakeButton").style.display = "none";
 
     document.getElementById("finishStockTakeButton").style.display = "block";
+    localStorage.setItem(
+  "activeStockTake",
+  result.reportNumber
+);
 
-    showCountingScreen();
+showCountingScreen();
 
   } catch (error) {
     status.textContent =
@@ -582,7 +586,8 @@ function findManualSku() {
         sku: product.sku,
         quantity: Number(quantity),
         idToken: idToken,
-        countType: document.querySelector('input[name="countType"]:checked').value
+        countType: document.querySelector('input[name="countType"]:checked').value,
+        reportNumber: localStorage.getItem("activeStockTake")
       })
     });
 
