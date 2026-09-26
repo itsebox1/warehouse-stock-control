@@ -279,6 +279,34 @@
 
 </div>
 
+  <div id="stSearchChoice" style="margin-bottom:20px;">
+
+  <p><strong>Search Stock Take by:</strong></p>
+
+  <label>
+    <input
+      type="radio"
+      name="stSearchMode"
+      value="number"
+      checked
+      onchange="updateReportSearchMode()"
+    >
+    Stock Take Number
+  </label>
+
+  <br><br>
+
+  <label>
+    <input
+      type="radio"
+      name="stSearchMode"
+      value="date"
+      onchange="updateReportSearchMode()"
+    >
+    Date Period
+  </label>
+
+</div>
   <div id="stNumberSearch" style="margin-bottom:25px;">
   <p>Search for a specific Stock Take:</p>
 
@@ -855,14 +883,28 @@ changeSCSearch();
     type === "ST"
       ? "ST — Stock Take Report"
       : "SC — Stock Count Report";
-} 
   
+  updateReportSearchMode();
+} 
+
+function updateReportSearchMode() {
+  const mode = document.querySelector(
+    'input[name="stSearchMode"]:checked'
+  )?.value || "number";
+
+  document.getElementById("stNumberSearch").style.display =
+    mode === "number" ? "block" : "none";
+
+  document.getElementById("scDateSearch").style.display =
+    mode === "date" ? "block" : "none";
+}
+
 async function generateStockReport() {
  const searchBy = selectedReportType === "SC"
   ? document.getElementById("scSearchBy").value
-  : document.getElementById("stReportNumber").value.trim()
-    ? "number"
-    : "date";
+  : document.querySelector(
+      'input[name="stSearchMode"]:checked'
+    ).value;
 
 const dateFrom = searchBy === "date"
   ? document.getElementById("reportDateFrom").value
