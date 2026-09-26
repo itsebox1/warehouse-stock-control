@@ -866,10 +866,16 @@ async function generateStockReport() {
 
 const dateFrom = document.getElementById("reportDateFrom").value;
 const dateTo = document.getElementById("reportDateTo").value;
+const stNumberInput =
+  document.getElementById("stReportNumber").value.trim();
+
 const stReportNumber =
-  selectedReportType === "ST"
-    ? "ST-" + document.getElementById("stReportNumber").value.trim().replace(/^ST-/i, "")
+  selectedReportType === "ST" &&
+  searchBy === "number" &&
+  stNumberInput
+    ? "ST-" + stNumberInput.replace(/^ST-/i, "")
     : "";
+
   if (selectedReportType === "ST" && searchBy === "number" &&
     !document.getElementById("stReportNumber").value.trim()) {
   alert("Please enter a Stock Take number.");
