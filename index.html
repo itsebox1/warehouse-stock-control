@@ -868,8 +868,7 @@ function showReportOptions(type) {
   document.getElementById("stNumberSearch").style.display =
   type === "ST" ? "block" : "none";
 document.getElementById("scSearchOptions").style.display =
-  type === "SC" ? "block" : "none";
-
+  type === "SC" ? "block" : "none";  
 document.getElementById("scSearchBy").value = "date";
 
 changeSCSearch();
@@ -879,10 +878,13 @@ changeSCSearch();
   document.getElementById("reportsScreen").style.display = "none";
   document.getElementById("reportOptionsScreen").style.display = "block";
 
+  document.getElementById("stSearchChoice").style.display = type === "ST" ? "block" : "none";
   document.getElementById("reportOptionsTitle").textContent =
     type === "ST"
       ? "ST — Stock Take Report"
       : "SC — Stock Count Report";
+
+  document.getElementById("reportResults")?.remove();
   
   updateReportSearchMode();
 } 
