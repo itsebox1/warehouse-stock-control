@@ -747,10 +747,19 @@ function showStockScreen() {
   document.getElementById("reportsScreen").style.display = "none";
   document.getElementById("reportOptionsScreen").style.display = "none";
 
-  document.getElementById("stockTakeSession").style.display = "block";
-document.getElementById("countingScreen").style.display = "none";
+  const selectedType = document.querySelector(
+    'input[name="homeCountType"]:checked'
+  ).value;
+
+  if (selectedType === "ST") {
+    document.getElementById("stockTakeSession").style.display = "block";
+    document.getElementById("countingScreen").style.display = "none";
 
     loadStockTakeList();
+  } else {
+    document.getElementById("stockTakeSession").style.display = "none";
+    document.getElementById("countingScreen").style.display = "block";
+  }
 }
 
 function openSelectedStock() {
