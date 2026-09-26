@@ -972,10 +972,10 @@ document.getElementById("reportOptionsScreen").insertAdjacentHTML(
   <p>${report.records.length} records found.</p>
 
   ${Object.entries(reportGroups).map(([reportNumber, records]) => `
-  <section style="margin:25px 0; padding:15px; border:1px solid #ddd; border-radius:8px;">
-
-    <h3>${reportNumber}</h3>
-    <p>${records.length} products</p>
+  <details style="margin:15px 0; padding:15px; border:1px solid #ddd; border-radius:8px;">
+  <summary style="cursor:pointer; font-weight:bold;">
+    ${reportNumber} — ${records.length} products
+  </summary>
 
     <div style="overflow-x:auto;">
       <table style="width:100%; border-collapse:collapse; text-align:left;">
@@ -1007,7 +1007,7 @@ document.getElementById("reportOptionsScreen").insertAdjacentHTML(
       </table>
     </div>
 
-  </section>
+  </details>
 `).join("")}
 </div>
   
