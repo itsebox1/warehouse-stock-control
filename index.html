@@ -146,9 +146,8 @@
   🏠 Home
 </button>
 
-  <h2>Warehouse Stock Control</h2>
+  <h2> id="stockPageHeading">ST - Warehouse Stock Take</h2>
 
-  <p>Select ST (Stock Take) or SC (Stock Count).</p>
 <div id="stockTakeSession" style="padding:15px; margin:15px 0; border:1px solid #ccc; border-radius:8px;">
 
   <h3>ST — Stock Take Session</h3>
@@ -181,7 +180,7 @@
 </p>
 
   
-<div class="count-type-selector">
+<div class="count-type-selector" style="display:none;">
   <label>
     <input type="radio" name="countType" value="ST" checked>
     ST — Stock Take
@@ -758,6 +757,11 @@ function openSelectedStock() {
   const selectedType = document.querySelector(
     'input[name="homeCountType"]:checked'
   ).value;
+
+  document.getElementById("stockPageHeading").textContent =
+  selectedType === "ST"
+    ? "ST - Warehouse Stock Take"
+    : "SC - Warehouse Stock Count";
 
   showStockScreen();
 
