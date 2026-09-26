@@ -259,14 +259,70 @@
 
   <div id="scSearchOptions" style="display:none; margin-bottom:20px;">
 
-  <label for="scSearchBy">Search By:</label>
+  <p><strong>Search Stock Count by:</strong></p>
 
-  <select id="scSearchBy" onchange="changeSCSearch()">
-    <option value="date">Date Range</option>
-    <option value="staff">Counted By</option>
-    <option value="sku">SKU</option>
-  </select>
+<label>
+  <input
+    type="radio"
+    name="scSearchMode"
+    value="number"
+    checked
+    onchange="changeSCSearch()"
+  >
+  Stock Count Number
+</label>
 
+<br><br>
+
+<label>
+  <input
+    type="radio"
+    name="scSearchMode"
+    value="date"
+    onchange="changeSCSearch()"
+  >
+  Date Range
+</label>
+
+<br><br>
+
+<label>
+  <input
+    type="radio"
+    name="scSearchMode"
+    value="staff"
+    onchange="changeSCSearch()"
+  >
+  Counted by
+</label>
+
+<br><br>
+
+<label>
+  <input
+    type="radio"
+    name="scSearchMode"
+    value="sku"
+    onchange="changeSCSearch()"
+  >
+  SKU
+</label>
+
+<div id="scNumberSearch" style="margin-top:15px;">
+  <label for="scReportNumber">Stock Count Number:</label>
+
+  <span style="display:inline-flex; align-items:center; gap:5px;">
+    <strong>SC-</strong>
+    <input
+      type="text"
+      id="scReportNumber"
+      placeholder="000001"
+      inputmode="numeric"
+      style="width:130px;"
+    >
+  </span>
+</div>
+    
   <div id="scStaffSearch" style="display:none; margin-top:15px;">
     <label for="scCountedBy">Counted By:</label>
     <input type="text" id="scCountedBy" placeholder="Enter staff name">
@@ -849,7 +905,11 @@ function showReportsScreen() {
 }
 
  function changeSCSearch() {
-  const searchBy = document.getElementById("scSearchBy").value;
+  const searchBy = document.querySelector(
+    'input[name="scSearchMode"]:checked'
+  )?.value || "number";
+   document.getElementById("scNumberSearch").style.display =
+  searchBy === "number" ? "block" : "none";
 
   document.getElementById("scStaffSearch").style.display =
     searchBy === "staff" ? "block" : "none";
@@ -860,8 +920,6 @@ function showReportsScreen() {
   document.getElementById("scDateSearch").style.display =
     searchBy === "date" ? "block" : "none";
 }
- 
- let selectedReportType = "";
 
 function showReportOptions(type) {
   selectedReportType = type;
@@ -869,7 +927,7 @@ function showReportOptions(type) {
   type === "ST" ? "block" : "none";
 document.getElementById("scSearchOptions").style.display =
   type === "SC" ? "block" : "none";  
-document.getElementById("scSearchBy").value = "date";
+document.querySelector('input[name="scSearchMode"][value="number"]').checked = true;
 
 changeSCSearch();
 
@@ -903,7 +961,9 @@ function updateReportSearchMode() {
 
 async function generateStockReport() {
  const searchBy = selectedReportType === "SC"
-  ? document.getElementById("scSearchBy").value
+  ? document.querySelector(
+      'input[name="scSearchMode"]:checked'
+    ).value
   : document.querySelector(
       'input[name="stSearchMode"]:checked'
     ).value;
@@ -925,10 +985,26 @@ const stReportNumber =
   stNumberInput
     ? "ST-" + stNumberInput.replace(/^ST-/i, "")
     : "";
+  const scNumberInput =
+  document.getElementById("scReportNumber").value.trim();
+
+const scReportNumber =
+  selectedReportType === "SC" &&
+  searchBy === "number" &&
+  scNumberInput
+    ? "SC-" + scNumberInput.replace(/^SC-/i, "")
+    : "";
 
   if (selectedReportType === "ST" && searchBy === "number" &&
     !document.getElementById("stReportNumber").value.trim()) {
   alert("Please enter a Stock Take number.");
+  return;
+}
+
+if (selectedReportType === "SC" &&
+    searchBy === "number" &&
+    !scNumberInput) {
+  alert("Please enter a Stock Count number.");
   return;
 }
 
@@ -985,6 +1061,7 @@ const REPORT_WORKER_URL =
   countedBy: countedBy,
   sku: sku,
   stReportNumber: stReportNumber,
+  scReportNumber: scReportNumber,
   idToken: idToken
 })
 });
