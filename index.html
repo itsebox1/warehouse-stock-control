@@ -284,14 +284,17 @@
 
   <label for="stReportNumber">Stock Take Number:</label>
 
+<span style="display:inline-flex; align-items:center; gap:5px;">
+  <strong>ST-</strong>
   <input
     type="text"
     id="stReportNumber"
-    placeholder="e.g. ST-000001"
-    style="text-transform:uppercase;"
+    placeholder="000001"
+    inputmode="numeric"
+    style="width:130px;"
   >
+</span>
 
-  <p>Or search by date range below:</p>
 </div>
 
   <div id="scDateSearch">
@@ -857,14 +860,22 @@ changeSCSearch();
 async function generateStockReport() {
  const searchBy = selectedReportType === "SC"
   ? document.getElementById("scSearchBy").value
-  : "date";
+  : document.getElementById("stReportNumber").value.trim()
+    ? "number"
+    : "date";
 
 const dateFrom = document.getElementById("reportDateFrom").value;
 const dateTo = document.getElementById("reportDateTo").value;
 const stReportNumber =
+  const stReportNumber =
   selectedReportType === "ST"
-    ? document.getElementById("stReportNumber").value.trim().toUpperCase()
-    : "";  
+    ? "ST-" + document.getElementById("stReportNumber").value.trim().replace(/^ST-/i, "")
+    : "";
+  if (selectedReportType === "ST" && searchBy === "number" &&
+    !document.getElementById("stReportNumber").value.trim()) {
+  alert("Please enter a Stock Take number.");
+  return;
+}
 
 const countedBy = document.getElementById("scCountedBy").value.trim();
 const sku = document.getElementById("scSku").value.trim();
