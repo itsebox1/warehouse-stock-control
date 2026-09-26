@@ -923,8 +923,10 @@ function showReportsScreen() {
 
 function showReportOptions(type) {
   selectedReportType = type;
+  
   document.getElementById("stNumberSearch").style.display =
   type === "ST" ? "block" : "none";
+  
 document.getElementById("scSearchOptions").style.display =
   type === "SC" ? "block" : "none";  
 document.querySelector('input[name="scSearchMode"][value="number"]').checked = true;
