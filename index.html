@@ -788,10 +788,17 @@ function showCountingScreen() {
   document.getElementById("stockTakeSession").style.display = "none";
   document.getElementById("countingScreen").style.display = "block";
 
-  const reportNumber = localStorage.getItem("activeStockTake");
+  const selectedType = document.querySelector(
+  'input[name="countType"]:checked'
+)?.value;
 
-  document.getElementById("activeStockTakeNumber").textContent =
-    reportNumber ? "Current Stock Take: " + reportNumber : "";
+const reportNumber =
+  selectedType === "ST"
+    ? localStorage.getItem("activeStockTake")
+    : null;
+
+document.getElementById("activeStockTakeNumber").textContent =
+  reportNumber ? "Current Stock Take: " + reportNumber : "";
 }
 
 function openSelectedReports() {
