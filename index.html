@@ -1395,7 +1395,7 @@ if (user) {
   }
 }); 
 
-async function emailStockReport(reportNumber) {
+  window.emailStockReport = async function emailStockReport(reportNumber) {
   const email = prompt(
     "Email PDF report " + reportNumber + " to:",
     "tmerry@sensafe.com"
