@@ -1235,6 +1235,9 @@ document.getElementById("reportLoading")?.remove();
 
 console.log("STOCK REPORT DATA:", report);
 document.getElementById("reportResults")?.remove();
+
+window.currentStockReport = report;
+  
 const reportGroups = {};
 
 report.records.forEach(record => {
@@ -1392,7 +1395,32 @@ if (user) {
   }
 }); 
 
+async function emailStockReport(reportNumber) {
+  const email = prompt(
+    "Email PDF report " + reportNumber + " to:",
+    "tmerry@sensafe.com"
+  );
 
+  if (email === null) return;
+
+  const recipient = email.trim();
+
+  if (!recipient) {
+    alert("Please enter an email address.");
+    return;
+  }
+
+  if (!auth.currentUser) {
+    alert("Please sign in before emailing a report.");
+    return;
+  }
+
+  alert(
+    "Email PDF requested for " + reportNumber +
+    "\nRecipient: " + recipient +
+    "\n\nThe sending connection still needs to be added."
+  );
+}
 </script>
 </body>
 </html>
