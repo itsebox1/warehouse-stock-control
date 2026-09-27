@@ -1256,15 +1256,27 @@ document.getElementById("reportOptionsScreen").insertAdjacentHTML(
   ${Object.entries(reportGroups).map(([reportNumber, records]) => `
   <details style="margin:15px 0; padding:15px; border:1px solid #ddd; border-radius:8px;">
   <summary style="cursor:pointer; font-weight:bold; display:flex; align-items:center; justify-content:space-between; gap:12px;">
-  <span>${reportNumber} — ${records.length} products</span>
 
-  <button
-    type="button"
-    onclick="event.preventDefault(); event.stopPropagation(); emailStockReport('${reportNumber}');"
-    style="background:#244b72; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
-  >
-    ✉ Email PDF
-  </button>
+  <span style="flex:1;">
+    ${reportNumber} — ${records.length} products
+  </span>
+
+  <span style="display:flex; gap:8px; align-items:center;">
+
+    <button
+      type="button"
+      onclick="event.preventDefault(); event.stopPropagation(); this.closest('details').open = !this.closest('details').open; this.textContent = this.closest('details').open ? 'Close' : 'View';"
+      style="width:auto; background:#244b72; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
+    >View</button>
+
+    <button
+      type="button"
+      onclick="event.preventDefault(); event.stopPropagation(); emailStockReport('${reportNumber}');"
+      style="width:auto; background:#244b72; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
+    >✉ Email PDF</button>
+
+  </span>
+
 </summary>
 
     <div style="overflow-x:auto;">
