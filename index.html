@@ -1255,9 +1255,17 @@ document.getElementById("reportOptionsScreen").insertAdjacentHTML(
 
   ${Object.entries(reportGroups).map(([reportNumber, records]) => `
   <details style="margin:15px 0; padding:15px; border:1px solid #ddd; border-radius:8px;">
-  <summary style="cursor:pointer; font-weight:bold;">
-    ${reportNumber} — ${records.length} products
-  </summary>
+  <summary style="cursor:pointer; font-weight:bold; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+  <span>${reportNumber} — ${records.length} products</span>
+
+  <button
+    type="button"
+    onclick="event.preventDefault(); event.stopPropagation(); emailStockReport('${reportNumber}');"
+    style="background:#244b72; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
+  >
+    ✉ Email PDF
+  </button>
+</summary>
 
     <div style="overflow-x:auto;">
       <table style="width:100%; border-collapse:collapse; text-align:left;">
