@@ -988,8 +988,9 @@ function showStockScreen() {
 
   if (selectedType === "ST") {
     document.getElementById("stockTakeSession").style.display = "block";
+    document.getElementById("stockCountSession").style.display = "none";
     document.getElementById("countingScreen").style.display = "none";
-
+    
     loadStockTakeList();
    } else {
   document.getElementById("stockTakeSession").style.display = "none";
