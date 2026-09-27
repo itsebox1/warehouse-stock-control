@@ -172,7 +172,23 @@
   <div id="stockTakeList"></div>
   
 </div>
+<div id="stockCountSession"
+     style="display:none; padding:15px; margin:15px 0; border:1px solid #ccc;">
 
+  <h3>SC – Stock Count Session</h3>
+
+  <p id="stockCountStatus" style="display:none;"></p>
+
+  <div id="stockCountSessionsList"></div>
+
+  <br>
+
+  <button id="startStockCountButton"
+          onclick="startStockCount()">
+    Start New Stock Count
+  </button>
+
+</div>
 <div id="countingScreen" style="display:none;">
   
   <p id="activeStockTakeNumber"
@@ -675,7 +691,61 @@ showCountingScreen();
     button.disabled = false;
   }
 }
+  
+async function startStockCount() {
+  const button = document.getElementById("startStockCountButton");
+  const status = document.getElementById("stockCountStatus");
 
+  button.disabled = true;
+  status.style.display = "block";
+  status.textContent = "Starting stock count...";
+
+  try {
+    const idToken = await window.getCurrentStaffToken();
+
+    const response = await fetch(
+      "https://warehouse-stock-reports.tmerry.workers.dev",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action: "startStockCount",
+          idToken: idToken
+        })
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || "Unable to start stock count.");
+    }
+
+    localStorage.setItem(
+      "activeStockCount",
+      result.reportNumber
+    );
+
+    status.textContent =
+      "Stock count in progress: " + result.reportNumber;
+
+    document.getElementById(
+      "activeStockTakeNumber"
+    ).textContent = "Current Stock Count: " + result.reportNumber;
+
+    showCountingScreen();
+
+  } catch (error) {
+    status.textContent =
+      "Error: " + String(error.message || error);
+
+  } finally {
+    button.disabled = false;
+  }
+}
+  
   async function saveProductCount(product) {
   const input = document.getElementById("actualQtyInput");
   const button = document.getElementById("saveCountButton");
@@ -843,10 +913,11 @@ function showStockScreen() {
     document.getElementById("countingScreen").style.display = "none";
 
     loadStockTakeList();
-  } else {
-    document.getElementById("stockTakeSession").style.display = "none";
-    document.getElementById("countingScreen").style.display = "block";
-  }
+   } else {
+  document.getElementById("stockTakeSession").style.display = "none";
+  document.getElementById("stockCountSession").style.display = "block";
+  document.getElementById("countingScreen").style.display = "none";
+}
 }
 
 function openSelectedStock() {
