@@ -1415,11 +1415,38 @@ if (user) {
     return;
   }
 
-  alert(
-    "Email PDF requested for " + reportNumber +
-    "\nRecipient: " + recipient +
-    "\n\nThe sending connection still needs to be added."
-  );
+  try {
+  const REPORT_WORKER_URL =
+    "https://warehouse-stock-reports.tmerry.workers.dev";
+
+  const idToken = await window.getCurrentStaffToken();
+
+  const response = await fetch(REPORT_WORKER_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      action: "emailStockReport",
+      countType: reportNumber.startsWith("ST-") ? "ST" : "SC",
+      reportNumber: reportNumber,
+      recipient: recipient,
+      idToken: idToken
+    })
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || !result.success) {
+    throw new Error(result.error || "Unable to email report.");
+  }
+
+  alert("PDF report emailed successfully to " + recipient);
+
+} catch (error) {
+  alert("Email failed: " + error.message);
+}
+    
 }
 </script>
 </body>
