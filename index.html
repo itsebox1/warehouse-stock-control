@@ -955,7 +955,9 @@ function updateReportSearchMode() {
   )?.value || "number";
 
   document.getElementById("stNumberSearch").style.display =
-    mode === "number" ? "block" : "none";
+  selectedReportType === "ST" && mode === "number"
+    ? "block"
+    : "none";
 
   document.getElementById("scDateSearch").style.display =
     mode === "date" ? "block" : "none";
