@@ -1023,21 +1023,26 @@ function openSelectedStock() {
   }
 }
   
-function showCountingScreen() {
+ function showCountingScreen() {
   document.getElementById("stockTakeSession").style.display = "none";
+  document.getElementById("stockCountSession").style.display = "none";
   document.getElementById("countingScreen").style.display = "block";
 
   const selectedType = document.querySelector(
-  'input[name="countType"]:checked'
-)?.value;
+    'input[name="countType"]:checked'
+  ).value;
 
-const reportNumber =
-  selectedType === "ST"
-    ? localStorage.getItem("activeStockTake")
-    : null;
+  const reportNumber =
+    selectedType === "ST"
+      ? localStorage.getItem("activeStockTake")
+      : localStorage.getItem("activeStockCount");
 
-document.getElementById("activeStockTakeNumber").textContent =
-  reportNumber ? "Current Stock Take: " + reportNumber : "";
+  document.getElementById("activeStockTakeNumber").textContent =
+    reportNumber
+      ? (selectedType === "ST"
+          ? "Current Stock Take: "
+          : "Current Stock Count: ") + reportNumber
+      : "";
 }
 
 function openSelectedReports() {
