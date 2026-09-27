@@ -898,6 +898,84 @@ async function loadStockTakeList() {
   }
 }
 
+  async function loadStockCountList() {
+  const list = document.getElementById("stockCountSessionsList");
+
+  list.textContent = "Loading stock counts...";
+
+  try {
+    const idToken = await window.getCurrentStaffToken();
+
+    const response = await fetch(
+      "https://warehouse-stock-reports.tmerry.workers.dev",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action: "listStockCounts",
+          idToken: idToken
+        })
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || "Unable to load stock counts.");
+    }
+
+    list.innerHTML = "";
+
+    if (!result.stockCounts || !result.stockCounts.length) {
+      list.textContent = "No stock counts currently started.";
+      return;
+    }
+
+    result.stockCounts.forEach(stockCount => {
+      const row = document.createElement("div");
+
+      row.style.margin = "12px 0";
+      row.style.padding = "12px";
+      row.style.border = "1px solid #ccc";
+      row.style.borderRadius = "8px";
+
+      const number = document.createElement("strong");
+      number.textContent = stockCount.reportNumber;
+
+      const resume = document.createElement("button");
+      resume.textContent = "Resume";
+
+      resume.onclick = () => {
+        localStorage.setItem(
+          "activeStockCount",
+          stockCount.reportNumber
+        );
+
+        document.getElementById(
+          "stockCountStatus"
+        ).textContent = "Stock count in progress: " +
+          stockCount.reportNumber;
+
+        document.getElementById(
+          "activeStockTakeNumber"
+        ).textContent = "Current Stock Count: " +
+          stockCount.reportNumber;
+
+        showCountingScreen();
+      };
+
+      row.append(number, document.createElement("br"), resume);
+      list.appendChild(row);
+    });
+
+  } catch (error) {
+    list.textContent =
+      "Error loading stock counts: " + error.message;
+  }
+}
+  
 function showStockScreen() {
   document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("stockApp").style.display = "block";
@@ -917,6 +995,8 @@ function showStockScreen() {
   document.getElementById("stockTakeSession").style.display = "none";
   document.getElementById("stockCountSession").style.display = "block";
   document.getElementById("countingScreen").style.display = "none";
+
+  loadStockCountList();
 }
 }
 
