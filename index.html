@@ -77,11 +77,52 @@
   outline: 3px solid #f0a500;
   outline-offset: -3px;
 }
+#sendingOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+}
+
+.sending-box {
+  background: white;
+  padding: 25px 35px;
+  border-radius: 14px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.sending-spinner {
+  width: 36px;
+  height: 36px;
+  border: 4px solid #ddd;
+  border-top-color: #333;
+  border-radius: 50%;
+  margin: 0 auto 15px;
+  animation: sendingSpin 0.8s linear infinite;
+}
+
+@keyframes sendingSpin {
+  to { transform: rotate(360deg); }
+}
 
   </style>
 </head>
 
 <body>
+
+<div id="sendingOverlay">
+  <div class="sending-box">
+    <div class="sending-spinner"></div>
+    Sending report…<br>
+    <small>Please wait</small>
+  </div>
+</div>
+  
   <div id="loginScreen" style="display:none;">
   <h2>Staff Sign In</h2>
 
@@ -1416,6 +1457,8 @@ if (user) {
   }
 
   try {
+      document.getElementById("sendingOverlay").style.display = "flex";
+    
   const REPORT_WORKER_URL =
     "https://warehouse-stock-reports.tmerry.workers.dev";
 
@@ -1445,6 +1488,10 @@ if (user) {
 
 } catch (error) {
   alert("Email failed: " + error.message);
+finally {
+  document.getElementById("sendingOverlay").style.display = "none";
+}
+    
 }
     
 }
