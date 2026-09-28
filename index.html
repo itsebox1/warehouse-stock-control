@@ -1484,11 +1484,11 @@ if (user) {
     throw new Error(result.error || "Unable to email report.");
   }
 
-  alert("PDF report emailed successfully to " + recipient);
+alert("PDF report emailed successfully to " + recipient);
 
 } catch (error) {
   alert("Email failed: " + error.message);
-finally {
+} finally {
   document.getElementById("sendingOverlay").style.display = "none";
 }
     
