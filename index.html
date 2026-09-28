@@ -1478,7 +1478,10 @@ if (user) {
     })
   });
 
-  const result = await response.json();
+  const responseText = await response.text();
+const result = responseText.trim().startsWith("{")
+  ? JSON.parse(responseText)
+  : { success: response.ok };
 
   if (!response.ok || !result.success) {
     throw new Error(result.error || "Unable to email report.");
