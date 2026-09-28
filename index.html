@@ -1202,13 +1202,10 @@ function updateReportSearchMode() {
 }
 
 async function generateStockReport() {
- const searchBy = selectedReportType === "SC"
-  ? document.querySelector(
-      'input[name="scSearchMode"]:checked'
-    ).value
-  : document.querySelector(
-      'input[name="stSearchMode"]:checked'
-    ).value;
+ const searchBy =
+  selectedReportType === "ST"
+    ? (document.querySelector('input[name="stSearchMode"]:checked')?.value || "number")
+    : (document.querySelector('input[name="scSearchMode"]:checked')?.value || "date");
 
 const dateFrom = searchBy === "date"
   ? document.getElementById("reportDateFrom").value
