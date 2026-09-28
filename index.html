@@ -925,9 +925,49 @@ async function loadStockTakeList() {
 
       const finish = document.createElement("button");
       finish.textContent = "Finish";
-      finish.onclick = () => {
-        alert("Finish " + stockTake.reportNumber);
-      };
+     finish.onclick = async () => {
+  if (!confirm("Finish " + stockTake.reportNumber + "?")) {
+    return;
+  }
+
+  finish.disabled = true;
+  finish.textContent = "Finishing...";
+
+  try {
+    const idToken = await window.getCurrentStaffToken();
+
+    const response = await fetch(
+      "https://warehouse-stock-reports.tmerry.workers.dev",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action: "finishStockTake",
+          reportNumber: stockTake.reportNumber,
+          idToken: idToken
+        })
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || "Unable to finish stock take.");
+    }
+
+    localStorage.removeItem("activeStockTake");
+
+    await loadStockTakeList();
+
+  } catch (error) {
+    alert("Unable to finish stock take: " + error.message);
+    finish.disabled = false;
+    finish.textContent = "Finish";
+  }
+};
+
 
       row.append(number, resume, finish);
       list.appendChild(row);
