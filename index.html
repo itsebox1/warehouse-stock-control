@@ -1288,6 +1288,12 @@ try {
 const REPORT_WORKER_URL =
   "https://warehouse-stock-reports.tmerry.workers.dev";
   const idToken = await window.getCurrentStaffToken();
+  onsole.log("SENDING TO WORKER:", {
+  selectedReportType,
+  searchBy,
+  stReportNumber
+});
+  
   const response = await fetch(REPORT_WORKER_URL, {
   method: "POST",
   headers: {
