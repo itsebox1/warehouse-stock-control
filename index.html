@@ -1365,7 +1365,7 @@ document.getElementById("reportOptionsScreen").insertAdjacentHTML(
     >✉ Email PDF</button>
     <button
   type="button"
-  onclick="event.preventDefault(); event.stopPropagation(); alert('QuickBooks commit is currently disabled.');"
+  onclick="event.preventDefault(); event.stopPropagation(); commitReportToQuickBooks('${reportnumber}');"
   style="width:auto; background:#dc3545; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
 >Commit to QB</button>
 
@@ -1547,7 +1547,24 @@ alert("PDF report emailed successfully to " + recipient);
 }
     
 }
-    
+window.commitReportToQuickBooks = async function commitReportToQuickBooks(reportNumber) {
+
+  if (!auth.currentUser) {
+    alert("Please sign in before committing a report to QuickBooks.");
+    return;
+  }
+
+  if (!String(reportNumber).startsWith("ST-")) {
+    alert("Only Stock Take (ST) reports can be committed to QuickBooks.");
+    return;
+  }
+
+  alert(
+    "QuickBooks connection test for " + reportNumber +
+    ". Stock write-back is currently disabled."
+  );
+};
+
 </script>
 </body>
 </html>
