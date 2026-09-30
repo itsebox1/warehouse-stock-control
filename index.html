@@ -1677,7 +1677,38 @@ try {
   alert("QuickBooks test failed: " + error.message);
 }
 };
+async function getQuickBooksCommitStatus(reportNumber) {
+  const idToken = await window.getCurrentStaffToken();
 
+  const response = await fetch(
+    "https://warehouse-stock-reports.tmerry.workers.dev",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action: "getQuickBooksCommitStatus",
+        reportNumber: reportNumber,
+        idToken: idToken
+      })
+    }
+  );
+
+  const responseText = await response.text();
+
+  const result = responseText.trim().startsWith("{")
+    ? JSON.parse(responseText)
+    : { success: false, error: responseText };
+
+  if (!response.ok || !result.success) {
+    throw new Error(
+      result.error || "Could not check QuickBooks status."
+    );
+  }
+
+  return result;
+}
 async function confirmQuickBooksCommit(reportNumber) {
   alert("QuickBooks commit test for " + reportNumber);
 }
