@@ -1547,6 +1547,26 @@ alert("PDF report emailed successfully to " + recipient);
 }
     
 }
+window.confirmQuickBooksCommit = function(reportNumber) {
+
+  const confirmed = confirm(
+    "Confirm QuickBooks Submission\n\n" +
+    "You are about to submit " + reportNumber + " to QuickBooks.\n\n" +
+    "Please confirm that the stock take is complete and all quantities are correct.\n\n" +
+    "This will change the stock quantities in QuickBooks and cannot be submitted twice.\n\n" +
+    "Press OK to submit, or Cancel to go back."
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  alert(
+    "Confirmation accepted.\n\n" +
+    "QuickBooks submission is currently disabled while we finish testing."
+  );
+};
+  
 window.commitReportToQuickBooks = async function commitReportToQuickBooks(reportNumber) {
 
   if (!auth.currentUser) {
