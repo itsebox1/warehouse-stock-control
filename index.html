@@ -1365,6 +1365,7 @@ document.getElementById("reportOptionsScreen").insertAdjacentHTML(
     >✉ Email PDF</button>
     <button
   type="button"
+  id="qb-${reportNumber}"
   onclick="event.preventDefault(); event.stopPropagation(); confirmQuickBooksCommit('${reportNumber}');"
   style="width:auto; background:#dc3545; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
 >Commit to QB</button>
@@ -1708,6 +1709,23 @@ async function getQuickBooksCommitStatus(reportNumber) {
   }
 
   return result;
+}
+  async function updateQuickBooksButton(reportNumber) {
+  const button = document.getElementById("qb-" + reportNumber);
+
+  if (!button) return;
+
+  try {
+    const status = await getQuickBooksCommitStatus(reportNumber);
+
+    if (status.submitted) {
+      button.textContent = "Committed to QB";
+      button.style.background = "#28a745";
+      button.disabled = true;
+    }
+  } catch (error) {
+    console.log("Could not load QuickBooks commit status:", error);
+  }
 }
 async function confirmQuickBooksCommit(reportNumber) {
   alert("QuickBooks commit test for " + reportNumber);
