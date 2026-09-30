@@ -1607,7 +1607,7 @@ window.confirmQuickBooksCommit = function(reportNumber) {
 window.showQuickBooksTestingMessage = function() {
   const box = document
     .getElementById("qbConfirmOverlay")
-    .querySelector("div > div");
+    .firstElementChild.firstElementChild;
 
   box.innerHTML = `
     <h2 style="margin-top:0;">WSC — QuickBooks Submission</h2>
