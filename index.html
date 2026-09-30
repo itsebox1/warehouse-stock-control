@@ -1592,7 +1592,7 @@ window.confirmQuickBooksCommit = function(reportNumber) {
           </button>
 
           <button type="button"
-            onclick="document.getElementById('qbConfirmOverlay').remove(); alert('Confirmation accepted. QuickBooks submission is currently disabled while we finish testing.');"
+            onclick="showQuickBooksTestingMessage();" 
             style="padding:10px 16px; border:0; border-radius:6px; background:#dc3545; color:white; font-weight:bold; cursor:pointer;">
             Yes, Submit to QB
           </button>
@@ -1603,6 +1603,29 @@ window.confirmQuickBooksCommit = function(reportNumber) {
 
   document.body.appendChild(overlay);
 };
+
+window.showQuickBooksTestingMessage = function() {
+  const box = document
+    .getElementById("qbConfirmOverlay")
+    .querySelector("div > div");
+
+  box.innerHTML = `
+    <h2 style="margin-top:0;">WSC — QuickBooks Submission</h2>
+
+    <p><strong>Confirmation accepted.</strong></p>
+
+    <p>QuickBooks submission is currently disabled while we finish testing.</p>
+
+    <div style="text-align:right; margin-top:24px;">
+      <button type="button"
+        onclick="document.getElementById('qbConfirmOverlay').remove();"
+        style="padding:10px 20px; border:0; border-radius:6px; background:#244b72; color:white; font-weight:bold; cursor:pointer;">
+        OK
+      </button>
+    </div>
+  `;
+};
+  
   
 window.commitReportToQuickBooks = async function commitReportToQuickBooks(reportNumber) {
 
