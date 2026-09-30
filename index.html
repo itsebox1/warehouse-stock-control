@@ -1547,24 +1547,61 @@ alert("PDF report emailed successfully to " + recipient);
 }
     
 }
+
 window.confirmQuickBooksCommit = function(reportNumber) {
 
-  const confirmed = confirm(
-    "Confirm QuickBooks Submission\n\n" +
-    "You are about to submit " + reportNumber + " to QuickBooks.\n\n" +
-    "Please confirm that the stock take is complete and all quantities are correct.\n\n" +
-    "This will change the stock quantities in QuickBooks and cannot be submitted twice.\n\n" +
-    "Press OK to submit, or Cancel to go back."
-  );
+  const existing = document.getElementById("qbConfirmOverlay");
+  if (existing) existing.remove();
 
-  if (!confirmed) {
-    return;
-  }
+  const overlay = document.createElement("div");
+  overlay.id = "qbConfirmOverlay";
 
-  alert(
-    "Confirmation accepted.\n\n" +
-    "QuickBooks submission is currently disabled while we finish testing."
-  );
+  overlay.innerHTML = `
+    <div style="
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.55);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:99999;
+      padding:20px;
+    ">
+      <div style="
+        background:white;
+        border-radius:12px;
+        padding:24px;
+        max-width:480px;
+        width:100%;
+        box-shadow:0 8px 30px rgba(0,0,0,0.3);
+        color:#222;
+      ">
+        <h2 style="margin-top:0;">WSC — QuickBooks Submission</h2>
+
+        <p>You are about to submit <strong>${reportNumber}</strong> to QuickBooks.</p>
+
+        <p>Please confirm that the stock take is complete and all quantities are correct.</p>
+
+        <p><strong>⚠️ This will change the stock quantities in QuickBooks and cannot be submitted twice.</strong></p>
+
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:24px;">
+          <button type="button"
+            onclick="document.getElementById('qbConfirmOverlay').remove();"
+            style="padding:10px 16px; border:0; border-radius:6px; cursor:pointer;">
+            Cancel
+          </button>
+
+          <button type="button"
+            onclick="document.getElementById('qbConfirmOverlay').remove(); alert('Confirmation accepted. QuickBooks submission is currently disabled while we finish testing.');"
+            style="padding:10px 16px; border:0; border-radius:6px; background:#dc3545; color:white; font-weight:bold; cursor:pointer;">
+            Yes, Submit to QB
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
 };
   
 window.commitReportToQuickBooks = async function commitReportToQuickBooks(reportNumber) {
