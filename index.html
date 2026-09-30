@@ -1324,6 +1324,8 @@ document.getElementById("reportResults")?.remove();
 
 window.currentStockReport = report;
   
+await updateQuickBooksButtonStatuses(); 
+  
 const reportGroups = {};
 
 report.records.forEach(record => {
