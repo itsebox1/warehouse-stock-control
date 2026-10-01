@@ -1620,6 +1620,17 @@ overlay.id = "wscMessageOverlay";
   z-index:99999;
   padding:20px;
 `;
+const box = document.createElement("div");
+
+box.style.cssText = `
+  background:white;
+  border-radius:12px;
+  padding:24px;
+  max-width:480px;
+  width:100%;
+  box-shadow:0 8px 30px rgba(0,0,0,0.3);
+  color:#222;
+`;
 
   box.innerHTML = `
     <h2 style="margin-top:0;">${title}</h2>
@@ -1733,7 +1744,7 @@ async function getQuickBooksCommitStatus(reportNumber) {
       button.textContent = "Committed to QB";
       button.style.background = "#28a745";
       button.onclick = function() {
-        showWSCMessage("Already Submitted", "This stock take has already been committed to QuickBooks.");
+        Message("Already Submitted", "This stock take has already been committed to QuickBooks.");
       };
 
   //   }
