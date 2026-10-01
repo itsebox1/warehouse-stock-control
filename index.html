@@ -1465,7 +1465,7 @@ window.getCurrentStaffToken = async function() {
   document.getElementById("loginScreen").style.display = user ? "none" : "block";
 
 document.getElementById("welcomeUser").textContent = user
-  id="welcomeUser"
+  ? "Signed in as " + user.email
   : "Not signed in";
 
 if (user) {
