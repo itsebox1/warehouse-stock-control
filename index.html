@@ -154,7 +154,6 @@
   Welcome to<br>Warehouse Stock Control<br>ITS Europe
 </h2>
 
-  <p id="welcomeUser">Checking sign-in...</p>
    <p style="text-align:center; margin-top:25px;">
   Select ST (Stock Take) or SC (Stock Count).
 </p>
@@ -180,6 +179,10 @@
     📋 Reports
   </button>
 
+   <p id="welcomeUser" style="text-align:left; margin-top:30px; margin-bottom:0;">
+  Checking sign-in...
+</p>
+   
 </div>
  
 <div id="stockApp" style="display:none;">
@@ -1462,7 +1465,7 @@ window.getCurrentStaffToken = async function() {
   document.getElementById("loginScreen").style.display = user ? "none" : "block";
 
 document.getElementById("welcomeUser").textContent = user
-  ? "Signed in as " + user.email
+  id="welcomeUser"
   : "Not signed in";
 
 if (user) {
