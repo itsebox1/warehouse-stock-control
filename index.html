@@ -1608,9 +1608,18 @@ window.confirmQuickBooksCommit = function(reportNumber) {
 };
 
 window.showWSCMessage = function(title, message) {
-  const box = document
-    .getElementById("qbConfirmOverlay")
-    .firstElementChild.firstElementChild;
+  const overlay = document.createElement("div");
+overlay.id = "wscMessageOverlay";
+  overlay.style.cssText = `
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.55);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:99999;
+  padding:20px;
+`;
 
   box.innerHTML = `
     <h2 style="margin-top:0;">${title}</h2>
@@ -1625,6 +1634,8 @@ window.showWSCMessage = function(title, message) {
       </button>
     </div>
   `;
+  overlay.appendChild(box);
+document.body.appendChild(overlay);
 };
   
   
