@@ -1744,7 +1744,7 @@ async function getQuickBooksCommitStatus(reportNumber) {
       button.textContent = "Committed to QB";
       button.style.background = "#28a745";
       button.onclick = function() {
-        Message("Already Submitted", "This stock take has already been committed to QuickBooks.");
+      showSCMessage("Already Submitted", "This stock take has already been committed to QuickBooks.");
       };
 
   //   }
