@@ -1723,7 +1723,7 @@ async function getQuickBooksCommitStatus(reportNumber) {
   //  if (status.submitted) {
       button.textContent = "Committed to QB";
       button.style.background = "#28a745";
-      button.disabled = true;
+      button.onclick = function() { alert("This stock take has already been committed to QuickBooks."); };
   //   }
   } catch (error) {
     console.log("Could not load QuickBooks commit status:", error);
