@@ -1639,7 +1639,7 @@ box.style.cssText = `
 
     <div style="text-align:right; margin-top:24px;">
       <button type="button"
-        onclick="document.getElementById('qbConfirmOverlay').remove();"
+        onclick="this.closest('[data-qb-confirm]').remove();"
         style="padding:10px 20px; border:0; border-radius:6px; background:#244b72; color:white; font-weight:bold; cursor:pointer;">
         OK
       </button>
