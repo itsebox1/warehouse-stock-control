@@ -1410,7 +1410,9 @@ document.getElementById("reportOptionsScreen").insertAdjacentHTML(
 </div>
   
 `);
-
+Object.keys(reportGroups).forEach(reportNumber => {
+  updateQuickBooksButton(reportNumber);
+});
 
  } catch (error) {
     document.getElementById("reportLoading")?.remove();
