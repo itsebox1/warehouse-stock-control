@@ -1718,13 +1718,13 @@ async function getQuickBooksCommitStatus(reportNumber) {
   if (!button) return;
 
   try {
-    const status = await getQuickBooksCommitStatus(reportNumber);
+  //  const status = await getQuickBooksCommitStatus(reportNumber);
 
-    if (status.submitted) {
+  //  if (status.submitted) {
       button.textContent = "Committed to QB";
       button.style.background = "#28a745";
       button.disabled = true;
-    }
+  //   }
   } catch (error) {
     console.log("Could not load QuickBooks commit status:", error);
   }
