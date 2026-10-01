@@ -1729,6 +1729,11 @@ async function getQuickBooksCommitStatus(reportNumber) {
     console.log("Could not load QuickBooks commit status:", error);
   }
 }
+
+async function getQuickBooksCommitStatusForST(reportNumber) {
+  return await getQuickBooksCommitStatus(reportNumber);
+}
+  
 async function confirmQuickBooksCommit(reportNumber) {
   alert("QuickBooks commit test for " + reportNumber);
 }
