@@ -1607,17 +1607,15 @@ window.confirmQuickBooksCommit = function(reportNumber) {
   document.body.appendChild(overlay);
 };
 
-window.showQuickBooksTestingMessage = function() {
+window.showWSCMessage = function(title, message) {
   const box = document
     .getElementById("qbConfirmOverlay")
     .firstElementChild.firstElementChild;
 
   box.innerHTML = `
-    <h2 style="margin-top:0;">WSC — QuickBooks Submission</h2>
+    <h2 style="margin-top:0;">${title}</h2>
 
-    <p><strong>Confirmation accepted.</strong></p>
-
-    <p>QuickBooks submission is currently disabled while we finish testing.</p>
+    <p>${message}</p>
 
     <div style="text-align:right; margin-top:24px;">
       <button type="button"
