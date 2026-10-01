@@ -174,7 +174,7 @@
 
   <a href="https://sites.google.com/view/warehouse-stock-control/home" target="_blank">
   <img src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
-       class="about-globe spinning"
+       class="about-globe"
        alt="About Warehouse Stock Control">
   </a> 
 
@@ -1012,6 +1012,8 @@ async function loadStockTakeList() {
   } catch (error) {
     list.textContent =
       "Error loading stock takes: " + error.message;
+  } finally {
+    stopGlobeLoading();
   }
 }
 
@@ -1090,7 +1092,9 @@ async function loadStockTakeList() {
   } catch (error) {
     list.textContent =
       "Error loading stock counts: " + error.message;
-  }
+  } finally {
+    stopGlobeLoading();
+}
 }
   
 function showStockScreen() {
@@ -1119,6 +1123,8 @@ function showStockScreen() {
 }
 
 function openSelectedStock() {
+  startGlobeLoading();
+  
   const selectedType = document.querySelector(
     'input[name="homeCountType"]:checked'
   ).value;
@@ -1831,6 +1837,21 @@ window.updateWSC = function() {
 
 checkForWSCUpdate();
 
+checkForWSCUpdate();
+
+function startGlobeLoading() {
+    const globe = document.querySelector(".about-globe");
+    if (globe) {
+        globe.classList.add("spinning");
+    }
+}
+
+function stopGlobeLoading() {
+    const globe = document.querySelector(".about-globe");
+    if (globe) {
+        globe.classList.remove("spinning");
+    }
+}
   
 </script>
 </body>
