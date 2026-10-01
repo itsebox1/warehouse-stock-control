@@ -1712,7 +1712,7 @@ async function getQuickBooksCommitStatus(reportNumber) {
 
   return result;
 }
-  async function updateQuickBooksButton(reportNumber) {
+  window.updateQuickBooksButton = async function (reportNumber) {
   const button = document.getElementById("qb-" + reportNumber);
 
   if (!button) return;
