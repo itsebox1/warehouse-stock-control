@@ -179,9 +179,13 @@
     📋 Reports
   </button>
 
-   <p id="welcomeUser" style="text-align:left; margin-top:30px; margin-bottom:0;">
-  Checking sign-in...
-</p>
+    <div id="updateStatus" style="text-align:left; margin-top:30px; margin-bottom:10px;">
+  Checking for updates...
+    </div>
+   
+   <p id="welcomeUser" style="text-align:left; margin-top:0px; margin-bottom:0;">
+    Checking sign-in...  
+   </p>
    
 </div>
  
@@ -1763,6 +1767,42 @@ async function getQuickBooksCommitStatusForST(reportNumber) {
 async function confirmQuickBooksCommit(reportNumber) {
   alert("QuickBooks commit test for " + reportNumber);
 }
+// WSC version / update checker
+const WSC_VERSION = "1.0.0";
+
+async function checkForWSCUpdate() {
+  const status = document.getElementById("updateStatus");
+  if (!status) return;
+
+  try {
+    const response = await fetch("version.txt?nocache=" + Date.now(), {
+      cache: "no-store"
+    });
+
+    if (!response.ok) {
+      throw new Error("Version check failed");
+    }
+
+    const latestVersion = (await response.text()).trim();
+
+    if (latestVersion === WSC_VERSION) {
+      status.innerHTML = "✓ Up to date";
+    } else {
+      status.innerHTML =
+        'Update available &nbsp; <button type="button" onclick="updateWSC()">Update</button>';
+    }
+  } catch (error) {
+    console.log("WSC update check failed:", error);
+    status.innerHTML = "Unable to check for updates";
+  }
+}
+
+function updateWSC() {
+  window.location.reload(true);
+}
+
+checkForWSCUpdate();
+
   
 </script>
 </body>
