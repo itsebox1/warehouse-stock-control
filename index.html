@@ -27,6 +27,18 @@
     cursor: pointer;
     z-index: 1000;
 }
+  .about-globe.spinning {
+    animation: globeSpin 3s linear infinite;
+}
+
+@keyframes globeSpin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
 
     button {
       background: #244b72;
@@ -162,7 +174,7 @@
 
   <a href="https://sites.google.com/view/warehouse-stock-control/home" target="_blank">
   <img src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
-       class="about-globe"
+       class="about-globe spinning"
        alt="About Warehouse Stock Control">
   </a> 
 
