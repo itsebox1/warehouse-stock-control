@@ -1837,12 +1837,12 @@ window.updateWSC = function() {
 
 checkForWSCUpdate();
 
-function startGlobeLoading() {
+window.startGlobeLoading = () {
     const globe = document.querySelector(".about-globe");
     if (globe) {
         globe.classList.add("spinning");
     }
-}
+};
 
 function stopGlobeLoading() {
     const globe = document.querySelector(".about-globe");
