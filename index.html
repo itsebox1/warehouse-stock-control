@@ -1837,7 +1837,7 @@ window.updateWSC = function() {
 
 checkForWSCUpdate();
 
-window.startGlobeLoading = () {
+window.startGlobeLoading = function() {
     const globe = document.querySelector(".about-globe");
     if (globe) {
         globe.classList.add("spinning");
