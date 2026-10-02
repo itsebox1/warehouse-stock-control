@@ -257,12 +257,6 @@
     Start New Stock Take
   </button>
 
-  <button id="finishStockTakeButton"
-          onclick="finishStockTake()"
-          style="display:none;">
-    Finish Stock Take
-  </button>
-
   <p id="stockTakeReportNumber"></p>
 
   <div id="stockTakeList"></div>
@@ -772,7 +766,6 @@ function findManualSku() {
 
     document.getElementById("startStockTakeButton").style.display = "none";
 
-    document.getElementById("finishStockTakeButton").style.display = "block";
     localStorage.setItem(
   "activeStockTake",
   result.reportNumber
