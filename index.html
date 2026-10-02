@@ -183,7 +183,47 @@
   <p id="loginMessage"></p>
 </div>
 
- <div id="welcomeScreen" style="display:none;">
+ <!-- WSC PIN LOCK SCREEN -->
+<div id="pinLockScreen" style="display:none; text-align:center; padding:40px 20px;">
+
+  <h2>🔐 Warehouse Stock Control</h2>
+
+  <p id="pinLockText">
+    Enter your 4-digit PIN
+  </p>
+
+  <input
+    id="pinInput"
+    type="password"
+    inputmode="numeric"
+    pattern="[0-9]*"
+    maxlength="4"
+    placeholder="••••"
+    autocomplete="off"
+    style="
+      width:160px;
+      padding:14px;
+      font-size:28px;
+      text-align:center;
+      letter-spacing:10px;
+      box-sizing:border-box;
+      margin:15px auto;
+      display:block;
+    "
+  >
+
+  <button
+    id="pinUnlockButton"
+    type="button"
+    style="max-width:300px; width:100%;">
+    Unlock
+  </button>
+
+  <p id="pinMessage" style="margin-top:15px;"></p>
+
+</div>
+  
+  <div id="welcomeScreen" style="display:none;">
 
   <a href="https://sites.google.com/view/warehouse-stock-control/home" target="_blank">
   <img src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
@@ -1558,15 +1598,75 @@ document.getElementById("welcomeUser").textContent = user
   : "Not signed in";
 
 if (user) {
-  showWelcomeScreen();
+    document.getElementById("welcomeScreen").style.display = "none";
+    document.getElementById("stockApp").style.display = "none";
+    document.getElementById("reportsScreen").style.display = "none";
+    document.getElementById("reportOptionsScreen").style.display = "none";
+
+    document.getElementById("pinInput").value = "";
+    document.getElementById("pinMessage").textContent = "";
+    document.getElementById("pinLockScreen").style.display = "block";
+
 } else {
-  document.getElementById("welcomeScreen").style.display = "none";
-  document.getElementById("stockApp").style.display = "none";
-  document.getElementById("reportsScreen").style.display = "none";
-  document.getElementById("reportOptionsScreen").style.display = "none";
+    document.getElementById("pinLockScreen").style.display = "none";
+    document.getElementById("welcomeScreen").style.display = "none";
+    document.getElementById("stockApp").style.display = "none";
+    document.getElementById("reportsScreen").style.display = "none";
+    document.getElementById("reportOptionsScreen").style.display = "none";
+    }
+  });   
+
+// ----- WSC DEVICE PIN LOCK -----
+
+const pinButton = document.getElementById("pinUnlockButton");
+const pinInput = document.getElementById("pinInput");
+const pinMessage = document.getElementById("pinMessage");
+
+function getSavedPin() {
+  return localStorage.getItem("wscDevicePin");
 }
 
+function unlockWSC() {
+  const enteredPin = pinInput.value.trim();
+  const savedPin = getSavedPin();
+
+  if (!/^\d{4}$/.test(enteredPin)) {
+    pinMessage.textContent = "Please enter a 4-digit PIN.";
+    return;
+  }
+
+  // First use on this device - create the PIN
+  if (!savedPin) {
+    localStorage.setItem("wscDevicePin", enteredPin);
+    pinMessage.textContent = "";
+    document.getElementById("pinLockScreen").style.display = "none";
+    showWelcomeScreen();
+    return;
+  }
+
+  // Existing device - check the PIN
+  if (enteredPin === savedPin) {
+    pinMessage.textContent = "";
+    pinInput.value = "";
+    document.getElementById("pinLockScreen").style.display = "none";
+    showWelcomeScreen();
+  } else {
+    pinMessage.textContent = "Incorrect PIN.";
+    pinInput.value = "";
+    pinInput.focus();
+  }
+}
+
+pinButton.addEventListener("click", unlockWSC);
+
+pinInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    unlockWSC();
+  }
 });
+
+// ----- END WSC DEVICE PIN LOCK -----
+
  document.getElementById("loginButton").addEventListener("click", async () => {
   const email = document.getElementById("loginEmail").value.trim();
   const password = document.getElementById("loginPassword").value;
