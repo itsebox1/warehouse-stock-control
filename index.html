@@ -973,10 +973,14 @@ async function loadStockTakeList() {
 
       const finish = document.createElement("button");
       finish.textContent = "Finish";
-     finish.onclick = async () => {
-  if (!confirm("Finish " + stockTake.reportNumber + "?")) {
+finish.onclick = async () => {
+       
+    if (!(await window.showWSCConfirm(
+    "Finish Stock Take",
+    "Are you sure you want to finish " + stockTake.reportNumber + "?"
+))) {
     return;
-  }
+}
 
   finish.disabled = true;
   finish.textContent = "Finishing...";
@@ -1701,8 +1705,65 @@ box.style.cssText = `
   overlay.appendChild(box);
 document.body.appendChild(overlay);
 };
-  
-  
+
+window.showWSCConfirm = function(title, message) {
+    return new Promise((resolve) => {
+        const overlay = document.createElement("div");
+        overlay.id = "wscConfirmOverlay";
+        overlay.style.cssText = `
+            position:fixed;
+            inset:0;
+            background:rgba(0,0,0,0.55);
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            z-index:99999;
+            padding:20px;
+        `;
+
+        const box = document.createElement("div");
+        box.style.cssText = `
+            background:white;
+            border-radius:12px;
+            padding:24px;
+            max-width:480px;
+            width:100%;
+            box-shadow:0 8px 30px rgba(0,0,0,0.3);
+            color:#222;
+        `;
+
+        box.innerHTML = `
+            <h2 style="margin-top:0;">${title}</h2>
+            <p>${message}</p>
+
+            <div style="text-align:right; margin-top:24px;">
+                <button type="button" id="wscConfirmCancel"
+                    style="padding:10px 20px; border:0; border-radius:6px; background:#777; color:white; font-weight:bold; cursor:pointer; margin-right:8px;">
+                    Cancel
+                </button>
+
+                <button type="button" id="wscConfirmOK"
+                    style="padding:10px 20px; border:0; border-radius:6px; background:#244b72; color:white; font-weight:bold; cursor:pointer;">
+                    OK
+                </button>
+            </div>
+        `;
+
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        document.getElementById("wscConfirmCancel").onclick = () => {
+            overlay.remove();
+            resolve(false);
+        };
+
+        document.getElementById("wscConfirmOK").onclick = () => {
+            overlay.remove();
+            resolve(true);
+        };
+    });
+};
+    
 window.commitReportToQuickBooks = async function commitReportToQuickBooks(reportNumber) {
 
   if (!auth.currentUser) {
