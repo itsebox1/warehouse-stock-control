@@ -556,6 +556,8 @@ async function lookupProduct(sku) {
   if (lookupInProgress) return;
 
   lookupInProgress = true;
+  startGlobeLoading();
+  
   details.textContent = "";
   result.textContent = "Looking up product: " + sku;
 
@@ -660,6 +662,7 @@ async function lookupProduct(sku) {
 
   } finally {
     lookupInProgress = false;
+    stopGlobeLoading();
   }
 }
 
