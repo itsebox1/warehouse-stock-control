@@ -870,7 +870,8 @@ async function startStockCount() {
 
   button.disabled = true;
   message.textContent = "Saving count...";
-
+  startGlobeLoading();
+    
   try {
     const idToken = await window.getCurrentStaffToken();
 
@@ -909,6 +910,7 @@ document.getElementById("nextProductButton").style.display = "block";
 
   } finally {
     button.disabled = false;
+    stopGlobeLoading();
   }
 }
 
