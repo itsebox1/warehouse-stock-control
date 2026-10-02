@@ -27,6 +27,15 @@
     cursor: pointer;
     z-index: 1000;
 }
+    .stock-globe {
+    top: 18px;
+    right: 18px;
+}
+
+.stock-home-button {
+  width: calc(100% - 75px);
+}
+    
   .about-globe.spinning {
     animation: globeSpin 3s linear infinite;
 }
@@ -225,7 +234,7 @@
        alt="About Warehouse Stock Control">
 </a>
 
-  <button onclick="showWelcomeScreen()">
+  <button class="stock-home-button" onclick="showWelcomeScreen()">
   🏠 Home
 </button>
 
