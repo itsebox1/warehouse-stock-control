@@ -1850,12 +1850,12 @@ window.startGlobeLoading = function() {
     }
 };
 
-function stopGlobeLoading() {
+window.stopGlobeLoading = function() {
     const globe = document.querySelector(".stock-globe");
     if (globe) {
         globe.classList.remove("spinning");
     }
-}
+};
   
 </script>
 </body>
