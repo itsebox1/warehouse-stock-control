@@ -568,7 +568,7 @@ async function lookupProduct(sku) {
     result.textContent = "Please enter a product SKU.";
     return;
   }
- 
+  
   resetProductLookup();
 
   lookupInProgress = true;
@@ -614,6 +614,8 @@ async function lookupProduct(sku) {
     });
 
     if (product && product.sku) {
+      productCache.set(sku, product);
+      
       details.innerHTML = `
         <div style="padding:20px;background:#f3f6fa;border-radius:12px;margin-top:15px;color:#222;">
 
