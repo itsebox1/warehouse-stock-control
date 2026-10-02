@@ -219,6 +219,12 @@
  
 <div id="stockApp" style="display:none;">
 
+  <a href="https://sites.google.com/view/warehouse-stock-control/home" target="_blank">
+    <img src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
+       class="about-globe stock-globe"
+       alt="About Warehouse Stock Control">
+</a>
+
   <button onclick="showWelcomeScreen()">
   🏠 Home
 </button>
@@ -1838,14 +1844,14 @@ window.updateWSC = function() {
 checkForWSCUpdate();
 
 window.startGlobeLoading = function() {
-    const globe = document.querySelector(".about-globe");
+    const globe = document.querySelector(".stock-globe");
     if (globe) {
         globe.classList.add("spinning");
     }
 };
 
 function stopGlobeLoading() {
-    const globe = document.querySelector(".about-globe");
+    const globe = document.querySelector(".stock-globe");
     if (globe) {
         globe.classList.remove("spinning");
     }
