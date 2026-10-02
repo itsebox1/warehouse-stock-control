@@ -33,9 +33,13 @@
 }
 
 .stock-home-button {
-  width: calc(100% - 75px);
+    width: 100%;
 }
-    
+
+.stock-home-button.loading {
+    width: calc(100% - 75px);
+}
+ 
   .about-globe.spinning {
     animation: globeSpin 3s linear infinite;
 }
@@ -230,7 +234,7 @@
 
   <a href="https://sites.google.com/view/warehouse-stock-control/home" target="_blank">
     <img src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
-       class="about-globe stock-globe"
+       class="about-globe stock-globe" style="display:none;"
        alt="About Warehouse Stock Control">
 </a>
 
@@ -1854,17 +1858,33 @@ checkForWSCUpdate();
 
 window.startGlobeLoading = function() {
     const globe = document.querySelector(".stock-globe");
+    const homeButton = document.querySelector(".stock-home-button");
+
     if (globe) {
+        globe.style.display = "block";
         globe.classList.add("spinning");
+    }
+
+    if (homeButton) {
+        homeButton.classList.add("loading");
     }
 };
 
+
 window.stopGlobeLoading = function() {
     const globe = document.querySelector(".stock-globe");
+    const homeButton = document.querySelector(".stock-home-button");
+
     if (globe) {
         globe.classList.remove("spinning");
+        globe.style.display = "none";
+    }
+
+    if (homeButton) {
+        homeButton.classList.remove("loading");
     }
 };
+
   
 </script>
 </body>
