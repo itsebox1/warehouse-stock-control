@@ -542,6 +542,21 @@ function escapeHtml(value) {
   })[character]);
 }
 
+function resetProductLookup() {
+  lookupInProgress = false;
+
+  const result = document.getElementById("result");
+  const details = document.getElementById("productDetails");
+  if (result) result.textContent = "";
+  if (details) details.innerHTML = "";
+
+  delete window.warehouseProductCallback;
+
+  document
+    .querySelectorAll('script[data-wsc-lookup="true"]')
+    .forEach(script => script.remove());
+}
+  
 async function lookupProduct(sku) {
   const result = document.getElementById("result");
   const details = document.getElementById("productDetails");
@@ -551,9 +566,8 @@ async function lookupProduct(sku) {
   if (!sku) {
     result.textContent = "Please enter a product SKU.";
     return;
-  }
-
-  if (lookupInProgress) return;
+ 
+  resetProductLookup();
 
   lookupInProgress = true;
   startGlobeLoading();
