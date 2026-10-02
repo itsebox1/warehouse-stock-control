@@ -815,6 +815,7 @@ function findManualSku() {
 
   button.disabled = true;
   status.textContent = "Starting new stock take...";
+  startGlobeLoading();
 
   try {
     const idToken = await window.getCurrentStaffToken();
@@ -858,6 +859,8 @@ showCountingScreen();
       "Error: " + String(error.message || error);
 
     button.disabled = false;
+  } finally {
+    stopGlobeLoadind();
   }
 }
   
