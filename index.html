@@ -1066,6 +1066,7 @@ finish.onclick = async () => {
 
   finish.disabled = true;
   finish.textContent = "Finishing...";
+  startGlobeLoading();
 
   try {
     const idToken = await window.getCurrentStaffToken();
@@ -1099,9 +1100,10 @@ finish.onclick = async () => {
     alert("Unable to finish stock take: " + error.message);
     finish.disabled = false;
     finish.textContent = "Finish";
-  }
+} finally {
+    stopGlobeLoading();
+}
 };
-
 
       row.append(number, resume, finish);
       list.appendChild(row);
