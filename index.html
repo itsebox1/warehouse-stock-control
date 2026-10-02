@@ -1583,6 +1583,8 @@ Object.keys(reportGroups).forEach(reportNumber => {
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   
+  const WSC_OWNER_EMAIL = "tmerry@sensafe.com";
+  
     window.getCurrentStaffEmail = function() {
       return auth.currentUser
         ? auth.currentUser.email
@@ -1674,16 +1676,23 @@ pinInput.addEventListener("keydown", (event) => {
 });
 
   forgotPinButton.addEventListener("click", () => {
-  const ownerPassword = prompt("Enter the owner reset password:");
+  const currentEmail = auth.currentUser?.email?.toLowerCase();
 
-  if (ownerPassword === "WSC2026") {
-    localStorage.removeItem("wscDevicePin");
-    pinInput.value = "";
-    pinMessage.textContent = "PIN reset. Enter a new 4-digit PIN.";
-    pinInput.focus();
-  } else if (ownerPassword !== null) {
-    pinMessage.textContent = "Incorrect owner password.";
+  if (currentEmail !== WSC_OWNER_EMAIL.toLowerCase()) {
+    pinMessage.textContent = "PIN reset can only be performed by the WSC owner.";
+    return;
   }
+
+  const confirmed = confirm(
+    "Owner verified. Reset the PIN on this device?"
+  );
+
+  if (!confirmed) return;
+
+  localStorage.removeItem("wscDevicePin");
+  pinInput.value = "";
+  pinMessage.textContent = "PIN reset. Enter a new 4-digit PIN.";
+  pinInput.focus();
 });
 
 // ----- END WSC DEVICE PIN LOCK -----
