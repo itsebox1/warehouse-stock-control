@@ -650,8 +650,7 @@ async function lookupProduct(sku) {
 
           <p id="saveMessage"></p>
 
-          <p><strong>Difference:</strong>
-            ${escapeHtml(product.difference)}</p>
+          <p><strong>Difference:</strong> <span id="liveDifference"></span></p>
 
           <p><strong>Last Counted:</strong>
             ${escapeHtml(product.lastCounted || "Not counted yet")}</p>
@@ -660,6 +659,23 @@ async function lookupProduct(sku) {
       `;
 
       document.getElementById("actualQtyInput").value = "";
+  const actualQtyInput = document.getElementById("actualQtyInput");
+  const liveDifference = document.getElementById("liveDifference");
+
+  actualQtyInput.addEventListener("input", () => {
+      const value = actualQtyInput.value.trim();
+
+  if (value === "") {
+    liveDifference.textContent = "";
+    return;
+  }
+
+  const actualQty = Number(value);
+  const qbStock = Number(product.qbStock);
+
+  liveDifference.textContent = actualQty - qbStock;
+});
+
       
       result.textContent = "Product found: " + product.sku;
 
