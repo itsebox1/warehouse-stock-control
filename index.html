@@ -610,9 +610,6 @@ async function lookupProduct(sku) {
           <p><strong>QuickBooks Stock:</strong>
             ${escapeHtml(product.qbStock)}</p>
 
-          <p><strong>Actual Quantity:</strong>
-            ${escapeHtml(product.actualQty)}</p>
-
           <label for="actualQtyInput">
             <strong>New Actual Quantity:</strong>
           </label>
@@ -644,9 +641,8 @@ async function lookupProduct(sku) {
         </div>
       `;
 
-      document.getElementById("actualQtyInput").value =
-        product.actualQty ?? "";
-
+      document.getElementById("actualQtyInput").value = "";
+      
       result.textContent = "Product found: " + product.sku;
 
       document.getElementById("saveCountButton").onclick = () => saveProductCount(product);
