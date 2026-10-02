@@ -589,7 +589,7 @@ async function lookupProduct(sku) {
 
       function cleanup() {
         clearTimeout(timeout);
-        delete window[callbackName];
+        window[callbackName] = function() {};
         script.remove();
       }
 
