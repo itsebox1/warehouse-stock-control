@@ -404,6 +404,13 @@
 
 <div id="reportOptionsScreen" style="display:none;">
 
+   <a href="https://sites.google.com/view/warehouse-stock-control/home" target="_blank">
+    <img src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
+         class="about-globe report-globe"
+         style="display:none;"
+         alt="About Warehouse Stock Control">
+  </a>
+
   <button onclick="showReportsScreen()">
     ← Back to Reports
   </button>
@@ -1347,6 +1354,7 @@ function updateReportSearchMode() {
 }
 
 async function generateStockReport() {
+  startGlobeLoading();
  const searchBy =
   selectedReportType === "ST"
     ? (document.querySelector('input[name="stSearchMode"]:checked')?.value || "number")
@@ -1599,10 +1607,12 @@ document.getElementById("reportOptionsScreen").insertAdjacentHTML(
 `);
 
  } catch (error) {
-    document.getElementById("reportLoading")?.remove();
+  document.getElementById("reportLoading")?.remove();
 
-    alert("Report error: " + error.message);
-  }
+  alert("Report error: " + error.message);
+} finally {
+  stopGlobeLoading();
+}
 }
 
 </script>
