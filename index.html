@@ -1006,6 +1006,22 @@ document.getElementById("nextProductButton").style.display = "block";
   document.getElementById("reportsScreen").style.display = "none";
   document.getElementById("reportOptionsScreen").style.display = "none";
 }
+
+function resumeStockTake(reportNumber) {
+  localStorage.setItem(
+    "activeStockTake",
+    reportNumber
+  );
+
+  document.getElementById("stockTakeStatus").textContent =
+    "Stock take in progress.";
+
+  document.getElementById("stockTakeReportNumber").textContent =
+    "Report Number: " + reportNumber;
+
+  showCountingScreen();
+}
+  
 async function loadStockTakeList() {
   const list = document.getElementById("stockTakeSessionsList");
 
@@ -1053,19 +1069,9 @@ async function loadStockTakeList() {
 
       const resume = document.createElement("button");
       resume.textContent = "Resume";
+      
       resume.onclick = () => {
-  localStorage.setItem(
-    "activeStockTake",
-    stockTake.reportNumber
-  );
-
-  document.getElementById("stockTakeStatus").textContent =
-    "Stock take in progress.";
-
-  document.getElementById("stockTakeReportNumber").textContent =
-    "Report Number: " + stockTake.reportNumber;
-
-  showCountingScreen();
+        resumeStockTake(stockTake.reportNumber);
 };
 
       const finish = document.createElement("button");
@@ -1483,8 +1489,31 @@ const REPORT_WORKER_URL =
   
 const report = await response.json();
 let closedStockTakes = null;
+let openStockTakes = null;
 
 if (selectedReportType === "ST") {
+  
+  const openSessionsResponse = await fetch(REPORT_WORKER_URL, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    action: "listStockTakes",
+    idToken: idToken
+  })
+});
+
+try {
+  openStockTakes = await openSessionsResponse.json();
+} catch (jsonError) {
+  console.warn("Open Stock Takes response was not valid JSON:", jsonError);
+  openStockTakes = {
+    success: false,
+    stockTakes: []
+  };
+}
+  
   const sessionsResponse = await fetch(REPORT_WORKER_URL, {
     method: "POST",
     headers: {
@@ -1532,6 +1561,22 @@ document.getElementById("reportResults")?.remove();
 window.currentStockReport = report;
   
 const reportGroups = {};
+if (
+  selectedReportType === "ST" &&
+  searchBy === "number"
+) {
+  const finishedStockTake = closedStockTakes?.stockTakes?.find(
+    item => item.reportNumber === stReportNumber
+  );
+
+  const inProgressStockTake = openStockTakes?.stockTakes?.find(
+    item => item.reportNumber === stReportNumber
+  );
+
+  if (finishedStockTake || inProgressStockTake) {
+    reportGroups[stReportNumber] = [];
+  }
+}
   
 report.records.forEach(record => {
   const reportNumber = record.reportNumber || "No report number";
@@ -1555,6 +1600,12 @@ document.getElementById("reportOptionsScreen").insertAdjacentHTML(
     : null;
 
   const committedToQB = stockTake?.committedToQB === true;
+    
+  const inProgressStockTake = selectedReportType === "ST" && openStockTakes
+  ? openStockTakes.stockTakes?.find(item => item.reportNumber === reportNumber)
+  : null;
+
+const isInProgress = !!inProgressStockTake;
 
   return `
 
@@ -1573,18 +1624,27 @@ document.getElementById("reportOptionsScreen").insertAdjacentHTML(
       style="width:auto; background:#244b72; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
     >View</button>
 
-    <button
-      type="button"
-       onclick="event.preventDefault(); event.stopPropagation(); emailStockReport('${reportNumber}');"
-       style="width:auto; background:#244b72; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
-    >✉ Email PDF</button>
-    <button
-  type="button"
-  id="qb-${reportNumber}"
-  onclick="event.preventDefault(); event.stopPropagation(); confirmQuickBooksCommit('${reportNumber}');"
-  style="width:auto; background:${committedToQB ? '#28a745' : '#dc3545'}; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
->${committedToQB ? 'Committed to QB' : 'Commit to QB'}</button>
+    ${isInProgress ? `
+  <button
+    type="button"
+    onclick="event.preventDefault(); event.stopPropagation(); resumeStockTake('${reportNumber}');"
+    style="width:auto; background:#f0ad4e; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
+  >In Progress — Resume Stock Take</button>
+` : `
+  <button
+    type="button"
+    onclick="event.preventDefault(); event.stopPropagation(); emailStockReport('${reportNumber}');"
+    style="width:auto; background:#244b72; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
+  >✉ Email PDF</button>
 
+
+  <button
+    type="button"
+    id="qb-${reportNumber}"
+    onclick="event.preventDefault(); event.stopPropagation(); confirmQuickBooksCommit('${reportNumber}');"
+    style="width:auto; background:${committedToQB ? '#28a745' : '#dc3545'}; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
+  >${committedToQB ? 'Committed to QB' : 'Commit to QB'}</button>
+`}
 
   </span>
 
