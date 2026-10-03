@@ -1493,6 +1493,18 @@ window.currentStockReport = report;
   
 const reportGroups = {};
 
+if (
+  selectedReportType === "ST" &&
+  closedStockTakes &&
+  Array.isArray(closedStockTakes.stockTakes)
+) {
+  closedStockTakes.stockTakes.forEach(stockTake => {
+    if (!reportGroups[stockTake.reportNumber]) {
+      reportGroups[stockTake.reportNumber] = [];
+    }
+  });
+}
+  
 report.records.forEach(record => {
   const reportNumber = record.reportNumber || "No report number";
 
