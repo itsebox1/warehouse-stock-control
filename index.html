@@ -1355,6 +1355,12 @@ function updateReportSearchMode() {
 
 async function generateStockReport() {
   startGlobeLoading();
+  const reportGlobe = document.querySelector(".report-globe");
+if (reportGlobe) {
+  reportGlobe.style.display = "block";
+  reportGlobe.classList.add("spinning");
+}
+
  const searchBy =
   selectedReportType === "ST"
     ? (document.querySelector('input[name="stSearchMode"]:checked')?.value || "number")
@@ -1612,6 +1618,11 @@ document.getElementById("reportOptionsScreen").insertAdjacentHTML(
   alert("Report error: " + error.message);
 } finally {
   stopGlobeLoading();
+
+  if (reportGlobe) {
+    reportGlobe.classList.remove("spinning");
+    reportGlobe.style.display = "none";
+  }
 }
 }
 
