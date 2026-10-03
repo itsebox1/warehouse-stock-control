@@ -988,7 +988,7 @@ document.getElementById("nextProductButton").style.display = "block";
   document.getElementById("nextProductButton").style.display = "none";
 } 
 
-function showWelcomeScreen() {
+  window.showWelcomeScreen = () {
   document.getElementById("welcomeScreen").style.display = "block";
   document.getElementById("stockApp").style.display = "none";
   document.getElementById("reportsScreen").style.display = "none";
@@ -1698,7 +1698,7 @@ function unlockWSC() {
     localStorage.setItem("wscDevicePin", enteredPin);
     pinMessage.textContent = "";
     document.getElementById("pinLockScreen").style.display = "none";
-    showWelcomeScreen();
+    window.showWelcomeScreen();
     return;
   }
 
@@ -1707,7 +1707,7 @@ function unlockWSC() {
     pinMessage.textContent = "";
     pinInput.value = "";
     document.getElementById("pinLockScreen").style.display = "none";
-    showWelcomeScreen();
+    window.showWelcomeScreen();
   } else {
     pinMessage.textContent = "Incorrect PIN.";
     pinInput.value = "";
