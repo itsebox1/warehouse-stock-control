@@ -1496,13 +1496,29 @@ if (selectedReportType === "ST") {
     })
   });
 
+  try {
   closedStockTakes = await sessionsResponse.json();
+} catch (jsonError) {
+  console.warn("QuickBooks status response was not valid JSON:", jsonError);
+
+  closedStockTakes = {
+    success: false,
+    stockTakes: []
+  };
+}
 
   if (!sessionsResponse.ok || !closedStockTakes.success) {
-    throw new Error(
-      closedStockTakes.error || "Unable to load completed stock takes."
-    );
-  }
+  console.warn(
+    "Unable to load QuickBooks status:",
+    closedStockTakes.error || "Unknown error"
+  );
+
+
+  closedStockTakes = {
+    success: false,
+    stockTakes: []
+  };
+}
 }
   
 if (!response.ok || !report.success) {
