@@ -1521,7 +1521,15 @@ document.getElementById("reportOptionsScreen").insertAdjacentHTML(
   <h2>${selectedReportType} — Stock Report</h2>
   <p>${report.records.length} records found.</p>
 
-  ${Object.entries(reportGroups).map(([reportNumber, records]) => `
+  ${Object.entries(reportGroups).map(([reportNumber, records]) => {
+  const stockTake = selectedReportType === "ST" && closedStockTakes
+    ? closedStockTakes.stockTakes.find(item => item.reportNumber === reportNumber)
+    : null;
+
+  const committedToQB = stockTake?.committedToQB === true;
+
+  return `
+
   <details style="margin:15px 0; padding:15px; border:1px solid #ddd; border-radius:8px;">
   <summary style="cursor:pointer; font-weight:bold; display:flex; align-items:center; justify-content:space-between; gap:12px;">
 
@@ -1546,8 +1554,8 @@ document.getElementById("reportOptionsScreen").insertAdjacentHTML(
   type="button"
   id="qb-${reportNumber}"
   onclick="event.preventDefault(); event.stopPropagation(); confirmQuickBooksCommit('${reportNumber}');"
-  style="width:auto; background:#dc3545; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
->Commit to QB</button>
+  style="width:auto; background:${committedToQB ? '#28a745' : '#dc3545'}; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
+>${committedToQB ? 'Committed to QB' : 'Commit to QB'}</button>
 
 
   </span>
@@ -1585,7 +1593,7 @@ document.getElementById("reportOptionsScreen").insertAdjacentHTML(
     </div>
 
   </details>
-`).join("")}
+}).join("")}
 </div>
   
 `);
