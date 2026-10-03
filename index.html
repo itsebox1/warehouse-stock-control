@@ -36,7 +36,7 @@
     width: 100%;
 }
 
-.stock-home-button.loading {
+.report-back-button.loading {
     width: calc(100% - 75px);
 }
  
@@ -411,7 +411,7 @@
          alt="About Warehouse Stock Control">
   </a>
 
-  <button onclick="showReportsScreen()">
+  <button class="report-back-button" onclick="showReportsScreen()">
     ← Back to Reports
   </button>
 
@@ -1361,6 +1361,11 @@ if (reportGlobe) {
   reportGlobe.classList.add("spinning");
 }
 
+const reportBackButton = document.querySelector(".report-back-button");
+if (reportBackButton) {
+  reportBackButton.classList.add("loading");
+}
+
  const searchBy =
   selectedReportType === "ST"
     ? (document.querySelector('input[name="stSearchMode"]:checked')?.value || "number")
@@ -1622,6 +1627,10 @@ document.getElementById("reportOptionsScreen").insertAdjacentHTML(
   if (reportGlobe) {
     reportGlobe.classList.remove("spinning");
     reportGlobe.style.display = "none";
+  }
+
+  if (reportBackButton) {
+  reportBackButton.classList.remove("loading");
   }
 }
 }
