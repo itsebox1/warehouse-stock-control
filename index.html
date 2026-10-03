@@ -1456,8 +1456,31 @@ const REPORT_WORKER_URL =
   idToken: idToken
 })
 });
+  
 const report = await response.json();
+let closedStockTakes = null;
 
+if (selectedReportType === "ST") {
+  const sessionsResponse = await fetch(REPORT_WORKER_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      action: "listClosedStockTakes",
+      idToken: idToken
+    })
+  });
+
+  closedStockTakes = await sessionsResponse.json();
+
+  if (!sessionsResponse.ok || !closedStockTakes.success) {
+    throw new Error(
+      closedStockTakes.error || "Unable to load completed stock takes."
+    );
+  }
+}
+  
 if (!response.ok || !report.success) {
   throw new Error(report.error || "Unable to generate report.");
 }
