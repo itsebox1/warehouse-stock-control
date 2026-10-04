@@ -1101,10 +1101,17 @@ async function updateQuarterlyStockTakeAlert() {
 
     if (!result.success) return;
 
-    const completedStockTakes = result.stockTakes || [];
-    const activePeriod = [...periods].reverse().find(item => {
+  const completedStockTakes = result.stockTakes || [];
+  const activePeriod = [...periods].reverse().find(item => {
+  const warningStart = new Date(item.deadline);
+  warningStart.setDate(warningStart.getDate() - 14);
+  return now >= warningStart;
+});
+
+if (!activePeriod) return;
+
   const completed = completedStockTakes.some(stockTake => {
-    if (stockTake.stockTakePeriod !== item.period) return false;
+    if (stockTake.stockTakePeriod !== activePeriod.period) return false;
 
     const finishedDate = new Date(stockTake.finishedAt);
 
@@ -1113,14 +1120,6 @@ async function updateQuarterlyStockTakeAlert() {
       finishedDate.getFullYear() === year
     );
   });
-
-  if (completed) return false;
-
-  const warningDate = new Date(item.deadline);
-  warningDate.setDate(warningDate.getDate() - 14);
-
-  return now >= warningDate;
-});
 
 if (!activePeriod) return;
 
