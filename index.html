@@ -1019,6 +1019,11 @@ function resumeStockTake(reportNumber) {
   document.getElementById("stockTakeReportNumber").textContent =
     "Report Number: " + reportNumber;
 
+  document.getElementById("welcomeScreen").style.display = "none";
+  document.getElementById("reportsScreen").style.display = "none";
+  document.getElementById("reportOptionsScreen").style.display = "none";
+  document.getElementById("stockApp").style.display = "block";
+  
   showCountingScreen();
 }
   
