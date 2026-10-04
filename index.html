@@ -1505,14 +1505,30 @@ if (selectedReportType === "ST") {
 });
 
 try {
-  openStockTakes = await openSessionsResponse.json();
-} catch (jsonError) {
-  console.warn("Open Stock Takes response was not valid JSON:", jsonError);
+  const openSessionsText = await openSessionsResponse.text();
+
+  try {
+    openStockTakes = JSON.parse(openSessionsText);
+  } catch (jsonError) {
+    console.warn(
+      "Open Stock Takes response was not valid JSON:",
+      openSessionsText.substring(0, 200)
+    );
+
+    openStockTakes = {
+      success: false,
+      stockTakes: []
+    };
+  }
+} catch (error) {
+  console.warn("Unable to load open Stock Takes:", error);
+
   openStockTakes = {
     success: false,
     stockTakes: []
   };
 }
+
   
   const sessionsResponse = await fetch(REPORT_WORKER_URL, {
     method: "POST",
@@ -1573,7 +1589,11 @@ if (
     item => item.reportNumber === stReportNumber
   );
 
-  if (finishedStockTake || inProgressStockTake) {
+  if (
+  finishedStockTake ||
+  inProgressStockTake ||
+  report.records.some(record => record.reportNumber === stReportNumber)
+) {
     reportGroups[stReportNumber] = [];
   }
 }
