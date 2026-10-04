@@ -2197,7 +2197,7 @@ window.confirmQuickBooksCommit = function(reportNumber) {
           </button>
 
           <button type="button"
-            onclick="showQuickBooksTestingMessage();" 
+            onclick="document.getElementById('qbConfirmOverlay').remove(); commitReportToQuickBooks('${reportNumber}');"
             style="padding:10px 16px; border:0; border-radius:6px; background:#dc3545; color:white; font-weight:bold; cursor:pointer;">
             Yes, Submit to QB
           </button>
@@ -2345,18 +2345,21 @@ try {
     : { success: false, error: responseText };
 
   if (!response.ok || !result.success) {
-    throw new Error(result.error || "QuickBooks connection test failed.");
+    throw new Error(result.error || "QuickBooks submission failed.");
   }
 
-  alert(
-    "QuickBooks connection test successful for " +
-    reportNumber +
-    ". Stock write-back enabled: " +
-    result.writeEnabled
-  );
+   window.showWSCMessage(
+  "Submitted to QuickBooks",
+  reportNumber + " has been successfully committed to QuickBooks."
+);
+
+await window.updateQuickBooksButton(reportNumber);
 
 } catch (error) {
-  alert("QuickBooks test failed: " + error.message);
+  window.showWSCMessage(
+    "QuickBooks Submission Failed",
+    error.message
+  );
 }
 };
 async function getQuickBooksCommitStatus(reportNumber) {
@@ -2397,28 +2400,28 @@ async function getQuickBooksCommitStatus(reportNumber) {
   if (!button) return;
 
   try {
-  //  const status = await getQuickBooksCommitStatus(reportNumber);
+  const status = await getQuickBooksCommitStatus(reportNumber);
 
-  //  if (status.submitted) {
-      button.textContent = "Committed to QB";
-      button.style.background = "#28a745";
-      button.onclick = function() {
-      window.showWSCMessage("Already Submitted", "This stock take has already been committed to QuickBooks.");
-      };
-
-  //   }
-  } catch (error) {
-    console.log("Could not load QuickBooks commit status:", error);
+  if (status.submitted) {
+    button.textContent = "Committed to QB";
+    button.style.background = "#28a745";
+    button.onclick = function() {
+      window.showWSCMessage(
+        "Already Submitted",
+        "This stock take has already been committed to QuickBooks."
+      );
+    };
   }
+} catch (error) {
+  console.log("Could not load QuickBooks commit status:", error);
+}
+
 }
 
 async function getQuickBooksCommitStatusForST(reportNumber) {
   return await getQuickBooksCommitStatus(reportNumber);
 }
   
-async function confirmQuickBooksCommit(reportNumber) {
-  alert("QuickBooks commit test for " + reportNumber);
-}
 // WSC version / update checker
 const WSC_VERSION = "1.0.1";
 
