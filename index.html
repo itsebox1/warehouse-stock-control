@@ -1690,15 +1690,26 @@ document.getElementById("reportOptionsScreen").insertAdjacentHTML(
   ? openStockTakes.stockTakes?.find(item => item.reportNumber === reportNumber)
   : null;
 
-const isInProgress = !!inProgressStockTake;
+  const periodLabels = {
+  March: "First Quarter (March)",
+  June: "Second Quarter (June)",
+  September: "Third Quarter (September)",
+  December: "Fourth Quarter (December)"
+};
 
+const stockTakePeriodLabel =
+  stockTake?.stockTakePeriod
+    ? periodLabels[stockTake.stockTakePeriod] || stockTake.stockTakePeriod
+    : "";  
+const isInProgress = !!inProgressStockTake;
+  
   return `
 
   <details style="margin:15px 0; padding:15px; border:1px solid #ddd; border-radius:8px;">
   <summary style="cursor:pointer; font-weight:bold; display:flex; align-items:center; justify-content:space-between; gap:12px;">
 
   <span style="flex:1;">
-    ${reportNumber} — ${records.length} products
+    ${reportNumber}${stockTakePeriodLabel ? ` — ${stockTakePeriodLabel}` : ""} — ${records.length} products
   </span>
 
   <span style="display:flex; gap:8px; align-items:center;">
