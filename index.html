@@ -48,6 +48,25 @@
 .report-back-button.loading {
     width: calc(100% - 75px);
 }
+
+#quarterlyStockTakeAlert {
+    max-width: 700px;
+    margin: 20px auto;
+    padding: 14px 18px;
+    border-radius: 8px;
+    text-align: center;
+    font-weight: bold;
+}
+
+#quarterlyStockTakeAlert.warning {
+    background: #f39c12;
+    color: white;
+}
+
+#quarterlyStockTakeAlert.overdue {
+    background: #d32f2f;
+    color: white;
+}
     
   .about-globe.spinning {
     animation: globeSpin 3s linear infinite;
@@ -249,8 +268,10 @@
 
   <h2 style="text-align:center;">
   Welcome to<br>Warehouse Stock Control<br>ITS Europe
-</h2>
-
+  </h2>
+    
+   <div id="quarterlyStockTakeAlert" style="display:none;"></div>
+ 
    <p style="text-align:center; margin-top:25px;">
   Select ST (Stock Take) or SC (Stock Count).
 </p>
@@ -1004,8 +1025,127 @@ document.getElementById("nextProductButton").style.display = "block";
   document.getElementById("nextProductButton").style.display = "none";
 } 
 
+function lastFriday(year, monthIndex) {
+  const date = new Date(year, monthIndex + 1, 0);
+
+  while (date.getDay() !== 5) {
+    date.setDate(date.getDate() - 1);
+  }
+
+  return date;
+}
+
+function thirdFriday(year, monthIndex) {
+  const date = new Date(year, monthIndex, 1);
+
+  while (date.getDay() !== 5) {
+    date.setDate(date.getDate() + 1);
+  }
+
+  date.setDate(date.getDate() + 14);
+
+  return date;
+}
+
+async function updateQuarterlyStockTakeAlert() {
+  const alertBox = document.getElementById("quarterlyStockTakeAlert");
+
+  if (!alertBox) return;
+
+  alertBox.style.display = "none";
+  alertBox.className = "";
+
+  const now = new Date();
+  const year = now.getFullYear();
+
+  const periods = [
+    {
+      period: "March",
+      label: "First Quarter (March)",
+      deadline: lastFriday(year, 2)
+    },
+    {
+      period: "June",
+      label: "Second Quarter (June)",
+      deadline: lastFriday(year, 5)
+    },
+    {
+      period: "September",
+      label: "Third Quarter (September)",
+      deadline: lastFriday(year, 8)
+    },
+    {
+      period: "December",
+      label: "Fourth Quarter (December)",
+      deadline: thirdFriday(year, 11)
+    }
+  ];
+  try {
+    const user = auth.currentUser;
+
+    if (!user) return;
+
+    const idToken = await user.getIdToken();
+
+    const response = await fetch(
+      "https://warehouse-stock-reports.tmerry.workers.dev",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action: "listClosedStockTakes",
+          idToken: idToken
+        })
+      }
+    );
+
+    const result = await response.json();
+
+    if (!result.success) return;
+
+    const completedStockTakes = result.stockTakes || [];
+    const activePeriod = periods.find(item => {
+  const completed = completedStockTakes.some(stockTake => {
+    if (stockTake.stockTakePeriod !== item.period) return false;
+
+    const finishedDate = new Date(stockTake.finishedAt);
+
+    return (
+      !isNaN(finishedDate) &&
+      finishedDate.getFullYear() === year
+    );
+  });
+
+  if (completed) return false;
+
+  const warningDate = new Date(item.deadline);
+  warningDate.setDate(warningDate.getDate() - 14);
+
+  return now >= warningDate;
+});
+
+if (!activePeriod) return;
+
+const overdue = now > activePeriod.deadline;
+
+alertBox.className = overdue ? "overdue" : "warning";
+alertBox.style.display = "block";
+
+alertBox.textContent = overdue
+  ? `⚠️ ${activePeriod.label} Stock Take is OVERDUE`
+  : `⚠️ ${activePeriod.label} Stock Take is due on ${activePeriod.deadline.toLocaleDateString("en-GB")}`;
+
+  } catch (error) {
+    console.error("Quarterly Stock Take alert error:", error);
+  }
+}
+
+  
   function showWelcomeScreen() {
   document.getElementById("welcomeScreen").style.display = "block";
+  updateQuarterlyStockTakeAlert();
   document.getElementById("stockApp").style.display = "none";
   document.getElementById("reportsScreen").style.display = "none";
   document.getElementById("reportOptionsScreen").style.display = "none";
