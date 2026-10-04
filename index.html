@@ -1102,7 +1102,7 @@ async function updateQuarterlyStockTakeAlert() {
     if (!result.success) return;
 
     const completedStockTakes = result.stockTakes || [];
-    const activePeriod = periods.find(item => {
+    const activePeriod = [...periods].reverse().find(item => {
   const completed = completedStockTakes.some(stockTake => {
     if (stockTake.stockTakePeriod !== item.period) return false;
 
