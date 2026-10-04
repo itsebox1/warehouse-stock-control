@@ -1820,9 +1820,17 @@ document.getElementById("reportOptionsScreen").insertAdjacentHTML(
   <p>${report.records.length} records found.</p>
 
   ${Object.entries(reportGroups).map(([reportNumber, records]) => {
-  const stockTake = selectedReportType === "ST" && closedStockTakes
-    ? closedStockTakes.stockTakes.find(item => item.reportNumber === reportNumber)
-    : null;
+  const stockTake = selectedReportType === "ST"
+  ? (
+      closedStockTakes?.stockTakes?.find(
+        item => item.reportNumber === reportNumber
+      ) ||
+      openStockTakes?.stockTakes?.find(
+        item => item.reportNumber === reportNumber
+      ) ||
+      null
+    )
+  : null;
 
   const committedToQB = stockTake?.committedToQB === true;
     
