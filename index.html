@@ -1122,6 +1122,7 @@ if (!activePeriod) return;
   });
 
 if (!activePeriod) return;
+if (completed) return;
 
 const overdue = now > activePeriod.deadline;
 
