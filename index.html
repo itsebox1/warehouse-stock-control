@@ -2318,13 +2318,16 @@ window.showWSCConfirm = function(title, message) {
 };
     
 window.commitReportToQuickBooks = async function commitReportToQuickBooks(reportNumber) {
-
+startGlobeLoading();
+  
   if (!auth.currentUser) {
+    stopGlobeLoading();
     alert("Please sign in before committing a report to QuickBooks.");
     return;
   }
 
   if (!String(reportNumber).startsWith("ST-")) {
+    stopGlobeLoading();
     alert("Only Stock Take (ST) reports can be committed to QuickBooks.");
     return;
   }
@@ -2356,6 +2359,7 @@ try {
     throw new Error(result.error || "QuickBooks submission failed.");
   }
 
+  stopGlobeLoading();
    window.showWSCMessage(
   "Submitted to QuickBooks",
   reportNumber + " has been successfully committed to QuickBooks."
@@ -2364,12 +2368,14 @@ try {
 await window.updateQuickBooksButton(reportNumber);
 
 } catch (error) {
+  stopGlobeLoading();
   window.showWSCMessage(
     "QuickBooks Submission Failed",
     error.message
   );
 }
 };
+  
 async function getQuickBooksCommitStatus(reportNumber) {
   const idToken = await window.getCurrentStaffToken();
 
