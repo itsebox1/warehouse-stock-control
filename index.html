@@ -1602,6 +1602,31 @@ if (
     reportGroups[stReportNumber] = [];
   }
 }
+
+if (
+  selectedReportType === "ST" &&
+  searchBy === "date"
+) {
+  const fromDate = new Date(dateFrom + "T00:00:00");
+  const toDate = new Date(dateTo + "T23:59:59");
+
+  const allStockTakes = [
+    ...(closedStockTakes?.stockTakes || []),
+    ...(openStockTakes?.stockTakes || [])
+  ];
+
+  allStockTakes.forEach(stockTake => {
+    const startedAt = new Date(stockTake.startedAt);
+
+    if (
+      !isNaN(startedAt) &&
+      startedAt >= fromDate &&
+      startedAt <= toDate
+    ) {
+      reportGroups[stockTake.reportNumber] = [];
+    }
+  });
+}
   
 report.records.forEach(record => {
   const reportNumber = record.reportNumber || "No report number";
