@@ -1143,7 +1143,7 @@ finish.onclick = async () => {
   }
 }
 
-  async function loadStockCountList() {
+  async function loadStockCountList(retryCount = 0) {
   const list = document.getElementById("stockCountSessionsList");
 
   list.textContent = "Loading stock counts...";
@@ -1165,7 +1165,23 @@ finish.onclick = async () => {
       }
     );
 
-    const result = await response.json();
+  const responseText = await response.text();
+
+  let result;
+
+  try {
+    result = JSON.parse(responseText);
+} catch (jsonError) {
+  console.warn("Stock Count list returned invalid JSON. Retrying once...");
+
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  if (retryCount < 1) {
+  return loadStockCountList(retryCount + 1);
+}
+
+throw new Error("Unable to load stock counts. Please try again.");
+}
 
     if (!response.ok || !result.success) {
       throw new Error(result.error || "Unable to load stock counts.");
