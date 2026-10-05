@@ -596,7 +596,8 @@
 >
   <img
   src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
-  class="loading-globe"
+  class="about-globe spinning"
+  style="position:absolute; top:36px; right:18px;"
   alt="Loading"
 >
 <div>Starting new stock take...</div>
@@ -862,6 +863,7 @@ function findManualSku() {
 }
  
   async function startStockTake(clickedButton) {
+    document.querySelector(".report-back-button")?.classList.add("loading");
   const button =
   clickedButton || document.getElementById("startStockTakeButton");
   const status = document.getElementById("stockTakeStatus");
@@ -943,6 +945,7 @@ if (startLoading) {
   startLoading.style.display = "none";
 }
  
+    document.querySelector(".report-back-button")?.classList.remove("loading");
     stopGlobeLoading();
   }
 }
