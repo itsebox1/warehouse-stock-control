@@ -594,6 +594,18 @@
 >
   ➕ Start New Stock Take
 </button>
+<div
+  id="startStockTakeLoading"
+  style="display:none; text-align:center; margin-top:15px;"
+>
+  <img
+  src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
+  class="loading-globe"
+  alt="Loading"
+>
+<div>Starting new stock take...</div>
+
+</div>
 
 
 </div>
@@ -861,7 +873,14 @@ function findManualSku() {
   button.disabled = true;
   status.textContent = "Starting new stock take...";
   startGlobeLoading();
+  const startLoading =
+  document.getElementById("startStockTakeLoading");
 
+if (startLoading) {
+  startLoading.style.display = "block";
+}
+
+    
   try {
     const idToken = await window.getCurrentStaffToken();
 
@@ -921,6 +940,13 @@ try {
 }
 
   } finally {
+   const startLoading =
+  document.getElementById("startStockTakeLoading");
+
+if (startLoading) {
+  startLoading.style.display = "none";
+}
+ 
     stopGlobeLoading();
   }
 }
