@@ -1155,8 +1155,10 @@ window.resumeStockTake = function(reportNumber) {
   document.getElementById("stockTakeStatus").textContent =
     "Stock take in progress.";
 
-  document.getElementById("stockTakeReportNumber").textContent =
-    "Report Number: " + reportNumber;
+ const reportNumberEl = document.getElementById("stockTakeReportNumber");
+if (reportNumberEl) {
+    reportNumberEl.textContent = "Report Number: " + reportNumber;
+}
 
   document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("reportsScreen").style.display = "none";
