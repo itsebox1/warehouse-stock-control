@@ -2002,7 +2002,8 @@ if (user) {
 
     document.getElementById("pinInput").value = "";
     document.getElementById("pinMessage").textContent = "";
-    document.getElementById("pinLockScreen").style.display = "block";
+    document.getElementById("pinLockScreen").style.display = "none";
+    showWelcomeScreen();
 
 } else {
     document.getElementById("pinLockScreen").style.display = "none";
