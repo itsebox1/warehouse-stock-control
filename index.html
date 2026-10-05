@@ -1332,12 +1332,46 @@ finish.onclick = async () => {
       }
     );
 
-    const result = await response.json();
+    const responseText = await response.text();
 
-    if (!response.ok || !result.success) {
-      throw new Error(result.error || "Unable to finish stock take.");
+    let result = null;
+
+    try {
+      result = JSON.parse(responseText);
+    } catch (jsonError) {
+      console.warn(
+        "Finish Stock Take returned a non-JSON response after submission.",
+        response.status,
+        responseText
+      );
     }
 
+    if (result && result.success) {
+  // Normal successful JSON response.
+} else if (result && !result.success) {
+  throw new Error(result.error || "Unable to finish stock take.");
+} else {
+  console.warn(
+    "Finish response could not be confirmed from JSON. Checking stock take status..."
+  );
+}
+
+if (!result) {
+  await loadStockTakeList();
+
+  const stillOpen =
+    document.getElementById("stockTakeSessionsList")
+      ?.textContent
+      ?.includes(stockTake.reportNumber);
+
+  if (stillOpen) {
+    throw new Error(
+      "The finish response could not be confirmed and the stock take is still open."
+    );
+  }
+}
+
+    
     localStorage.removeItem("activeStockTake");
 
     const finishedReportNumber = stockTake.reportNumber;
