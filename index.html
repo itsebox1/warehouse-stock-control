@@ -2365,7 +2365,18 @@ try {
   reportNumber + " has been successfully committed to QuickBooks."
 );
 
-await window.updateQuickBooksButton(reportNumber);
+const button = document.getElementById("qb-" + reportNumber);
+
+if (button) {
+  button.textContent = "Committed to QB";
+  button.style.background = "#28a745";
+  button.onclick = function () {
+    window.showWSCMessage(
+      "Already Submitted",
+      "This stock take has already been committed to QuickBooks."
+    );
+  };
+}
 
 } catch (error) {
   stopGlobeLoading();
