@@ -1514,7 +1514,14 @@ function showReportsScreen() {
 
 function showReportOptions(type) {
   selectedReportType = type;
-  
+const startNewSTButton =
+  document.getElementById("startNewStockTakeFromReport");
+
+if (startNewSTButton) {
+  startNewSTButton.style.display =
+    type === "ST" ? "block" : "none";
+}
+ 
   document.getElementById("stNumberSearch").style.display =
   type === "ST" ? "block" : "none";
   
