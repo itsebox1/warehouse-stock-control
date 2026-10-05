@@ -1221,6 +1221,8 @@ if (reportNumberEl) {
 }
   
 async function loadStockTakeList() {
+  document.querySelector(".stock-home-button")?.classList.add("loading");
+  
   const list = document.getElementById("stockTakeSessionsList");
 
   list.innerHTML = `
@@ -1366,8 +1368,9 @@ finish.onclick = async () => {
     finish.textContent = "Finish";
 } finally {
     stopGlobeLoading();
+    document.querySelector(".stock-home-button")?.classList.remove("loading");
+  }
 }
-};
 
       row.append(number, resume, periodSelect, finish);
       list.appendChild(row);
