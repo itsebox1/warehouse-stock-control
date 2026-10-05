@@ -334,8 +334,6 @@
     Start New Stock Take
   </button>
 
-  <p id="stockTakeReportNumber"></p>
-
   <div id="stockTakeList"></div>
   
 </div>
@@ -2384,7 +2382,7 @@ if (button) {
   stopGlobeLoading();
   window.showWSCMessage(
     "QuickBooks Submission Failed",
-    error.message
+     error.message || String(error) || "QuickBooks rejected the submission."
   );
 }
 };
