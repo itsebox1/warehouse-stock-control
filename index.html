@@ -908,10 +908,18 @@ document.querySelector(
 showCountingScreen();
 
   } catch (error) {
-    status.textContent =
-      "Error: " + String(error.message || error);
+   status.textContent = "Checking newly created stock take...";
 
-    button.disabled = false;
+try {
+  await loadStockTakeList();
+  showStockScreen();
+} catch (recoveryError) {
+  status.textContent =
+    "Error: " + String(error.message || error);
+
+  button.disabled = false;
+}
+
   } finally {
     stopGlobeLoading();
   }
