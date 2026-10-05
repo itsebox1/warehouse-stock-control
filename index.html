@@ -271,12 +271,8 @@
   </h2>
     
    <div id="quarterlyStockTakeAlert" style="display:none;"></div>
- 
-   <p style="text-align:center; margin-top:25px;">
-  Select ST (Stock Take) or SC (Stock Count).
-</p>
 
-<div class="count-type-selector">
+<div class="count-type-selector" style="display:none;">
   <label>
     <input type="radio" name="homeCountType" value="ST" checked>
     ST — Stock Take
@@ -289,12 +285,12 @@
 </div>
 
 
-  <button onclick="openSelectedStock()">
-    📦 Stock
+  <button onclick="showReportOptions('ST')">
+    📦 ST - Stock Take
   </button>
 
-  <button onclick="openSelectedReports()">
-    📋 Reports
+  <button onclick="showReportOptions('SC')">
+    📋 SC - Stock Count
   </button>
 
     <div id="updateStatus" style="text-align:left; margin-top:30px; margin-bottom:10px;">
