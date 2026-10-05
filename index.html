@@ -1253,9 +1253,23 @@ async function loadStockTakeList() {
       }
     );
 
-    const result = await response.json();
+   const responseText = await response.text();
 
-    if (!response.ok || !result.success) {
+   if (!response.ok) {
+  throw new Error(
+    "Unable to load stock takes. Server returned " + response.status
+  );
+}
+
+if (responseText.trim().startsWith("<")) {
+  throw new Error(
+    "Unable to load stock takes. Server returned an HTML response instead of data."
+  );
+}
+    
+  const result = JSON.parse(responseText);
+
+    if (!result.success) {
       throw new Error(result.error || "Unable to load stock takes.");
     }
 
