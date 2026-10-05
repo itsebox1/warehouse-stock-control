@@ -897,6 +897,14 @@ function findManualSku() {
   result.reportNumber
 );
 
+document.getElementById("reportOptionsScreen").style.display = "none";
+document.getElementById("reportsScreen").style.display = "none";
+document.getElementById("stockApp").style.display = "block";
+
+document.querySelector(
+  'input[name="countType"][value="ST"]'
+).checked = true;
+
 showCountingScreen();
 
   } catch (error) {
