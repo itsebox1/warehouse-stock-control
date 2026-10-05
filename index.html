@@ -589,7 +589,7 @@
   
   <button
   id="startNewStockTakeFromReport"
-  onclick="startStockTake()"
+  onclick="startStockTake(this)"
   style="margin-top:12px; display:none;"
 >
   ➕ Start New Stock Take
@@ -853,8 +853,9 @@ function findManualSku() {
   lookupProduct(sku);
 }
  
-  async function startStockTake() {
-  const button = document.getElementById("startStockTakeButton");
+  async function startStockTake(clickedButton) {
+  const button =
+  clickedButton || document.getElementById("startStockTakeButton");
   const status = document.getElementById("stockTakeStatus");
 
   button.disabled = true;
@@ -889,7 +890,7 @@ function findManualSku() {
     document.getElementById("stockTakeReportNumber").textContent =
       "Report Number: " + result.reportNumber;
 
-    document.getElementById("startStockTakeButton").style.display = "none";
+    button.style.display = "none";
 
     localStorage.setItem(
   "activeStockTake",
