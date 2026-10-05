@@ -2382,7 +2382,7 @@ if (button) {
   stopGlobeLoading();
   window.showWSCMessage(
     "QuickBooks Submission Failed",
-     error.message || String(error) || "QuickBooks rejected the submission."
+     String(error && error.message ? error.message : error)
   );
 }
 };
