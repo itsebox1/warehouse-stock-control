@@ -1674,7 +1674,7 @@ let openStockTakes = null;
 
 if (selectedReportType === "ST") {
   
-  const openSessionsResponse = await fetch(REPORT_WORKER_URL, {
+  let openSessionsResponse = await fetch(REPORT_WORKER_URL, {
   method: "POST",
   headers: {
     "Content-Type": "application/json"
@@ -1684,6 +1684,21 @@ if (selectedReportType === "ST") {
     idToken: idToken
   })
 });
+
+if (!openSessionsResponse.ok) {
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  openSessionsResponse = await fetch(REPORT_WORKER_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      action: "listStockTakes",
+      idToken: idToken
+    })
+  });
+}
 
 try {
   const openSessionsText = await openSessionsResponse.text();
