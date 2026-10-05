@@ -1146,7 +1146,7 @@ alertBox.textContent = overdue
   document.getElementById("reportOptionsScreen").style.display = "none";
 }
 
-function resumeStockTake(reportNumber) {
+window.resumeStockTake = function(reportNumber) {
   localStorage.setItem(
     "activeStockTake",
     reportNumber
