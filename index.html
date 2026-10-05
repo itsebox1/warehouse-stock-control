@@ -1223,7 +1223,16 @@ if (reportNumberEl) {
 async function loadStockTakeList() {
   const list = document.getElementById("stockTakeSessionsList");
 
-  list.textContent = "Loading stock takes...";
+  list.innerHTML = `
+  <div style="text-align:center; padding:15px;">
+    <img
+      src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
+      class="loading-globe"
+      alt="Loading"
+    >
+    <div style="margin-top:8px;">Loading stock takes...</div>
+  </div>
+`;
 
   try {
     const idToken = await window.getCurrentStaffToken();
