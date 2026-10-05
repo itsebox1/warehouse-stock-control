@@ -1306,7 +1306,24 @@ finish.onclick = async () => {
 
     localStorage.removeItem("activeStockTake");
 
+    const finishedReportNumber = stockTake.reportNumber;
+
     await loadStockTakeList();
+    const list = document.getElementById("stockTakeSessionsList");
+
+    const successMessage = document.createElement("div");
+    successMessage.textContent =
+      "✅ " + finishedReportNumber + " finished successfully";
+
+    successMessage.style.padding = "12px";
+    successMessage.style.marginBottom = "12px";
+    successMessage.style.background = "#d4edda";
+    successMessage.style.border = "1px solid #c3e6cb";
+    successMessage.style.borderRadius = "8px";
+    successMessage.style.fontWeight = "bold";
+
+    list.prepend(successMessage);
+
 
   } catch (error) {
     alert("Unable to finish stock take: " + error.message);
