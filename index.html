@@ -51,11 +51,15 @@
 
 #quarterlyStockTakeAlert {
     max-width: 700px;
-    margin: 20px auto;
+    margin: 20px auto 40px auto;
     padding: 14px 18px;
     border-radius: 8px;
     text-align: center;
     font-weight: bold;
+}
+    #quarterlyStockTakeAlert.upToDate {
+    background: #304B70;
+    color: white;
 }
 
 #quarterlyStockTakeAlert.warning {
@@ -270,7 +274,7 @@
   Welcome to<br>Warehouse Stock Control<br>ITS Europe
   </h2>
     
-   <div id="quarterlyStockTakeAlert" style="display:none;"></div>
+   <div id="quarterlyStockTakeAlert" class="upToDate">✓ Stock Take up to date</div>
 
 <div class="count-type-selector" style="display:none;">
   <label>
@@ -1181,10 +1185,25 @@ async function updateQuarterlyStockTakeAlert() {
   const alertBox = document.getElementById("quarterlyStockTakeAlert");
 
   if (!alertBox) return;
+  const savedStatus = localStorage.getItem("quarterlyStockTakeStatus");
 
-  alertBox.style.display = "none";
-  alertBox.className = "";
+if (savedStatus) {
+  try {
+    const saved = JSON.parse(savedStatus);
+    alertBox.className = saved.className;
+    alertBox.textContent = saved.text;
+    alertBox.style.display = "block";
+  } catch (e) {
+    console.warn("Could not load saved Stock Take status", e);
+  }
+}
 
+  if (!savedStatus) {
+  alertBox.className = "upToDate";
+alertBox.style.display = "block";
+alertBox.textContent = "✓ Stock Take up to date";
+  }
+  
   const now = new Date();
   const year = now.getFullYear();
 
@@ -1238,7 +1257,21 @@ async function updateQuarterlyStockTakeAlert() {
   return now >= warningStart;
 });
 
-if (!activePeriod) return;
+if (!activePeriod) {
+  alertBox.className = "upToDate";
+  alertBox.style.display = "block";
+  alertBox.textContent = "✓ Stock Take up to date";
+
+  localStorage.setItem(
+    "quarterlyStockTakeStatus",
+    JSON.stringify({
+      className: "upToDate",
+      text: "✓ Stock Take up to date"
+    })
+  );
+
+  return;
+}
 
   const completed = completedStockTakes.some(stockTake => {
     if (stockTake.stockTakePeriod !== activePeriod.period) return false;
@@ -1251,8 +1284,21 @@ if (!activePeriod) return;
     );
   });
 
-if (!activePeriod) return;
-if (completed) return;
+if (completed) {
+  alertBox.className = "upToDate";
+  alertBox.style.display = "block";
+  alertBox.textContent = "✓ Stock Take up to date";
+
+  localStorage.setItem(
+    "quarterlyStockTakeStatus",
+    JSON.stringify({
+      className: "upToDate",
+      text: "✓ Stock Take up to date"
+    })
+  );
+
+  return;
+}
 
 const overdue = now > activePeriod.deadline;
 
@@ -1262,13 +1308,19 @@ alertBox.style.display = "block";
 alertBox.textContent = overdue
   ? `⚠️ ${activePeriod.label} Stock Take is OVERDUE`
   : `⚠️ ${activePeriod.label} Stock Take is due on ${activePeriod.deadline.toLocaleDateString("en-GB")}`;
+    localStorage.setItem(
+  "quarterlyStockTakeStatus",
+  JSON.stringify({
+    className: alertBox.className,
+    text: alertBox.textContent
+  })
+);
 
   } catch (error) {
     console.error("Quarterly Stock Take alert error:", error);
   }
 }
 
-  
   function showWelcomeScreen() {
   document.getElementById("welcomeScreen").style.display = "block";
   updateQuarterlyStockTakeAlert();
