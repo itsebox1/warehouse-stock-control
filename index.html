@@ -1004,8 +1004,7 @@ showCountingScreen();
    status.textContent = "Checking newly created stock take...";
 
 try {
-  await loadStockTakeList();
-  showStockScreen();
+ resumeStockTake(result.reportNumber, stockTakePeriod);
 } catch (recoveryError) {
   status.textContent =
     "Error: " + String(error.message || error);
