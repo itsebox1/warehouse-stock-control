@@ -1304,6 +1304,13 @@ if (responseText.trim().startsWith("<")) {
     const reportInProgress =
   document.getElementById("reportInProgressStockTakes");
 
+    const startNewReportButton =
+  document.getElementById("startNewStockTakeFromReport");
+
+if (startNewReportButton) {
+  startNewReportButton.style.display =
+    result.stockTakes.length > 0 ? "none" : "block";
+}
 if (reportInProgress) {
   reportInProgress.innerHTML = "";
 
