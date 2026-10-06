@@ -976,6 +976,9 @@ if (startLoading) {
 
     status.textContent = "Stock take in progress.";
 
+    localStorage.setItem("activeStockTake", result.reportNumber);
+    localStorage.setItem("activeStockTakePeriod", stockTakePeriod);
+
     document.getElementById("stockTakeReportNumber").textContent =
       "Report Number: " + result.reportNumber;
 
