@@ -585,7 +585,7 @@
   
   <button
   id="startNewStockTakeFromReport"
-  onclick="startStockTake(this)"
+  onclick="selectStockTakeQuarter(this)"
   style="margin-top:12px; display:none;"
 >
   ➕ Start New Stock Take
@@ -861,8 +861,31 @@ function findManualSku() {
 
   lookupProduct(sku);
 }
- 
-  async function startStockTake(clickedButton) {
+
+  function selectStockTakeQuarter(clickedButton) {
+  const choice = prompt(
+    "Please select Quarter:\n\n" +
+    "1 — First Quarter (March)\n" +
+    "2 — Second Quarter (June)\n" +
+    "3 — Third Quarter (September)\n" +
+    "4 — Fourth Quarter (December)\n\n" +
+    "Enter 1, 2, 3 or 4:"
+  );
+
+  const periods = {
+    "1": "March",
+    "2": "June",
+    "3": "September",
+    "4": "December"
+  };
+
+  if (!periods[choice]) {
+    return;
+  }
+
+  startStockTake(clickedButton, periods[choice]);
+}
+  async function startStockTake(clickedButton, stockTakePeriod) {
     document.querySelector(".report-back-button")?.classList.add("loading");
   const button =
   clickedButton || document.getElementById("startStockTakeButton");
@@ -891,6 +914,7 @@ if (startLoading) {
         },
         body: JSON.stringify({
           action: "startStockTake",
+          stockTakePeriod: stockTakePeriod,
           idToken: idToken
         })
       }
