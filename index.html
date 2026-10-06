@@ -1512,11 +1512,13 @@ if (!result) {
 
     
     localStorage.removeItem("activeStockTake");
+    localStorage.removeItem("activeStockTakePeriod");
 
     const finishedReportNumber = stockTake.reportNumber;
 
-    await loadStockTakeList();
-    const list = document.getElementById("stockTakeSessionsList");
+    document.getElementById("countingScreen").style.display = "none";
+    document.getElementById("stockApp").style.display = "none";
+    showReportOptions("ST");
 
     const successMessage = document.createElement("div");
     successMessage.textContent =
@@ -1528,9 +1530,6 @@ if (!result) {
     successMessage.style.border = "1px solid #c3e6cb";
     successMessage.style.borderRadius = "8px";
     successMessage.style.fontWeight = "bold";
-
-    list.prepend(successMessage);
-
 
   } catch (error) {
     alert("Unable to finish stock take: " + error.message);
