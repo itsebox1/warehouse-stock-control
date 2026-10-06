@@ -1397,7 +1397,9 @@ item.innerHTML = `
       
       const finish = document.createElement("button");
       finish.textContent = "Finish";
-finish.onclick = async () => {
+      finish.onclick = () => finishStockTake(stockTake, finish);
+
+      async function finishStockTake(stockTake, finish) {
   const stockTakePeriod = stockTake.stockTakePeriod;
 
   if (!stockTakePeriod) {
@@ -1505,7 +1507,7 @@ if (!result) {
   
     document.querySelector(".stock-home-button")?.classList.remove("loading");
   }
-}
+  }
 
       row.append(number, period, resume, finish);
       list.appendChild(row);
