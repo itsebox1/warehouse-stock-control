@@ -1718,8 +1718,12 @@ changeSCSearch();
 
   document.getElementById("reportResults")?.remove();
   
-  updateReportSearchMode();
-} 
+ updateReportSearchMode();
+
+if (type === "ST") {
+  loadStockTakeList();
+}
+}
 
 function updateReportSearchMode() {
   const mode = document.querySelector(
