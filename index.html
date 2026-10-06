@@ -582,7 +582,8 @@
   <button onclick="generateStockReport()">
     📄 Generate Report
   </button>
-  
+
+  <div id="reportInProgressStockTakes" style="margin-bottom:15px;"></div>
   <button
   id="startNewStockTakeFromReport"
   onclick="selectStockTakeQuarter(this)"
@@ -1292,6 +1293,34 @@ if (responseText.trim().startsWith("<")) {
 }
     
   const result = JSON.parse(responseText);
+    const reportInProgress =
+  document.getElementById("reportInProgressStockTakes");
+
+if (reportInProgress) {
+  reportInProgress.innerHTML = "";
+
+  result.stockTakes.forEach(stockTake => {
+    const periodLabels = {
+      March: "First Quarter (March)",
+      June: "Second Quarter (June)",
+      September: "Third Quarter (September)",
+      December: "Fourth Quarter (December)"
+    };
+
+    const item = document.createElement("div");
+    item.style.margin = "12px 0";
+    item.style.padding = "12px";
+    item.style.border = "1px solid #ccc";
+    item.style.borderRadius = "8px";
+
+    item.innerHTML = `
+      <strong>${stockTake.reportNumber}</strong><br>
+      ${periodLabels[stockTake.stockTakePeriod] || stockTake.stockTakePeriod || ""}
+    `;
+
+    reportInProgress.appendChild(item);
+  });
+}
 
     if (!result.success) {
       throw new Error(result.error || "Unable to load stock takes.");
