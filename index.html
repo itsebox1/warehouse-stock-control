@@ -985,6 +985,8 @@ if (startLoading) {
     localStorage.setItem("activeStockTake", result.reportNumber);
     localStorage.setItem("activeStockTakePeriod", stockTakePeriod);
 
+    console.log("AFTER SAVE activeStockTake =", localStorage.getItem("activeStockTake"));
+
     document.getElementById("stockTakeReportNumber").textContent =
       "Report Number: " + result.reportNumber;
 
