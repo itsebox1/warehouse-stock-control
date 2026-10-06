@@ -1414,7 +1414,26 @@ item.innerHTML = `
       finish.textContent = "Finish";
       finish.onclick = () => finishStockTake(stockTake, finish);
 
-      async function finishStockTake(stockTake, finish) {
+      row.append(number, period, resume, finish);
+      list.appendChild(row);
+    });
+
+  } catch (error) {
+    list.textContent =
+      "Error loading stock takes: " + error.message;
+ } finally {
+  stopGlobeLoading();
+
+  if (reportGlobe) {
+    reportGlobe.style.display = "none";
+    reportGlobe.classList.remove("spinning");
+  }
+
+  document.querySelector(".report-back-button")?.classList.remove("loading");
+}
+}
+
+  async function finishStockTake(stockTake, finish) {
   const stockTakePeriod = stockTake.stockTakePeriod;
 
   if (!stockTakePeriod) {
@@ -1523,26 +1542,6 @@ if (!result) {
     document.querySelector(".stock-home-button")?.classList.remove("loading");
   }
   }
-
-      row.append(number, period, resume, finish);
-      list.appendChild(row);
-    });
-
-  } catch (error) {
-    list.textContent =
-      "Error loading stock takes: " + error.message;
- } finally {
-  stopGlobeLoading();
-
-  if (reportGlobe) {
-    reportGlobe.style.display = "none";
-    reportGlobe.classList.remove("spinning");
-  }
-
-  document.querySelector(".report-back-button")?.classList.remove("loading");
-}
-}
-
   async function loadStockCountList(retryCount = 0) {
   const list = document.getElementById("stockCountSessionsList");
 
