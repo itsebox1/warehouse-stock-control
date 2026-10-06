@@ -970,6 +970,8 @@ if (startLoading) {
 
     const result = await response.json();
 
+    console.log("START STOCK TAKE RESULT:", result);
+    
     if (!response.ok || !result.success) {
       throw new Error(result.error || "Unable to start stock take.");
     }
