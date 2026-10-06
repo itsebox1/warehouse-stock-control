@@ -870,29 +870,69 @@ function findManualSku() {
   lookupProduct(sku);
 }
 
-  function selectStockTakeQuarter(clickedButton) {
-  const choice = prompt(
-    "Please select Quarter:\n\n" +
-    "1 — First Quarter (March)\n" +
-    "2 — Second Quarter (June)\n" +
-    "3 — Third Quarter (September)\n" +
-    "4 — Fourth Quarter (December)\n\n" +
-    "Enter 1, 2, 3 or 4:"
-  );
+function selectStockTakeQuarter(clickedButton) {
+  const overlay = document.createElement("div");
 
-  const periods = {
-    "1": "March",
-    "2": "June",
-    "3": "September",
-    "4": "December"
+  overlay.style.cssText = `
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 20px;
+  `;
+
+  overlay.innerHTML = `
+    <div style="
+      background:white;
+      width:100%;
+      max-width:460px;
+      padding:24px;
+      border-radius:12px;
+      box-shadow:0 8px 30px rgba(0,0,0,0.3);
+    ">
+      <h2 style="margin-top:0;">Select Stock Take Quarter</h2>
+
+      <button type="button" data-period="March">
+        First Quarter — March
+      </button>
+
+      <button type="button" data-period="June">
+        Second Quarter — June
+      </button>
+
+      <button type="button" data-period="September">
+        Third Quarter — September
+      </button>
+
+      <button type="button" data-period="December">
+        Fourth Quarter — December
+      </button>
+
+      <button type="button" data-cancel
+        style="margin-top:18px; background:#777;">
+        Cancel
+      </button>
+    </div>
+  `;
+
+  overlay.querySelectorAll("[data-period]").forEach(button => {
+    button.onclick = () => {
+      const period = button.dataset.period;
+      overlay.remove();
+      startStockTake(clickedButton, period);
+    };
+  });
+
+  overlay.querySelector("[data-cancel]").onclick = () => {
+    overlay.remove();
   };
 
-  if (!periods[choice]) {
-    return;
-  }
-
-  startStockTake(clickedButton, periods[choice]);
+  document.body.appendChild(overlay);
 }
+  
   async function startStockTake(clickedButton, stockTakePeriod) {
     document.querySelector(".report-back-button")?.classList.add("loading");
   const button =
