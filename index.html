@@ -1320,28 +1320,16 @@ if (responseText.trim().startsWith("<")) {
       resume.onclick = () => {
         resumeStockTake(stockTake.reportNumber);
 };
-
-      const periodSelect = document.createElement("select");
-periodSelect.style.marginRight = "8px";
-periodSelect.style.padding = "8px";
-
-periodSelect.innerHTML = `
-  <option value="">Select Stock Take Period</option>
-  <option value="March">First Quarter (March)</option>
-  <option value="June">Second Quarter (June)</option>
-  <option value="September">Third Quarter (September)</option>
-  <option value="December">Fourth Quarter (December)</option>
-`;
       
       const finish = document.createElement("button");
       finish.textContent = "Finish";
 finish.onclick = async () => {
-  const stockTakePeriod = periodSelect.value;
+  const stockTakePeriod = stockTake.stockTakePeriod;
 
   if (!stockTakePeriod) {
-    alert("Please select the Stock Take Period before finishing.");
+    alert("This Stock Take does not have a Quarter assigned.");
     return;
-}
+  }
       
     if (!(await window.showWSCConfirm(
     "Finish Stock Take",
@@ -1444,7 +1432,7 @@ if (!result) {
   }
 }
 
-      row.append(number, resume, periodSelect, finish);
+      row.append(number, resume, finish);
       list.appendChild(row);
     });
 
