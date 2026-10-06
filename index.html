@@ -1248,10 +1248,8 @@ alertBox.textContent = "✓ Stock Take up to date";
 
     const result = await response.json();
 
-   if (!result.success) {
-  console.error("Quarterly Stock Take backend failed:", result);
-  return;
-}
+   if (!result.success) return;
+ 
 
   const completedStockTakes = result.stockTakes || [];
   const activePeriod = [...periods].reverse().find(item => {
