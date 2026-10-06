@@ -1784,6 +1784,11 @@ function openSelectedStock() {
 }
   
  function showCountingScreen() {
+   console.log(
+  "COUNTING SCREEN DEBUG:",
+  "activeStockTake =", localStorage.getItem("activeStockTake"),
+  "countType =", document.querySelector('input[name="countType"]:checked')?.value
+);
    const finishButton =
   document.getElementById("finishActiveStockTakeButton");
 
