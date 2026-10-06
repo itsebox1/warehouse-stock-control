@@ -1495,12 +1495,7 @@ if (!result) {
     finish.textContent = "Finish";
 } finally {
     stopGlobeLoading();
-    if (reportGlobe) {
-  reportGlobe.style.display = "none";
-  reportGlobe.classList.remove("spinning");
-}
-
-document.querySelector(".report-back-button")?.classList.remove("loading");
+  
     document.querySelector(".stock-home-button")?.classList.remove("loading");
   }
 }
@@ -1512,9 +1507,16 @@ document.querySelector(".report-back-button")?.classList.remove("loading");
   } catch (error) {
     list.textContent =
       "Error loading stock takes: " + error.message;
-  } finally {
-    stopGlobeLoading();
+ } finally {
+  stopGlobeLoading();
+
+  if (reportGlobe) {
+    reportGlobe.style.display = "none";
+    reportGlobe.classList.remove("spinning");
   }
+
+  document.querySelector(".report-back-button")?.classList.remove("loading");
+}
 }
 
   async function loadStockCountList(retryCount = 0) {
