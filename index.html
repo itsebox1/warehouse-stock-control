@@ -1246,6 +1246,14 @@ if (reportNumberEl) {
   
 async function loadStockTakeList() {
   document.querySelector(".stock-home-button")?.classList.add("loading");
+  const reportGlobe = document.querySelector(".report-globe");
+
+if (reportGlobe && selectedReportType === "ST") {
+  reportGlobe.style.display = "block";
+  reportGlobe.classList.add("spinning");
+
+  document.querySelector(".report-back-button")?.classList.add("loading");
+}
   
   const list = document.getElementById("stockTakeSessionsList");
 
@@ -1487,6 +1495,12 @@ if (!result) {
     finish.textContent = "Finish";
 } finally {
     stopGlobeLoading();
+    if (reportGlobe) {
+  reportGlobe.style.display = "none";
+  reportGlobe.classList.remove("spinning");
+}
+
+document.querySelector(".report-back-button")?.classList.remove("loading");
     document.querySelector(".stock-home-button")?.classList.remove("loading");
   }
 }
