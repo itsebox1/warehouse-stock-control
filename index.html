@@ -1001,6 +1001,8 @@ document.querySelector(
   'input[name="countType"][value="ST"]'
 ).checked = true;
 
+console.log("BEFORE showCountingScreen =", localStorage.getItem("activeStockTake"));
+    
 showCountingScreen();
 
   } catch (error) {
