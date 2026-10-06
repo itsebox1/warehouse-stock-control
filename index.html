@@ -1313,11 +1313,28 @@ if (reportInProgress) {
     item.style.border = "1px solid #ccc";
     item.style.borderRadius = "8px";
 
-    item.innerHTML = `
-      <strong>${stockTake.reportNumber}</strong><br>
-      ${periodLabels[stockTake.stockTakePeriod] || stockTake.stockTakePeriod || ""}
-    `;
+    const periodLabel =
+  periodLabels[stockTake.stockTakePeriod] ||
+  stockTake.stockTakePeriod ||
+  "";
 
+item.innerHTML = `
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+    
+    <span style="flex:1; font-weight:bold;">
+      ${stockTake.reportNumber}${periodLabel ? ` — ${periodLabel}` : ""} — 0 products
+    </span>
+
+    <span style="display:flex; gap:8px; align-items:center;">
+      <button
+        type="button"
+        onclick="event.preventDefault(); event.stopPropagation(); resumeStockTake('${stockTake.reportNumber}');"
+        style="width:auto; background:#f0ad4e; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
+      >In Progress — Resume Stock Take</button>
+    </span>
+
+  </div>
+`;
     reportInProgress.appendChild(item);
   });
 }
