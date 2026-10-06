@@ -355,7 +355,14 @@
   <p id="activeStockTakeNumber"
    style="font-weight:bold; font-size:20px; color:#304B70;">
 </p>
-
+  
+  <button
+  id="finishActiveStockTakeButton"
+  type="button"
+  style="display:none; background:#dc3545;"
+>
+  Finish Stock Take
+</button>
   
 <div class="count-type-selector" style="display:none;">
   <label>
@@ -938,6 +945,10 @@ if (startLoading) {
   "activeStockTake",
   result.reportNumber
 );
+    localStorage.setItem(
+  "activeStockTakePeriod",
+  stockTakePeriod
+);
 
 document.getElementById("reportOptionsScreen").style.display = "none";
 document.getElementById("reportsScreen").style.display = "none";
@@ -1222,11 +1233,15 @@ alertBox.textContent = overdue
   document.getElementById("reportOptionsScreen").style.display = "none";
 }
 
-window.resumeStockTake = function(reportNumber) {
+window.resumeStockTake = function(reportNumber, stockTakePeriod) {
   localStorage.setItem(
     "activeStockTake",
     reportNumber
   );
+  localStorage.setItem(
+  "activeStockTakePeriod",
+  stockTakePeriod
+);
 
   document.getElementById("stockTakeStatus").textContent =
     "Stock take in progress.";
@@ -1343,7 +1358,7 @@ item.innerHTML = `
     <span style="display:flex; gap:8px; align-items:center;">
       <button
         type="button"
-        onclick="event.preventDefault(); event.stopPropagation(); resumeStockTake('${stockTake.reportNumber}');"
+        onclick="event.preventDefault(); event.stopPropagation(); resumeStockTake('${stockTake.reportNumber}', '${stockTake.stockTakePeriod}');
         style="width:auto; background:#f0ad4e; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
       >In Progress — Resume Stock Take</button>
     </span>
@@ -1674,6 +1689,27 @@ function openSelectedStock() {
 }
   
  function showCountingScreen() {
+   const finishButton =
+  document.getElementById("finishActiveStockTakeButton");
+
+const activeStockTake =
+  localStorage.getItem("activeStockTake");
+
+if (finishButton) {
+  finishButton.style.display =
+    activeStockTake ? "block" : "none";
+}
+   if (finishButton && activeStockTake) {
+  finishButton.onclick = () => {
+    finishStockTake(
+      {
+        reportNumber: activeStockTake,
+        stockTakePeriod: localStorage.getItem("activeStockTakePeriod")
+      },
+      finishButton
+    );
+  };
+}
   document.getElementById("stockTakeSession").style.display = "none";
   document.getElementById("stockCountSession").style.display = "none";
   document.getElementById("countingScreen").style.display = "block";
