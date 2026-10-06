@@ -1313,6 +1313,19 @@ if (responseText.trim().startsWith("<")) {
 
       const number = document.createElement("strong");
       number.textContent = stockTake.reportNumber;
+      const period = document.createElement("div");
+
+      const periodLabels = {
+        March: "First Quarter (March)",
+        June: "Second Quarter (June)",
+        September: "Third Quarter (September)",
+        December: "Fourth Quarter (December)"
+      };
+
+      period.textContent =
+        periodLabels[stockTake.stockTakePeriod] ||
+        stockTake.stockTakePeriod ||
+        "";
 
       const resume = document.createElement("button");
       resume.textContent = "Resume";
@@ -1432,7 +1445,7 @@ if (!result) {
   }
 }
 
-      row.append(number, resume, finish);
+      row.append(number, period, resume, finish);
       list.appendChild(row);
     });
 
