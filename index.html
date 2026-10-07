@@ -1327,6 +1327,9 @@ alertBox.textContent = overdue
 }
 
 window.resumeStockTake = function(reportNumber, stockTakePeriod) {
+
+  console.log("RESUME DEBUG reportNumber =", reportNumber, "period =", stockTakePeriod);
+  
   localStorage.setItem(
     "activeStockTake",
     reportNumber
