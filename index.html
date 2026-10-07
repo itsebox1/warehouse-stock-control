@@ -699,7 +699,7 @@ async function lookupProduct(sku) {
       const timeout = setTimeout(() => {
         cleanup();
         reject(new Error("Product lookup timed out"));
-      }, 15000);
+      }, 30000);
 
       function cleanup() {
         clearTimeout(timeout);
