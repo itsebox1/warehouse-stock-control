@@ -2100,7 +2100,7 @@ try {
 }
 
   
-  const sessionsResponse = await fetch(REPORT_WORKER_URL, {
+  let sessionsResponse = await fetch(REPORT_WORKER_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
