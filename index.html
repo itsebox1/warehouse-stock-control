@@ -1628,7 +1628,8 @@ if (!result) {
     successMessage.style.border = "1px solid #c3e6cb";
     successMessage.style.borderRadius = "8px";
     successMessage.style.fontWeight = "bold";
-
+    document.getElementById("reportOptions").prepend(successMessage);
+    
   } catch (error) {
     alert("Unable to finish stock take: " + error.message);
     finish.disabled = false;
