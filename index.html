@@ -645,6 +645,8 @@ const productCache = new Map();
 const apiUrl =
   "https://script.google.com/macros/s/AKfycbxSsV0MNM0CpXsAGTePC-94XuDNfGgjg1U3Jww7zN_dofWuqBSbSeZEtpVRdys7leDi/exec";
 
+  const workerUrl = "https://warehouse-stock-reports.tmerry.workers.dev";
+
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, character => ({
     "&": "&amp;",
@@ -716,7 +718,7 @@ async function lookupProduct(sku) {
       };
 
       script.src =
-        apiUrl +
+        workerUrl +
         "?page=api&sku=" +
         encodeURIComponent(sku) +
         "&callback=" +
