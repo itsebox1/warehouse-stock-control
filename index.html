@@ -2111,6 +2111,21 @@ try {
     })
   });
 
+ if (!sessionsResponse.ok) {
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  sessionsResponse = await fetch(REPORT_WORKER_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      action: "listClosedStockTakes",
+      idToken: idToken
+    })
+  });
+}
+  
   try {
   closedStockTakes = await sessionsResponse.json();
 } catch (jsonError) {
