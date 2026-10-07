@@ -1009,7 +1009,7 @@ showCountingScreen();
    status.textContent = "Checking newly created stock take...";
 
 try {
- resumeStockTake(result.reportNumber, stockTakePeriod);
+ resumeStockTake(localStorage.getItem("activeStockTake"), stockTakePeriod);
 } catch (recoveryError) {
   status.textContent =
     "Error: " + String(error.message || error);
