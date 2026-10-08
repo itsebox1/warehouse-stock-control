@@ -1585,6 +1585,11 @@ item.innerHTML = `
 
     if (result && result.success) {
   // Normal successful JSON response.
+} else if (result && result.verificationRequired) {
+  console.warn(
+    "Finish response needs verification:",
+    stockTake.reportNumber
+  );
 } else if (result && !result.success) {
   throw new Error(result.error || "Unable to finish stock take.");
 } else {
