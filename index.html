@@ -2597,10 +2597,16 @@ const result = responseText.trim().startsWith("{")
     throw new Error(result.error || "Unable to email report.");
   }
 
-alert("PDF report emailed successfully to " + recipient);
+window.showWSCMessage(
+  "✅ PDF Report Sent",
+  "Your stock take report has been emailed successfully to " + recipient
+);
 
 } catch (error) {
-  alert("Email failed: " + error.message);
+  window.showWSCMessage(
+  "❌ Email Failed",
+  "Unable to send the PDF report: " + error.message
+);
 } finally {
   document.getElementById("sendingOverlay").style.display = "none";
 }
