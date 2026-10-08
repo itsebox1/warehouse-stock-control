@@ -2238,6 +2238,7 @@ document.getElementById("reportOptionsScreen").insertAdjacentHTML(
   : null;
 
   const committedToQB = stockTake?.committedToQB === true;
+  const emailFailed = stockTake?.emailStatus === "Failed";
     
   const inProgressStockTake = selectedReportType === "ST" && openStockTakes
   ? openStockTakes.stockTakes?.find(item => item.reportNumber === reportNumber)
@@ -2294,6 +2295,13 @@ const isInProgress = !!inProgressStockTake;
     style="width:auto; background:${committedToQB ? '#28a745' : '#dc3545'}; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
   >${committedToQB ? 'Committed to QB' : 'Commit to QB'}</button>
 `}
+${committedToQB && emailFailed ? `
+  <button
+    type="button"
+    onclick="event.preventDefault(); event.stopPropagation(); openFinalPdf('${reportNumber}');"
+    style="background:#e58a20; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold; margin-left:8px;"
+  >📄 Final PDF</button>
+` : ""}
 
   </span>
 
