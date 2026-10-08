@@ -2270,7 +2270,7 @@ document.getElementById("reportOptionsScreen").insertAdjacentHTML(
   : null;
 
   const committedToQB = stockTake?.committedToQB === true;
-  const emailFailed = stockTake?.emailStatus === "Failed";
+  const emailFailed = true; // TEMPORARY TEST
     
   const inProgressStockTake = selectedReportType === "ST" && openStockTakes
   ? openStockTakes.stockTakes?.find(item => item.reportNumber === reportNumber)
