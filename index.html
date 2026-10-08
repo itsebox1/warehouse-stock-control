@@ -1598,17 +1598,40 @@ item.innerHTML = `
   );
 }
 
-if (!result) {
-  await loadStockTakeList();
+if (!result || result.verificationRequired) {
+  const idToken = await window.getCurrentStaffToken();
 
-  const stillOpen =
-    document.getElementById("stockTakeSessionsList")
-      ?.textContent
-      ?.includes(stockTake.reportNumber);
+  const verifyResponse = await fetch(
+    "https://warehouse-stock-reports.tmerry.workers.dev",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action: "listClosedStockTakes",
+        idToken: idToken
+      })
+    }
+  );
 
-  if (stillOpen) {
+  if (!verifyResponse.ok) {
+    throw new Error("Unable to verify stock take completion.");
+  }
+
+  const verification = await verifyResponse.json();
+
+  const confirmedClosed =
+    verification.success === true &&
+    Array.isArray(verification.stockTakes) &&
+    verification.stockTakes.some(item =>
+      item.reportNumber === stockTake.reportNumber &&
+      String(item.status).toLowerCase() === "closed"
+    );
+
+  if (!confirmedClosed) {
     throw new Error(
-      "The finish response could not be confirmed and the stock take is still open."
+      "Stock take completion could not be verified. Check the session status before trying again."
     );
   }
 }
