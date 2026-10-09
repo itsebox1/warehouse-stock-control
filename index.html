@@ -2886,9 +2886,26 @@ if (button) {
 
 } catch (error) {
   stopGlobeLoading();
+
+  try {
+    const status = await getQuickBooksCommitStatus(reportNumber);
+
+    if (status.submitted) {
+      window.showWSCMessage(
+        "Submitted to QuickBooks",
+        reportNumber + " has been successfully committed to QuickBooks."
+      );
+
+      await window.updateQuickBooksButton(reportNumber);
+      return;
+    }
+  } catch (statusError) {
+    console.log("Could not verify QuickBooks submission:", statusError);
+  }
+
   window.showWSCMessage(
     "QuickBooks Submission Failed",
-     String(error && error.message ? error.message : error)
+    String(error && error.message ? error.message : error)
   );
 }
 };
