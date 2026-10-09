@@ -1084,7 +1084,7 @@ async function startStockCount() {
       "activeStockTakeNumber"
     ).textContent = "Current Stock Count: " + result.reportNumber;
 
-    document.querySelector('input[name="countType"][value="ST"]').checked = true;
+    document.querySelector('input[name="countType"][value="SC"]').checked = true;
     showCountingScreen();
 
   } catch (error) {
