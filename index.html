@@ -1646,21 +1646,91 @@ if (!result || result.verificationRequired) {
     document.getElementById("stockApp").style.display = "none";
     showReportOptions("ST");
 
-    const successMessage = document.createElement("div");
-    successMessage.textContent =
-      "✅ " + finishedReportNumber + " finished successfully";
+    
+const successMessage = document.createElement("div");
 
-    successMessage.style.padding = "12px";
-    successMessage.style.marginBottom = "12px";
-    successMessage.style.background = "#d4edda";
-    successMessage.style.border = "1px solid #c3e6cb";
-    successMessage.style.borderRadius = "8px";
-    successMessage.style.fontWeight = "bold";
-   const reportOptions = document.getElementById("reportOptions");
+successMessage.style.cssText = `
+  padding: 20px;
+  margin: 15px 0;
+  border: 1px solid #c3e6cb;
+  border-radius: 10px;
+  background: #d4edda;
+  text-align: center;
+  color: #155724;
+`;
+
+const heading = document.createElement("h3");
+heading.textContent = "✅ Stock Take Finished";
+
+const message = document.createElement("p");
+message.textContent =
+  finishedReportNumber + " has been finished successfully.";
+
+const question = document.createElement("p");
+question.textContent =
+  "Would you like to go to the " +
+  finishedReportNumber + " Report now?";
+
+const buttons = document.createElement("div");
+buttons.style.cssText = `
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 18px;
+`;
+
+const yesButton = document.createElement("button");
+yesButton.textContent = "Yes — View Report";
+
+const noButton = document.createElement("button");
+noButton.textContent = "No — Home";
+
+yesButton.style.cssText =
+  "flex:1; max-width:220px; background:#287a45; color:white;";
+
+noButton.style.cssText =
+  "flex:1; max-width:220px; background:#555; color:white;";
+
+yesButton.onclick = () => {
+  successMessage.remove();
+
+  showReportOptions("ST");
+
+  const numberInput = document.getElementById("stReportNumber");
+  numberInput.value =
+    finishedReportNumber.replace(/^ST-/i, "");
+
+  const numberMode = document.querySelector(
+    'input[name="stSearchMode"][value="number"]'
+  );
+
+  if (numberMode) {
+    numberMode.checked = true;
+    updateReportSearchMode();
+  }
+
+  generateStockReport();
+};
+
+noButton.onclick = () => {
+  successMessage.remove();
+  showWelcomeScreen();
+};
+
+buttons.appendChild(yesButton);
+buttons.appendChild(noButton);
+
+successMessage.appendChild(heading);
+successMessage.appendChild(message);
+successMessage.appendChild(question);
+successMessage.appendChild(buttons);
+
+const reportOptions = document.getElementById("reportOptions");
 
 if (reportOptions) {
   reportOptions.prepend(successMessage);
 }
+
     
   } catch (error) {
     alert("Unable to finish stock take: " + error.message);
