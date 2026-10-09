@@ -602,6 +602,15 @@
 >
   ➕ Start New Stock Take
 </button>
+
+<button
+  id="startNewStockCountFromReport"
+  onclick="startStockCount()"
+  style="margin-top:12px; display:none;"
+>
+  + Start New Stock Count
+</button>
+  
 <div
   id="startStockTakeLoading"
   style="display:none; text-align:center; margin-top:15px;"
@@ -1976,6 +1985,14 @@ const startNewSTButton =
 if (startNewSTButton) {
   startNewSTButton.style.display =
     type === "ST" ? "block" : "none";
+}
+
+  const startNewSCButton =
+  document.getElementById("startNewStockCountFromReport");
+
+if (startNewSCButton) {
+  startNewSCButton.style.display =
+    type === "SC" ? "block" : "none";
 }
  
   document.getElementById("stNumberSearch").style.display =
