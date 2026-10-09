@@ -2607,11 +2607,65 @@ window.showWSCMessage(
   "❌ Email Failed",
   "Unable to send the PDF report: " + error.message
 );
-} finally {
-  document.getElementById("sendingOverlay").style.display = "none";
-}
-    
-}
+  } finally {
+    document.getElementById("sendingOverlay").style.display = "none";
+  }
+};
+  
+window.openFinalPdf = async function(reportNumber) {
+  try {
+    const user = auth.currentUser;
+
+    if (!user) {
+      throw new Error("Please sign in first.");
+    }
+
+    const idToken = await window.getCurrentStaffToken();
+
+    window.showWSCMessage(
+      "Generating Final PDF",
+      "Please wait while your QuickBooks confirmation is prepared."
+    );
+
+    const response = await fetch("https://warehouse-stock-reports.tmerry.workers.dev", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action: "getFinalPdf",
+        reportNumber: reportNumber,
+        idToken: idToken
+      })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || "Unable to generate Final PDF.");
+    }
+
+    const binary = atob(result.pdfBase64);
+    const bytes = new Uint8Array(binary.length);
+
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+
+    const pdfBlob = new Blob([bytes], {
+      type: "application/pdf"
+    });
+
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+    window.open(pdfUrl, "_blank");
+
+  } catch (error) {
+    window.showWSCMessage(
+      "Final PDF Failed",
+      error.message
+    );
+  }
+};
 
 window.confirmQuickBooksCommit = function(reportNumber) {
 
