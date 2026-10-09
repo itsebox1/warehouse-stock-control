@@ -1715,7 +1715,7 @@ yesButton.onclick = () => {
 
   if (numberMode) {
     numberMode.checked = true;
-    updateReportSearchMode();
+    changeSCSearch();
   }
 
   generateStockReport();
@@ -1751,6 +1751,79 @@ if (reportOptions) {
     document.querySelector(".stock-home-button")?.classList.remove("loading");
   }
   }
+
+async function finishStockCount(reportNumber, finishButton) {
+  if (!reportNumber || !/^SC-\d{6}$/.test(reportNumber)) {
+    alert("No valid Stock Count session selected.");
+    return;
+  }
+
+  if (!(await window.showWSCConfirm(
+    "Finish Stock Count",
+    "Are you sure you want to finish " + reportNumber + "?"
+  ))) {
+    return;
+  }
+
+  finishButton.disabled = true;
+  finishButton.textContent = "Finishing...";
+  startGlobeLoading();
+
+  try {
+    const idToken = await window.getCurrentStaffToken();
+
+    const response = await fetch(
+      "https://warehouse-stock-reports.tmerry.workers.dev",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action: "finishStockCount",
+          reportNumber: reportNumber,
+          idToken: idToken
+        })
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || result.success !== true) {
+      throw new Error(
+        result.error || "Unable to confirm Stock Count completion."
+      );
+    }
+
+    localStorage.removeItem("activeStockCount");
+
+    document.getElementById("countingScreen").style.display = "none";
+    document.getElementById("stockApp").style.display = "none";
+
+    showReportOptions("SC");
+
+    const numberInput = document.getElementById("scReportNumber");
+    numberInput.value = reportNumber.replace(/^SC-/i, "");
+
+    const numberMode = document.querySelector(
+      'input[name="scSearchMode"][value="number"]'
+    );
+
+    if (numberMode) {
+      numberMode.checked = true;
+      updateReportSearchMode();
+    }
+
+    alert(reportNumber + " finished successfully.");
+
+  } catch (error) {
+    alert("Unable to finish Stock Count: " + error.message);
+    finishButton.disabled = false;
+    finishButton.textContent = "Finish Stock Count";
+  } finally {
+    stopGlobeLoading();
+  }
+}  
   async function loadStockCountList(retryCount = 0) {
   const list = document.getElementById("stockCountSessionsList");
 
@@ -1897,6 +1970,13 @@ function openSelectedStock() {
 }
   
  function showCountingScreen() {
+   const currentCountType =
+  document.querySelector('input[name="countType"]:checked')?.value;
+
+document.getElementById("stockPageHeading").textContent =
+  currentCountType === "SC"
+    ? "SC - Warehouse Stock Count"
+    : "ST - Warehouse Stock Take";
    console.log(
   "COUNTING SCREEN DEBUG:",
   "activeStockTake =", localStorage.getItem("activeStockTake"),
@@ -1904,25 +1984,44 @@ function openSelectedStock() {
 );
    const finishButton =
   document.getElementById("finishActiveStockTakeButton");
+   if (finishButton) {
+  finishButton.textContent =
+    currentCountType === "SC"
+      ? "Finish Stock Count"
+      : "Finish Stock Take";
+}
 
 const activeStockTake =
   localStorage.getItem("activeStockTake");
 
 if (finishButton) {
+  const activeSession =
+    currentCountType === "SC"
+      ? localStorage.getItem("activeStockCount")
+      : activeStockTake;
+
   finishButton.style.display =
-    activeStockTake ? "block" : "none";
+    activeSession ? "block" : "none";
 }
-   if (finishButton && activeStockTake) {
+   if (finishButton) {
   finishButton.onclick = () => {
-    finishStockTake(
-      {
-        reportNumber: activeStockTake,
-        stockTakePeriod: localStorage.getItem("activeStockTakePeriod")
-      },
-      finishButton
-    );
+    if (currentCountType === "SC") {
+      const activeStockCount =
+        localStorage.getItem("activeStockCount");
+
+      finishStockCount(activeStockCount, finishButton);
+    } else if (activeStockTake) {
+      finishStockTake(
+        {
+          reportNumber: activeStockTake,
+          stockTakePeriod: localStorage.getItem("activeStockTakePeriod")
+        },
+        finishButton
+      );
+    }
   };
 }
+   
   document.getElementById("reportsScreen").style.display = "none";
   document.getElementById("reportOptionsScreen").style.display = "none";
   document.getElementById("stockApp").style.display = "block";
