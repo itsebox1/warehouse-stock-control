@@ -18,7 +18,7 @@
       color: #203247;
     }
 .about-globe {
-    position: fixed;
+    position: fixed;f
     top: 18px;
     right: 18px;
     width: 55px;
@@ -363,6 +363,26 @@
     required
     style="width:100%;padding:14px;box-sizing:border-box;margin:10px 0 20px;"
   >
+
+  <script>
+function validateTradeShowFields() {
+  const name = document.getElementById("tradeShowName").value.trim();
+  const startDate = document.getElementById("tradeShowStartDate").value;
+  const endDate = document.getElementById("tradeShowEndDate").value;
+
+  const valid =
+    name !== "" &&
+    startDate !== "" &&
+    endDate !== "" &&
+    endDate >= startDate;
+
+  document.getElementById("createTradeShowButton").disabled = !valid;
+}
+
+["tradeShowName", "tradeShowStartDate", "tradeShowEndDate"].forEach(id => {
+  document.getElementById(id).addEventListener("input", validateTradeShowFields);
+});
+</script>  
 
   <button type="button" id="createTradeShowButton" disabled>
     ➕ Create Trade Show
