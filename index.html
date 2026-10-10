@@ -1448,7 +1448,7 @@ async function loadStockTakeList() {
   document.querySelector(".stock-home-button")?.classList.add("loading");
   const reportGlobe = document.querySelector(".report-globe");
 
-if (reportGlobe && selectedReportType === "ST") {
+if (reportGlobe && typeof selectedReportType !== "undefined" && selectedReportType === "ST") {
   reportGlobe.style.display = "block";
   reportGlobe.classList.add("spinning");
 
