@@ -788,6 +788,14 @@ async function lookupProduct(sku) {
             Save Count
           </button>
 
+          <button
+            id="cancelCountButton"
+            type="button"
+            style="width:100%;padding:15px;margin-top:10px;background:#666;color:white;border:none;border-radius:8px;font-size:18px;"
+          >
+            Cancel Count
+          </button>
+
           <p id="saveMessage"></p>
 
           <p><strong>Difference:</strong> <span id="liveDifference"></span></p>
@@ -798,6 +806,12 @@ async function lookupProduct(sku) {
         </div>
       `;
 
+    document.getElementById("cancelCountButton").addEventListener("click", () => {
+  resetProductLookup();
+
+  const skuInput = document.querySelector('input[placeholder*="SKU"]');
+  if (skuInput) skuInput.value = "";
+});
       document.getElementById("actualQtyInput").value = "";
   const actualQtyInput = document.getElementById("actualQtyInput");
   const liveDifference = document.getElementById("liveDifference");
