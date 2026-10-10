@@ -2048,6 +2048,8 @@ function openSelectedStock() {
 }
   
  function showCountingScreen() {
+     resetProductLookup();
+   
    const currentCountType =
   document.querySelector('input[name="countType"]:checked')?.value;
 
