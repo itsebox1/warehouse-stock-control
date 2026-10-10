@@ -2692,6 +2692,16 @@ window.getCurrentStaffToken = async function() {
   return await auth.currentUser.getIdToken();
 };
   
+  const PIN_SESSION_KEY = "wscPinUnlockedAt";
+const PIN_VALIDITY_MS = 24 * 60 * 60 * 1000;
+
+function isPinSessionValid() {
+  const unlockedAt = Number(sessionStorage.getItem(PIN_SESSION_KEY));
+
+  return unlockedAt > 0 &&
+    Date.now() - unlockedAt >= 0 &&
+    Date.now() - unlockedAt < PIN_VALIDITY_MS;
+}  
   
   onAuthStateChanged(auth, (user) => {
   document.getElementById("loginScreen").style.display = user ? "none" : "block";
@@ -2709,7 +2719,11 @@ if (user) {
     document.getElementById("pinInput").value = "";
     document.getElementById("pinMessage").textContent = "";
     document.getElementById("pinLockScreen").style.display = "none";
-    showWelcomeScreen();
+   if (isPinSessionValid()) {
+  showWelcomeScreen();
+} else {
+  document.getElementById("pinLockScreen").style.display = "block";
+}
 
 } else {
     document.getElementById("pinLockScreen").style.display = "none";
@@ -2744,6 +2758,7 @@ function unlockWSC() {
   if (!savedPin) {
     localStorage.setItem("wscDevicePin", enteredPin);
     pinMessage.textContent = "";
+    sessionStorage.setItem(PIN_SESSION_KEY, Date.now().toString());
     document.getElementById("pinLockScreen").style.display = "none";
     showWelcomeScreen();
     return;
@@ -2753,6 +2768,7 @@ function unlockWSC() {
   if (enteredPin === savedPin) {
     pinMessage.textContent = "";
     pinInput.value = "";
+    sessionStorage.setItem(PIN_SESSION_KEY, Date.now().toString());
     document.getElementById("pinLockScreen").style.display = "none";
     showWelcomeScreen();
   } else {
