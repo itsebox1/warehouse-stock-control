@@ -297,6 +297,14 @@
     📋 SC - Stock Count
   </button>
 
+    <div id="homeOpenSessions" style="margin-top:25px;">
+  <h3>Open Stock Sessions</h3>
+
+  <div id="homeStockTakeSessions"></div>
+
+  <div id="homeStockCountSessions"></div>
+</div>
+
     <div id="updateStatus" style="text-align:left; margin-top:30px; margin-bottom:10px;">
   Checking for updates...
     </div>
@@ -1362,6 +1370,8 @@ alertBox.textContent = overdue
   function showWelcomeScreen() {
   document.getElementById("welcomeScreen").style.display = "block";
   updateQuarterlyStockTakeAlert();
+  loadStockTakeList();
+  loadStockCountList();
   document.getElementById("stockApp").style.display = "none";
   document.getElementById("reportsScreen").style.display = "none";
   document.getElementById("reportOptionsScreen").style.display = "none";
@@ -1370,6 +1380,11 @@ alertBox.textContent = overdue
 window.resumeStockTake = function(reportNumber, stockTakePeriod) {
 
   console.log("RESUME DEBUG reportNumber =", reportNumber, "period =", stockTakePeriod);
+  const stMode = document.querySelector('input[name="countType"][value="ST"]');
+
+if (stMode) {
+  stMode.checked = true;
+}
   
   localStorage.setItem(
     "activeStockTake",
@@ -1409,7 +1424,7 @@ if (reportGlobe && selectedReportType === "ST") {
   
   const list = document.getElementById("stockTakeSessionsList");
 
-  list.innerHTML = `
+  document.getElementById("homeStockTakeSessions").innerHTML = `
   <div style="text-align:center; padding:15px;">
     <img
       src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
@@ -1454,7 +1469,7 @@ if (responseText.trim().startsWith("<")) {
     
   const result = JSON.parse(responseText);
     const reportInProgress =
-  document.getElementById("reportInProgressStockTakes");
+  document.getElementById("homeStockTakeSessions");
 
     const startNewReportButton =
   document.getElementById("startNewStockTakeFromReport");
@@ -1544,7 +1559,7 @@ item.innerHTML = `
       resume.textContent = "Resume";
       
       resume.onclick = () => {
-        resumeStockTake(stockTake.reportNumber);
+        resumeStockTake(stockTake.reportNumber, stockTake.stockTakePeriod);
 };
       
       const finish = document.createElement("button");
@@ -1556,8 +1571,13 @@ item.innerHTML = `
     });
 
   } catch (error) {
-    list.textContent =
-      "Error loading stock takes: " + error.message;
+    const homeList = document.getElementById("homeStockTakeSessions");
+
+    if (homeList) {
+      homeList.textContent =
+        "Error loading stock takes: " + error.message;
+    }
+    
  } finally {
   stopGlobeLoading();
 
@@ -1841,7 +1861,7 @@ async function finishStockCount(reportNumber, finishButton) {
 
     if (numberMode) {
       numberMode.checked = true;
-      updateReportSearchMode();
+      changeSCSearch();
     }
 
     alert(reportNumber + " finished successfully.");
@@ -1855,7 +1875,7 @@ async function finishStockCount(reportNumber, finishButton) {
   }
 }  
   async function loadStockCountList(retryCount = 0) {
-  const list = document.getElementById("stockCountSessionsList");
+  const list = document.getElementById("homeStockCountSessions");
 
   list.textContent = "Loading stock counts...";
 
@@ -1920,6 +1940,13 @@ throw new Error("Unable to load stock counts. Please try again.");
       resume.textContent = "Resume";
 
       resume.onclick = () => {
+        const scMode = document.querySelector('input[name="countType"][value="SC"]');
+
+if (scMode) {
+  scMode.checked = true;
+}
+
+document.getElementById("welcomeScreen").style.display = "none";
         localStorage.setItem(
           "activeStockCount",
           stockCount.reportNumber
@@ -2151,10 +2178,6 @@ changeSCSearch();
   document.getElementById("reportResults")?.remove();
   
  updateReportSearchMode();
-
-if (type === "ST") {
-  loadStockTakeList();
-}
 }
 
 function updateReportSearchMode() {
