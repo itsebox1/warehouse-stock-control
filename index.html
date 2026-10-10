@@ -1394,10 +1394,12 @@ if (privacyGlobe) {
   document.getElementById("reportsScreen").style.display = "none";
   document.getElementById("reportOptionsScreen").style.display = "none";
 
-    try {
-    await loadStockTakeList();
-    await loadStockCountList();
-  } finally {
+   try {
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  await loadStockTakeList();
+  await loadStockCountList();
+} finally {
+      
     if (homeLoading) {
       homeLoading.style.display = "none";
     }
