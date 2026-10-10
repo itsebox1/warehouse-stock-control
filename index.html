@@ -1112,6 +1112,24 @@ async function startStockCount() {
     return;
   }
 
+  const requestId = window.pendingCountRequest?.sku === product.sku &&
+  window.pendingCountRequest?.quantity === Number(quantity) &&
+  window.pendingCountRequest?.reportNumber === (
+    document.querySelector('input[name="countType"]:checked').value === "SC"
+      ? localStorage.getItem("activeStockCount")
+      : localStorage.getItem("activeStockTake")
+  )
+  ? window.pendingCountRequest.id
+  : crypto.randomUUID();
+
+window.pendingCountRequest = {
+  id: requestId,
+  sku: product.sku,
+  quantity: Number(quantity),
+  reportNumber: document.querySelector('input[name="countType"]:checked').value === "SC"
+    ? localStorage.getItem("activeStockCount")
+    : localStorage.getItem("activeStockTake")
+};
   button.disabled = true;
   message.textContent = "Saving count...";
   startGlobeLoading();
@@ -1119,23 +1137,35 @@ async function startStockCount() {
   try {
     const idToken = await window.getCurrentStaffToken();
 
-    await fetch(apiUrl, {
-      method: "POST",
-      mode: "no-cors",
-      headers: {
-        "Content-Type": "text/plain"
-      },
+    const response = await fetch(workerUrl, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
       body: JSON.stringify({
         action: "saveCount",
         sku: product.sku,
         quantity: Number(quantity),
+        requestId: requestId,
         idToken: idToken,
         countType: document.querySelector('input[name="countType"]:checked').value,
-        reportNumber: localStorage.getItem("activeStockTake")
+        reportNumber: document.querySelector('input[name="countType"]:checked').value === "SC"
+          ? localStorage.getItem("activeStockCount")
+          : localStorage.getItem("activeStockTake")
       })
     });
 
-    message.textContent = "Save request sent.";
+    const result = await response.json();
+
+if (!response.ok || result.success !== true) {
+  throw new Error(
+    result.error || "Stock count could not be saved."
+  );
+}
+    
+window.pendingCountRequest = null;  
+
+message.textContent = "Stock count saved successfully.";
 
 document.getElementById("productDetails").innerHTML = "";
 
@@ -1148,10 +1178,10 @@ document.getElementById("nextProductButton").style.display = "block";
 
 
   } catch (error) {
-    message.textContent =
-      "Save request could not be sent: " +
-      String(error.message || error);
-
+  message.textContent =
+    "Stock count could not be saved: " +
+    String(error.message || error);
+    
   } finally {
     button.disabled = false;
     stopGlobeLoading();
