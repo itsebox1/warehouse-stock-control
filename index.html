@@ -266,7 +266,7 @@
 
   <a href="https://sites.google.com/view/warehouse-stock-control/home" target="_blank">
   <img src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
-       class="about-globe"
+       class="about-globe" id="homePrivacyGlobe"
        alt="About Warehouse Stock Control">
   </a> 
 
@@ -299,6 +299,15 @@
 
     <div id="homeOpenSessions" style="margin-top:25px;">
   <h3>Open Stock Sessions</h3>
+      <div id="homeSessionsLoading"
+     style="display:none; text-align:center; padding:15px;">
+  <img
+    src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
+    class="about-globe spinning"
+    alt="Loading"
+    style="position:static; display:block; margin:0 auto 10px;">
+  <div>Loading outstanding reports...</div>
+</div>
 
   <div id="homeStockTakeSessions"></div>
 
@@ -1370,13 +1379,33 @@ alertBox.textContent = overdue
  async function showWelcomeScreen() {
   document.getElementById("welcomeScreen").style.display = "block";
   updateQuarterlyStockTakeAlert();
+  const homeLoading = document.getElementById("homeSessionsLoading");
+  const privacyGlobe = document.getElementById("homePrivacyGlobe");
+
+if (homeLoading) {
+  homeLoading.style.display = "block";
+}
+
+if (privacyGlobe) {
+  privacyGlobe.style.display = "none";
+}
 
   document.getElementById("stockApp").style.display = "none";
   document.getElementById("reportsScreen").style.display = "none";
   document.getElementById("reportOptionsScreen").style.display = "none";
 
-  await loadStockTakeList();
-  await loadStockCountList();
+    try {
+    await loadStockTakeList();
+    await loadStockCountList();
+  } finally {
+    if (homeLoading) {
+      homeLoading.style.display = "none";
+    }
+
+    if (privacyGlobe) {
+      privacyGlobe.style.display = "";
+    }
+  }
 }
 
 window.resumeStockTake = function(reportNumber, stockTakePeriod) {
@@ -1425,18 +1454,6 @@ if (reportGlobe && selectedReportType === "ST") {
 }
   
   const list = document.getElementById("stockTakeSessionsList");
-
-  document.getElementById("homeStockTakeSessions").innerHTML = `
-  <div style="text-align:center; padding:15px;">
-    <img
-      src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
-      class="about-globe spinning"
-      style="position:absolute; top:36px; right:18px;"
-      alt="Loading"
-    >
-    <div style="margin-top:8px;">Loading stock takes...</div>
-  </div>
-`;
 
   try {
     const idToken = await window.getCurrentStaffToken();
@@ -1878,8 +1895,6 @@ async function finishStockCount(reportNumber, finishButton) {
 }  
   async function loadStockCountList(retryCount = 0) {
   const list = document.getElementById("homeStockCountSessions");
-
-  list.textContent = "Loading stock counts...";
 
   try {
     const idToken = await window.getCurrentStaffToken();
