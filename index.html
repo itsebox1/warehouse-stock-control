@@ -2064,6 +2064,9 @@ function openSelectedStock() {
  function showCountingScreen() {
      resetProductLookup();
    
+     const skuInput = document.querySelector('input[placeholder*="SKU"]');
+  if (skuInput) skuInput.value = "";
+   
    const currentCountType =
   document.querySelector('input[name="countType"]:checked')?.value;
 
