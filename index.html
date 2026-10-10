@@ -297,6 +297,10 @@
     📋 SC - Stock Count
   </button>
 
+    <button type="button" onclick="showTradeShowSetup()">
+    🎪 TR - Trade Show
+  </button>
+
     <div id="homeOpenSessions" style="margin-top:25px;">
   <h3>Open Stock Sessions</h3>
       <div id="homeSessionsLoading"
@@ -323,7 +327,48 @@
    </p>
    
 </div>
- 
+
+  <!-- TR - Trade Show Setup Screen -->
+<div id="tradeShowSetupScreen" style="display:none;">
+
+  <button type="button" onclick="showWelcomeScreen()">
+    🏠 Home
+  </button>
+
+  <h2>🎪 TR - Trade Show</h2>
+
+  <h3>Start New Trade Show</h3>
+
+  <label for="tradeShowName">Trade Show Name:</label>
+  <input
+    type="text"
+    id="tradeShowName"
+    required
+    placeholder="Enter trade show name"
+    style="width:100%;padding:14px;box-sizing:border-box;margin:10px 0 20px;"
+  >
+
+  <label for="tradeShowStartDate">Start Date:</label>
+  <input
+    type="date"
+    id="tradeShowStartDate"
+    required
+    style="width:100%;padding:14px;box-sizing:border-box;margin:10px 0 20px;"
+  >
+
+  <label for="tradeShowEndDate">End Date:</label>
+  <input
+    type="date"
+    id="tradeShowEndDate"
+    required
+    style="width:100%;padding:14px;box-sizing:border-box;margin:10px 0 20px;"
+  >
+
+  <button type="button" id="createTradeShowButton" disabled>
+    ➕ Create Trade Show
+  </button>
+
+</div>
 <div id="stockApp" style="display:none;">
 
   <a href="https://sites.google.com/view/warehouse-stock-control/home" target="_blank">
@@ -1390,6 +1435,15 @@ alertBox.textContent = overdue
   }
 }
 
+function showTradeShowSetup() {
+  document.getElementById("welcomeScreen").style.display = "none";
+  document.getElementById("stockApp").style.display = "none";
+  document.getElementById("reportsScreen").style.display = "none";
+  document.getElementById("reportOptionsScreen").style.display = "none";
+
+  document.getElementById("tradeShowSetupScreen").style.display = "block";
+}
+  
  async function showWelcomeScreen() {
   document.getElementById("welcomeScreen").style.display = "block";
   updateQuarterlyStockTakeAlert();
@@ -1405,6 +1459,7 @@ if (privacyGlobe) {
 }
 
   document.getElementById("stockApp").style.display = "none";
+  document.getElementById("tradeShowSetupScreen").style.display = "none";
   document.getElementById("reportsScreen").style.display = "none";
   document.getElementById("reportOptionsScreen").style.display = "none";
 
