@@ -1367,14 +1367,16 @@ alertBox.textContent = overdue
   }
 }
 
-  function showWelcomeScreen() {
+ async function showWelcomeScreen() {
   document.getElementById("welcomeScreen").style.display = "block";
   updateQuarterlyStockTakeAlert();
-  loadStockTakeList();
-  loadStockCountList();
+
   document.getElementById("stockApp").style.display = "none";
   document.getElementById("reportsScreen").style.display = "none";
   document.getElementById("reportOptionsScreen").style.display = "none";
+
+  await loadStockTakeList();
+  await loadStockCountList();
 }
 
 window.resumeStockTake = function(reportNumber, stockTakePeriod) {
