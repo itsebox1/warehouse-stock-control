@@ -1396,8 +1396,10 @@ if (privacyGlobe) {
 
    try {
   await new Promise(resolve => setTimeout(resolve, 1000));
-  await loadStockTakeList();
-  await loadStockCountList();
+  await Promise.all([
+  loadStockTakeList(),
+  loadStockCountList()
+]);
 } finally {
       
     if (homeLoading) {
