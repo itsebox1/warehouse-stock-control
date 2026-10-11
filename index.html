@@ -2152,6 +2152,8 @@ throw new Error("Unable to load stock counts. Please try again.");
 
       const number = document.createElement("strong");
       number.textContent = stockCount.reportNumber;
+      number.style.display = "inline-block";
+      number.style.marginTop = "12px";
 
       const resume = document.createElement("button");
       resume.textContent = "In Progress — Resume Stock Count";
