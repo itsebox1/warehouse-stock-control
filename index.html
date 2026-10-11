@@ -1089,8 +1089,8 @@ async function lookupTradeShowProduct(sku) {
 
     const quantityLabel = document.createElement("label");
     quantityLabel.htmlFor = "tradeShowTakenQty";
-    quantityLabel.textContent = "Quantity Taken:";
-
+    quantityLabel.innerHTML = "<strong>Quantity Taken:</strong>";
+    
     const quantityInput = document.createElement("input");
     quantityInput.type = "number";
     quantityInput.id = "tradeShowTakenQty";
