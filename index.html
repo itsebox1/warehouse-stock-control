@@ -317,6 +317,11 @@
 
   <div id="homeStockCountSessions"></div>
 </div>
+    <!-- TR - Open Trade Show Sessions -->
+<div id="homeTradeShowSection" style="margin-top:20px;">
+  <h3>Open Trade Shows</h3>
+  <div id="homeTradeShowSessions"></div>
+</div>
 
     <div id="updateStatus" style="text-align:left; margin-top:30px; margin-bottom:10px;">
   Checking for updates...
@@ -1542,9 +1547,10 @@ if (privacyGlobe) {
 
    try {
   await new Promise(resolve => setTimeout(resolve, 1000));
-  await Promise.all([
+ await Promise.all([
   loadStockTakeList(),
-  loadStockCountList()
+  loadStockCountList(),
+  loadTradeShowList()
 ]);
 } finally {
       
@@ -2143,7 +2149,68 @@ document.getElementById("welcomeScreen").style.display = "none";
     stopGlobeLoading();
 }
 }
-  
+
+async function loadTradeShowList() {
+  const list = document.getElementById("homeTradeShowSessions");
+
+  if (!list) return;
+
+  list.textContent = "Loading Trade Shows...";
+
+  try {
+    const idToken = await window.getCurrentStaffToken();
+
+    const response = await fetch(
+      "https://warehouse-stock-reports.tmerry.workers.dev",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action: "listTradeShows",
+          idToken: idToken
+        })
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || "Unable to load Trade Shows.");
+    }
+
+    list.innerHTML = "";
+
+    if (!result.tradeShows || !result.tradeShows.length) {
+      list.textContent = "No Trade Shows currently started.";
+      return;
+    }
+
+    result.tradeShows.forEach(tradeShow => {
+      const row = document.createElement("div");
+
+      row.style.margin = "12px 0";
+      row.style.padding = "12px";
+      row.style.border = "1px solid #ccc";
+      row.style.borderRadius = "8px";
+
+      const details = document.createElement("strong");
+      details.textContent =
+        tradeShow.reportNumber + " — " + tradeShow.showName;
+
+      const status = document.createElement("div");
+      status.textContent = tradeShow.status;
+
+      row.append(details, status);
+      list.appendChild(row);
+    });
+
+  } catch (error) {
+    list.textContent =
+      "Error loading Trade Shows: " + error.message;
+  }
+}  
 function showStockScreen() {
   document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("stockApp").style.display = "block";
