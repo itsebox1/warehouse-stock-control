@@ -1281,13 +1281,12 @@ async function createTradeShow() {
 
     localStorage.setItem("activeTradeShow", result.reportNumber);
 
-    alert("document.getElementById("tradeShowSetupScreen").style.display = "none");
+    document.getElementById("tradeShowSetupScreen").style.display = "none";
 
 document.getElementById("activeTradeShowNumber").textContent =
   result.reportNumber + " — " + showName;
 
-document.getElementById("tradeShowCountingScreen").style.display = "block"; Show created: " + result.reportNumber);
-
+document.getElementById("tradeShowCountingScreen").style.display = "block";
   } catch (error) {
     alert("Error: " + String(error.message || error));
 
