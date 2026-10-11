@@ -1281,7 +1281,12 @@ async function createTradeShow() {
 
     localStorage.setItem("activeTradeShow", result.reportNumber);
 
-    alert("Trade Show created: " + result.reportNumber);
+    alert("document.getElementById("tradeShowSetupScreen").style.display = "none";
+
+document.getElementById("activeTradeShowNumber").textContent =
+  result.reportNumber + " — " + showName;
+
+document.getElementById("tradeShowCountingScreen").style.display = "block"; Show created: " + result.reportNumber);
 
   } catch (error) {
     alert("Error: " + String(error.message || error));
@@ -1579,6 +1584,7 @@ if (privacyGlobe) {
 
   document.getElementById("stockApp").style.display = "none";
   document.getElementById("tradeShowSetupScreen").style.display = "none";
+  document.getElementById("tradeShowCountingScreen").style.display = "none";
   document.getElementById("reportsScreen").style.display = "none";
   document.getElementById("reportOptionsScreen").style.display = "none";
 
@@ -2253,11 +2259,33 @@ async function loadTradeShowList() {
       details.textContent =
         tradeShow.reportNumber + " — " + tradeShow.showName;
 
-      const status = document.createElement("div");
-      status.textContent = tradeShow.status;
+     const status = document.createElement("div");
+status.textContent = tradeShow.status;
 
-      row.append(details, status);
-      list.appendChild(row);
+const resume = document.createElement("button");
+resume.type = "button";
+resume.textContent = "Return to Trade Show";
+
+resume.style.width = "auto";
+resume.style.display = "inline-block";
+resume.style.margin = "10px 0 0";
+
+resume.onclick = () => {
+  localStorage.setItem(
+    "activeTradeShow",
+    tradeShow.reportNumber
+  );
+
+  document.getElementById("activeTradeShowNumber").textContent =
+    tradeShow.reportNumber + " — " + tradeShow.showName;
+
+  document.getElementById("welcomeScreen").style.display = "none";
+  document.getElementById("tradeShowSetupScreen").style.display = "none";
+  document.getElementById("tradeShowCountingScreen").style.display = "block";
+};
+
+row.append(details, status, resume);
+list.appendChild(row);
     });
 
   } catch (error) {
