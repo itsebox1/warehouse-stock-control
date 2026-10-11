@@ -2110,7 +2110,17 @@ throw new Error("Unable to load stock counts. Please try again.");
       number.textContent = stockCount.reportNumber;
 
       const resume = document.createElement("button");
-      resume.textContent = "Resume";
+      resume.textContent = "In Progress — Resume Stock Count";
+
+      resume.style.backgroundColor = "#f0a020";
+      resume.style.color = "white";
+      resume.style.width = "auto";
+      resume.style.display = "inline-block";
+      resume.style.padding = "8px 12px";
+      resume.style.border = "none";
+      resume.style.borderRadius = "5px";
+      resume.style.cursor = "pointer";
+      resume.style.fontWeight = "bold";
 
       resume.onclick = () => {
         const scMode = document.querySelector('input[name="countType"][value="SC"]');
@@ -2138,7 +2148,8 @@ document.getElementById("welcomeScreen").style.display = "none";
         showCountingScreen();
       };
 
-      row.append(number, document.createElement("br"), resume);
+      row.append(number, document.createElementresume.style.float = "right";
+      row.append(number, resume);"br"), resume);
       list.appendChild(row);
     });
 
