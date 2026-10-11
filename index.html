@@ -509,6 +509,43 @@ function validateTradeShowFields() {
 
 </div> 
 
+<!-- TR - Trade Show Counting Screen -->
+<div id="tradeShowCountingScreen" style="display:none;">
+
+  <button type="button" onclick="showWelcomeScreen()">
+    🏠 Home
+  </button>
+
+  <h2>🎪 TR - Trade Show</h2>
+
+  <p id="activeTradeShowNumber"
+     style="font-weight:bold; font-size:20px; color:#304B70;">
+  </p>
+
+  <h3>Products Taken to Trade Show</h3>
+
+  <p>Scan a product QR code:</p>
+
+  <button type="button" id="tradeShowScanButton">
+    📷 Scan QR Code
+  </button>
+
+  <p>Or enter a SKU manually:</p>
+
+  <input
+    type="text"
+    id="tradeShowManualSku"
+    placeholder="Enter product SKU"
+    style="width:100%; padding:14px; box-sizing:border-box; font-size:17px;"
+  >
+
+  <button type="button" id="tradeShowFindProductButton">
+    Find Product
+  </button>
+
+  <div id="tradeShowProductDetails"></div>
+
+</div>  
 <div id="reportsScreen" style="display:none;">
 
   <button onclick="showWelcomeScreen()">
