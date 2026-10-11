@@ -2148,7 +2148,11 @@ document.getElementById("welcomeScreen").style.display = "none";
         showCountingScreen();
       };
 
+      resume.style.width = "auto";
+      resume.style.display = "inline-block";
+      resume.style.margin = "0";      
       resume.style.float = "right";
+      
       row.append(number, resume);
       list.appendChild(row);
     });
