@@ -1105,6 +1105,20 @@ async function lookupTradeShowProduct(sku) {
     saveButton.textContent = "Save to Trade Show";
     saveButton.disabled = false;
     saveButton.style.marginTop = "15px";
+    saveButton.onclick = async () => {
+  const quantity = Number(quantityInput.value);
+
+  if (
+    quantityInput.value.trim() === "" ||
+    !Number.isInteger(quantity) ||
+    quantity <= 0
+  ) {
+    note.textContent = "Please enter a valid quantity greater than zero.";
+    return;
+  }
+
+  note.textContent = "Preparing to save...";
+};
 
     const note = document.createElement("p");
     note.textContent = "Saving quantities will be connected next.";
