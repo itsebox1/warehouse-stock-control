@@ -539,9 +539,13 @@ function validateTradeShowFields() {
     style="width:100%; padding:14px; box-sizing:border-box; font-size:17px;"
   >
 
-  <button type="button" id="tradeShowFindProductButton">
-    Find Product
-  </button>
+ <button
+  type="button"
+  id="tradeShowFindProductButton"
+  onclick="findTradeShowManualSku()"
+>
+  Find Product
+</button>
 
   <div id="tradeShowProductDetails"></div>
 
@@ -1015,6 +1019,127 @@ async function startScanner() {
   }
 }
 
+async function lookupTradeShowProduct(sku) {
+  const details = document.getElementById("tradeShowProductDetails");
+
+  sku = String(sku || "").trim();
+
+  if (!sku) {
+    details.textContent = "Please enter a product SKU.";
+    return;
+  }
+
+  details.textContent = "Looking up product: " + sku;
+  startGlobeLoading();
+
+  try {
+    const product = await new Promise((resolve, reject) => {
+      const callbackName = "tradeShowProductCallback";
+      const script = document.createElement("script");
+
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error("Product lookup timed out"));
+      }, 30000);
+
+      function cleanup() {
+        clearTimeout(timeout);
+        delete window[callbackName];
+        script.remove();
+      }
+
+      window[callbackName] = function(data) {
+        cleanup();
+        resolve(data);
+      };
+
+      script.onerror = function() {
+        cleanup();
+        reject(new Error("Could not load product details"));
+      };
+
+      script.src =
+        workerUrl +
+        "?page=api&sku=" +
+        encodeURIComponent(sku) +
+        "&callback=" +
+        callbackName;
+
+      document.body.appendChild(script);
+    });
+
+    if (!product || !product.sku) {
+      details.textContent = "No matching product for SKU: " + sku;
+      return;
+    }
+
+    const card = document.createElement("div");
+    card.style.cssText =
+      "padding:20px;background:#f3f6fa;border-radius:12px;" +
+      "margin-top:15px;color:#222;";
+
+    const heading = document.createElement("h2");
+    heading.textContent = product.name;
+
+    const skuLine = document.createElement("p");
+    skuLine.textContent = "SKU: " + product.sku;
+
+    const stockLine = document.createElement("p");
+    stockLine.textContent = "QuickBooks Stock: " + product.qbStock;
+
+    const quantityLabel = document.createElement("label");
+    quantityLabel.htmlFor = "tradeShowTakenQty";
+    quantityLabel.textContent = "Quantity Taken:";
+
+    const quantityInput = document.createElement("input");
+    quantityInput.type = "number";
+    quantityInput.id = "tradeShowTakenQty";
+    quantityInput.min = "0";
+    quantityInput.step = "1";
+    quantityInput.style.cssText =
+      "width:100%;padding:12px;font-size:18px;" +
+      "margin-top:10px;box-sizing:border-box;";
+
+    const saveButton = document.createElement("button");
+    saveButton.type = "button";
+    saveButton.textContent = "Save to Trade Show";
+    saveButton.disabled = true;
+    saveButton.style.marginTop = "15px";
+
+    const note = document.createElement("p");
+    note.textContent = "Saving quantities will be connected next.";
+
+    card.append(
+      heading,
+      skuLine,
+      stockLine,
+      quantityLabel,
+      quantityInput,
+      saveButton,
+      note
+    );
+
+    details.replaceChildren(card);
+
+  } catch (error) {
+    details.textContent =
+      "Lookup error: " + String(error.message || error);
+  } finally {
+    stopGlobeLoading();
+  }
+}  
+  
+function findTradeShowManualSku() {
+  const sku = document.getElementById("tradeShowManualSku").value.trim();
+
+  if (!sku) {
+    document.getElementById("tradeShowProductDetails").textContent =
+      "Please enter a product SKU.";
+    return;
+  }
+
+  lookupTradeShowProduct(sku);
+}  
 function findManualSku() {
   const sku =
     document.getElementById("manualSku").value.trim();
