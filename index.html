@@ -2105,6 +2105,8 @@ throw new Error("Unable to load stock counts. Please try again.");
       row.style.padding = "12px";
       row.style.border = "1px solid #ccc";
       row.style.borderRadius = "8px";
+      row.style.minHeight = "70px";
+      row.style.boxSizing = "border-box";
 
       const number = document.createElement("strong");
       number.textContent = stockCount.reportNumber;
