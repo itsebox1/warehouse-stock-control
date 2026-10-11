@@ -1117,11 +1117,58 @@ async function lookupTradeShowProduct(sku) {
     return;
   }
 
-  note.textContent = "Preparing to save...";
+  
+const reportNumber = localStorage.getItem("activeTradeShow");
+
+if (!reportNumber) {
+  note.textContent = "No active Trade Show selected.";
+  return;
+}
+
+saveButton.disabled = true;
+note.textContent = "Saving to Trade Show...";
+
+const requestId = crypto.randomUUID();
+
+try {
+  const idToken = await window.getCurrentStaffToken();
+
+  const response = await fetch(
+    "https://warehouse-stock-reports.tmerry.workers.dev",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action: "saveTradeShowQuantity",
+        idToken: idToken,
+        reportNumber: reportNumber,
+        sku: product.sku,
+        quantity: quantity,
+        requestId: requestId
+      })
+    }
+  );
+
+  const result = await response.json();
+
+  if (!response.ok || result.success !== true) {
+    throw new Error(result.error || "Unable to save Trade Show quantity.");
+  }
+
+  note.textContent = "Quantity saved successfully.";
+  quantityInput.value = "";
+
+} catch (error) {
+  note.textContent = "Save error: " + String(error.message || error);
+} finally {
+  saveButton.disabled = false;
+}
 };
 
     const note = document.createElement("p");
-    note.textContent = "Saving quantities will be connected next.";
+    note.textContent = "Enter the quantity taken, then press Save to Trade Show."; = "Saving quantities will be connected next.";
 
     card.append(
       heading,
