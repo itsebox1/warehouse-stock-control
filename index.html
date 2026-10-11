@@ -384,9 +384,14 @@ function validateTradeShowFields() {
 });
 </script>  
 
-  <button type="button" id="createTradeShowButton" disabled>
-    ➕ Create Trade Show
-  </button>
+  <button
+  type="button"
+  id="createTradeShowButton"
+  onclick="createTradeShow()"
+  disabled
+>
+  ➕ Create Trade Show
+</button>
 
 </div>
 <div id="stockApp" style="display:none;">
@@ -1189,6 +1194,58 @@ async function startStockCount() {
 
   } finally {
     button.disabled = false;
+  }
+}
+
+async function createTradeShow() {
+  const button = document.getElementById("createTradeShowButton");
+
+  const showName = document.getElementById("tradeShowName").value.trim();
+  const startDate = document.getElementById("tradeShowStartDate").value;
+  const endDate = document.getElementById("tradeShowEndDate").value;
+
+  if (!showName || !startDate || !endDate || endDate < startDate) {
+    alert("Please enter a Trade Show name and valid dates.");
+    return;
+  }
+
+  button.disabled = true;
+
+  try {
+    const idToken = await window.getCurrentStaffToken();
+
+    const response = await fetch(
+      "https://warehouse-stock-reports.tmerry.workers.dev",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action: "startTradeShow",
+          idToken: idToken,
+          showName: showName,
+          startDate: startDate,
+          endDate: endDate
+        })
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || "Unable to create Trade Show.");
+    }
+
+    localStorage.setItem("activeTradeShow", result.reportNumber);
+
+    alert("Trade Show created: " + result.reportNumber);
+
+  } catch (error) {
+    alert("Error: " + String(error.message || error));
+
+  } finally {
+    validateTradeShowFields();
   }
 }
   
