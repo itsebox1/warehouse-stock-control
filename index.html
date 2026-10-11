@@ -1718,7 +1718,7 @@ if (reportInProgress) {
   "";
 
 item.innerHTML = `
-  <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+  <div style="display:flex; flex-direction:column; align-items:flex-start; gap:10px;">
     
     <span style="flex:1; font-weight:bold;">
       ${stockTake.reportNumber}${periodLabel ? ` — ${periodLabel}` : ""} — 0 products
@@ -2197,7 +2197,10 @@ document.getElementById("welcomeScreen").style.display = "none";
       resume.style.width = "auto";
       resume.style.display = "inline-block";
       resume.style.margin = "0";      
-      resume.style.float = "right";
+      resume.style.float = "none";
+      resume.style.display = "block";
+      resume.style.width = "fit-content";
+      resume.style.marginTop = "10px";";
       
       row.append(number, resume);
       list.appendChild(row);
