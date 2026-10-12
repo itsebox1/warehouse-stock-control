@@ -619,7 +619,6 @@ function validateTradeShowFields() {
   <button
     type="button"
     id="tradeShowEmailButton"
-    disabled
   >
     📧 Email Report
   </button>
@@ -1531,6 +1530,7 @@ async function confirmTradeShowReturns() {
 
   async function loadTradeShowReport(reportNumber) {
   const list = document.getElementById("tradeShowReportList");
+  document.getElementById("tradeShowEmailButton").dataset.reportNumber = reportNumber;
 
   list.textContent = "Loading Trade Show report...";
 
@@ -1611,6 +1611,60 @@ list.appendChild(heading);
       String(error.message || error);
   }
 }
+document.getElementById("tradeShowEmailButton").onclick = async function () {
+  const reportNumber = this.dataset.reportNumber;
+
+  if (!reportNumber) {
+    alert("Please open a Trade Show report first.");
+    return;
+  }
+
+  const recipient = prompt("Email report to:");
+
+  if (recipient === null) return;
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient.trim())) {
+    alert("Please enter a valid email address.");
+    return;
+  }
+
+  const button = this;
+  button.disabled = true;
+  button.textContent = "Sending email...";
+
+  try {
+    const idToken = await window.getCurrentStaffToken();
+
+    const response = await fetch(
+      "https://warehouse-stock-reports.tmerry.workers.dev",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "emailTradeShowReport",
+          idToken: idToken,
+          reportNumber: reportNumber,
+          recipient: recipient.trim()
+        })
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || result.success !== true) {
+      throw new Error(result.error || "Unable to email report.");
+    }
+
+    alert("Trade Show PDF emailed successfully.");
+
+  } catch (error) {
+    alert("Email failed: " + String(error.message || error));
+  } finally {
+    button.disabled = false;
+    button.textContent = "📧 Email Report";
+  }
+};
+  
 async function showTradeShowReview() {
   const section = document.getElementById("tradeShowReviewSection");
   const button = document.getElementById("tradeShowReviewButton");
