@@ -1655,8 +1655,11 @@ document.getElementById("tradeShowEmailButton").onclick = async function () {
       throw new Error(result.error || "Unable to email report.");
     }
 
-    alert("Trade Show PDF emailed successfully.");
-
+   window.showWSCMessage(
+  "Email Sent",
+  "Trade Show PDF emailed successfully."
+);
+    
   } catch (error) {
     alert("Email failed: " + String(error.message || error));
   } finally {
