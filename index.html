@@ -1569,6 +1569,15 @@ heading.textContent =
 
 list.appendChild(heading);
     const table = document.createElement("table");
+    const colgroup = document.createElement("colgroup");
+
+["62.5%", "12.5%", "12.5%", "12.5%"].forEach(width => {
+  const col = document.createElement("col");
+  col.style.width = width;
+  colgroup.appendChild(col);
+});
+
+table.appendChild(colgroup);
     table.style.cssText =
       "width:100%; border-collapse:collapse; margin-top:15px;";
 
@@ -1595,8 +1604,8 @@ list.appendChild(heading);
       ].forEach(value => {
         const cell = document.createElement("td");
         cell.textContent = value;
-        cell.style.cssText =
-          "border:1px solid #ccc; padding:10px;";
+       cell.style.cssText =
+  "border:1px solid #ccc; padding:10px; white-space:normal; overflow-wrap:anywhere;";
         row.appendChild(cell);
       });
 
