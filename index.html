@@ -1257,6 +1257,12 @@ async function openTradeShowReturns() {
   list.textContent = "Loading products...";
   message.textContent = "";
   button.disabled = true;
+  const confirmButton = document.getElementById(
+  "tradeShowConfirmReturnsButton"
+);
+
+confirmButton.disabled = true;
+confirmButton.textContent = "Confirm Returned Products";
 
   try {
     const reportNumber = localStorage.getItem("activeTradeShow");
@@ -1266,7 +1272,42 @@ async function openTradeShowReturns() {
     }
 
     const idToken = await window.getCurrentStaffToken();
+const statusResponse = await fetch(
+  "https://warehouse-stock-reports.tmerry.workers.dev",
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      action: "getTradeShowReturnsStatus",
+      idToken: idToken,
+      reportNumber: reportNumber
+    })
+  }
+);
 
+const statusResult = await statusResponse.json();
+
+if (!statusResponse.ok || statusResult.success !== true) {
+  throw new Error(
+    statusResult.error || "Unable to check returned products status."
+  );
+}
+
+if (statusResult.returnsConfirmed) {
+  list.textContent = "Returned products have already been confirmed.";
+  message.textContent =
+    "Returns saved successfully for " + reportNumber + ".";
+
+  const confirmButton = document.getElementById(
+    "tradeShowConfirmReturnsButton"
+  );
+
+  confirmButton.disabled = true;
+  confirmButton.textContent = "Returned Products Confirmed";
+  return;
+}
     const response = await fetch(
       "https://warehouse-stock-reports.tmerry.workers.dev",
       {
@@ -1329,9 +1370,12 @@ async function openTradeShowReturns() {
       list.appendChild(item);
     });
 
+    confirmButton.disabled = false;
+
   } catch (error) {
     list.textContent =
       "Error loading returned products: " + String(error.message || error);
+     confirmButton.disabled = true;
   } finally {
     button.disabled = false;
   }
