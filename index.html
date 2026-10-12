@@ -1615,6 +1615,49 @@ async function startStockCount() {
   }
 }
 
+function formatTradeShowDateRange(startDate, endDate) {
+  function ordinal(day) {
+    if (day >= 11 && day <= 13) return day + "th";
+
+    const suffix = ["th", "st", "nd", "rd"];
+    return day + (suffix[day % 10] || "th");
+  }
+
+  function parseDate(value) {
+    if (!value) return null;
+
+    const date = new Date(value);
+    return isNaN(date.getTime()) ? null : date;
+  }
+
+  const start = parseDate(startDate);
+  const end = parseDate(endDate);
+
+  if (!start || !end) return "";
+
+  const startDay = ordinal(start.getUTCDate());
+  const endDay = ordinal(end.getUTCDate());
+
+  const startMonth = start.toLocaleString("en-GB", {
+    month: "long",
+    timeZone: "UTC"
+  });
+
+  const endMonth = end.toLocaleString("en-GB", {
+    month: "long",
+    timeZone: "UTC"
+  });
+
+  const startYear = start.getUTCFullYear();
+  const endYear = end.getUTCFullYear();
+
+  if (startMonth === endMonth && startYear === endYear) {
+    return startDay + "–" + endDay + " " + endMonth + " " + endYear;
+  }
+
+  return startDay + " " + startMonth + " " + startYear +
+    " – " + endDay + " " + endMonth + " " + endYear;
+}
 async function createTradeShow() {
   const button = document.getElementById("createTradeShowButton");
 
@@ -1660,7 +1703,8 @@ async function createTradeShow() {
     document.getElementById("tradeShowSetupScreen").style.display = "none";
 
 document.getElementById("activeTradeShowNumber").textContent =
-  result.reportNumber + " — " + showName;
+  result.reportNumber + " – " + showName +
+  "   " + formatTradeShowDates(startDate, endDate);
 
 document.getElementById("tradeShowCountingScreen").style.display = "block";
   } catch (error) {
@@ -2590,6 +2634,43 @@ document.getElementById("welcomeScreen").style.display = "none";
 }
 }
 
+function formatTradeShowDates(startDate, endDate) {
+  function ordinal(day) {
+    if (day >= 11 && day <= 13) return day + "th";
+
+    const suffix = ["th", "st", "nd", "rd"];
+    return day + (suffix[day % 10] || "th");
+  }
+
+  const start = new Date(startDate + "T12:00:00");
+  const end = new Date(endDate + "T12:00:00");
+
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    return "";
+  }
+
+  const month = date =>
+    date.toLocaleDateString("en-GB", { month: "long" });
+
+  const startDay = ordinal(start.getDate());
+  const endDay = ordinal(end.getDate());
+
+  if (startDate === endDate) {
+    return startDay + " " + month(start) + " " + start.getFullYear();
+  }
+
+  if (
+    start.getMonth() === end.getMonth() &&
+    start.getFullYear() === end.getFullYear()
+  ) {
+    return startDay + "–" + endDay + " " +
+      month(end) + " " + end.getFullYear();
+  }
+
+  return startDay + " " + month(start) + " " +
+    start.getFullYear() + " – " +
+    endDay + " " + month(end) + " " + end.getFullYear();
+}  
 async function loadTradeShowList() {
   const list = document.getElementById("homeTradeShowSessions");
 
@@ -2657,7 +2738,8 @@ resume.onclick = () => {
   );
 
   document.getElementById("activeTradeShowNumber").textContent =
-    tradeShow.reportNumber + " — " + tradeShow.showName;
+  tradeShow.reportNumber + " – " + tradeShow.showName +
+  "   " + formatTradeShowDates(tradeShow.startDate, tradeShow.endDate);
 
   document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("tradeShowSetupScreen").style.display = "none";
