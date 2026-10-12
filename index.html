@@ -1213,11 +1213,12 @@ try {
   }
 }  
 
-function showTradeShowReview() {
+async function showTradeShowReview() {
   const section = document.getElementById("tradeShowReviewSection");
   const button = document.getElementById("tradeShowReviewButton");
+  const list = document.getElementById("tradeShowReviewList");
 
-  if (!section || !button) return;
+  if (!section || !button || !list) return;
 
   const isOpening = section.style.display === "none";
 
@@ -1226,7 +1227,73 @@ function showTradeShowReview() {
   button.textContent = isOpening
     ? "📋 Close Review"
     : "📋 Review Products Taken";
-}  
+
+  if (!isOpening) return;
+
+  list.textContent = "Loading products...";
+
+  try {
+    const reportNumber = localStorage.getItem("activeTradeShow");
+
+    if (!reportNumber) {
+      throw new Error("No active Trade Show selected.");
+    }
+
+    const idToken = await window.getCurrentStaffToken();
+
+    const response = await fetch(
+      "https://warehouse-stock-reports.tmerry.workers.dev",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action: "getTradeShowReview",
+          idToken: idToken,
+          reportNumber: reportNumber
+        })
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || result.success !== true) {
+      throw new Error(result.error || "Unable to load products.");
+    }
+
+    list.replaceChildren();
+
+    if (!result.products || result.products.length === 0) {
+      list.textContent = "No products recorded yet.";
+      return;
+    }
+
+    result.products.forEach(product => {
+      const item = document.createElement("div");
+
+      item.style.cssText =
+        "padding:12px; margin-bottom:10px; background:white;" +
+        "border:1px solid #ddd; border-radius:8px;";
+
+      const name = document.createElement("strong");
+      name.textContent = product.productName;
+
+      const details = document.createElement("p");
+      details.textContent =
+        "SKU: " + product.sku +
+        " | Quantity Taken: " + product.quantityTaken;
+
+      item.append(name, details);
+      list.appendChild(item);
+    });
+
+  } catch (error) {
+    list.textContent =
+      "Review error: " + String(error.message || error);
+  }
+}
+
 function findTradeShowManualSku() {
   const sku = document.getElementById("tradeShowManualSku").value.trim();
 
