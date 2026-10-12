@@ -1284,8 +1284,22 @@ async function showTradeShowReview() {
         "SKU: " + product.sku +
         " | Quantity Taken: " + product.quantityTaken;
 
-      item.append(name, details);
-      list.appendChild(item);
+      const amendButton = document.createElement("button");
+amendButton.type = "button";
+amendButton.textContent = "✏️ Amend Quantity";
+
+amendButton.style.cssText =
+  "padding:10px 14px; margin-top:8px;" +
+  "background:#e8eef8; color:#17365d;" +
+  "border:1px solid #b8c9e0; border-radius:8px;" +
+  "font-weight:bold; cursor:pointer;";
+
+amendButton.onclick = () => {
+  amendTradeShowProduct(product);
+};
+
+item.append(name, details, amendButton);
+list.appendChild(item);
     });
 
   } catch (error) {
@@ -1318,6 +1332,78 @@ function findManualSku() {
   lookupProduct(sku);
 }
 
+async function amendTradeShowProduct(product) {
+  const answer = prompt(
+    "Amend quantity for " + product.productName +
+    "\nCurrent quantity: " + product.quantityTaken +
+    "\nEnter the new TOTAL quantity (0 is allowed):",
+    String(product.quantityTaken)
+  );
+
+  if (answer === null) return;
+
+  const value = answer.trim();
+  const newQuantity = Number(value);
+
+  if (
+    value === "" ||
+    !Number.isSafeInteger(newQuantity) ||
+    newQuantity < 0
+  ) {
+    alert("Please enter a valid whole number, including zero.");
+    return;
+  }
+
+  if (newQuantity === Number(product.quantityTaken)) return;
+
+  const confirmed = confirm(
+    "Change " + product.productName +
+    " from " + product.quantityTaken +
+    " to " + newQuantity + "?"
+  );
+
+  if (!confirmed) return;
+
+  try {
+    const reportNumber = localStorage.getItem("activeTradeShow");
+    if (!reportNumber) throw new Error("No active Trade Show selected.");
+
+    const idToken = await window.getCurrentStaffToken();
+    const requestId = crypto.randomUUID();
+
+    const response = await fetch(
+      "https://warehouse-stock-reports.tmerry.workers.dev",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "amendTradeShowQuantity",
+          idToken: idToken,
+          reportNumber: reportNumber,
+          sku: product.sku,
+          newQuantity: newQuantity,
+          requestId: requestId
+        })
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || result.success !== true) {
+      throw new Error(result.error || "Unable to amend quantity.");
+    }
+
+    alert("Quantity amended successfully.");
+
+    const reviewSection = document.getElementById("tradeShowReviewSection");
+    reviewSection.style.display = "none";
+
+    await showTradeShowReview();
+
+  } catch (error) {
+    alert("Amendment error: " + String(error.message || error));
+  }
+}  
 function selectStockTakeQuarter(clickedButton) {
   const overlay = document.createElement("div");
 
