@@ -613,16 +613,6 @@ function validateTradeShowFields() {
 
   <h2>🎪 TR — Trade Show Report</h2>
 
-  <h3 id="tradeShowReportTitle"></h3>
-
-  <button
-  type="button"
-  id="tradeShowGenerateReportButton"
-  onclick="loadTradeShowReport(localStorage.getItem('activeTradeShow'))"
->
-  📄 Generate Report
-</button>
-
   <div id="tradeShowReportList"></div>
 
 </div> 
@@ -1514,9 +1504,6 @@ async function confirmTradeShowReturns() {
   document.getElementById("welcomeScreen").style.display = "none";
 
   document.getElementById("tradeShowReportScreen").style.display = "block";
-
-  document.getElementById("tradeShowReportTitle").textContent =
-    reportNumber;
 
   document.getElementById("tradeShowReportList").textContent =
     "Loading Trade Show report...";
