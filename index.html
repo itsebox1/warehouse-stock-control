@@ -549,7 +549,28 @@ function validateTradeShowFields() {
 
   <div id="tradeShowProductDetails"></div>
 
-</div>  
+<button
+  type="button"
+  id="tradeShowReviewButton"
+  onclick="showTradeShowReview()"
+>
+  📋 Review Products Taken
+</button>
+  <div
+  id="tradeShowReviewSection"
+  style="display:none; margin-top:20px; padding:15px; background:#f3f6fa; border-radius:12px;"
+>
+  <h3>📋 Trade Show Review</h3>
+
+  <p>Products taken to this Trade Show, listed alphabetically.</p>
+
+  <div id="tradeShowReviewList">
+    No products loaded yet.
+  </div>
+</div>
+
+</div>
+  
 <div id="reportsScreen" style="display:none;">
 
   <button onclick="showWelcomeScreen()">
@@ -1191,7 +1212,21 @@ try {
     stopGlobeLoading();
   }
 }  
-  
+
+function showTradeShowReview() {
+  const section = document.getElementById("tradeShowReviewSection");
+  const button = document.getElementById("tradeShowReviewButton");
+
+  if (!section || !button) return;
+
+  const isOpening = section.style.display === "none";
+
+  section.style.display = isOpening ? "block" : "none";
+
+  button.textContent = isOpening
+    ? "📋 Close Review"
+    : "📋 Review Products Taken";
+}  
 function findTradeShowManualSku() {
   const sku = document.getElementById("tradeShowManualSku").value.trim();
 
