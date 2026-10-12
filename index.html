@@ -1726,6 +1726,8 @@ document.getElementById("activeTradeShowNumber").textContent =
   "   " + formatTradeShowDates(startDate, endDate);
 
 document.getElementById("tradeShowCountingScreen").style.display = "block";
+
+   updateTradeShowStage(endDate); 
   } catch (error) {
     alert("Error: " + String(error.message || error));
 
@@ -2653,6 +2655,26 @@ document.getElementById("welcomeScreen").style.display = "none";
 }
 }
 
+function updateTradeShowStage(endDate) {
+  const takenSection = document.getElementById("tradeShowTakenSection");
+  const returnsSection = document.getElementById("tradeShowReturnsSection");
+
+  if (!takenSection || !returnsSection) return;
+
+  // Compare calendar dates in UK time.
+  const todayUK = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(new Date());
+
+  const returnsStage = todayUK > endDate;
+
+  takenSection.style.display = returnsStage ? "none" : "block";
+  returnsSection.style.display = returnsStage ? "block" : "none";
+}
+  
 function formatTradeShowDates(startDate, endDate) {
   function ordinal(day) {
     if (day >= 11 && day <= 13) return day + "th";
@@ -2763,6 +2785,8 @@ resume.onclick = () => {
   document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("tradeShowSetupScreen").style.display = "none";
   document.getElementById("tradeShowCountingScreen").style.display = "block";
+
+  updateTradeShowStage(tradeShow.endDate);
 };
 
 row.append(details, status, resume);
