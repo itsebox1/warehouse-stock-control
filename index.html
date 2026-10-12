@@ -1543,16 +1543,12 @@ async function confirmTradeShowReturns() {
 
     const heading = document.createElement("h3");
 
-const activeTradeShowDetails =
-  document.getElementById("activeTradeShowNumber").textContent.trim();
-
 heading.textContent =
-  activeTradeShowDetails.startsWith(reportNumber)
-    ? activeTradeShowDetails
-    : reportNumber + " — " + result.showName;
+  result.reportNumber + " — " +
+  result.showName + " — " +
+  formatTradeShowDates(result.startDate, result.endDate);
 
 list.appendChild(heading);
-
     const table = document.createElement("table");
     table.style.cssText =
       "width:100%; border-collapse:collapse; margin-top:15px;";
