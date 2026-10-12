@@ -1317,18 +1317,8 @@ if (!statusResponse.ok || statusResult.success !== true) {
 }
 
 if (statusResult.returnsConfirmed) {
-  list.textContent = "Returned products have already been confirmed.";
-  message.textContent =
-    "Returns saved successfully for " + reportNumber + ".";
-
-  const confirmButton = document.getElementById(
-    "tradeShowConfirmReturnsButton"
-  );
-
-  confirmButton.disabled = false;
-confirmButton.textContent = "Returned Products Confirmed";
-confirmButton.onclick = () => showTradeShowReport();
-return;
+  showTradeShowReport();
+  return;
 }
     const response = await fetch(
       "https://warehouse-stock-reports.tmerry.workers.dev",
