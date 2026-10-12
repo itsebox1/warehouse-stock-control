@@ -1555,8 +1555,16 @@ async function confirmTradeShowReturns() {
     list.replaceChildren();
 
     const heading = document.createElement("h3");
-    heading.textContent = result.showName;
-    list.appendChild(heading);
+
+const activeTradeShowDetails =
+  document.getElementById("activeTradeShowNumber").textContent.trim();
+
+heading.textContent =
+  activeTradeShowDetails.startsWith(reportNumber)
+    ? activeTradeShowDetails
+    : reportNumber + " — " + result.showName;
+
+list.appendChild(heading);
 
     const table = document.createElement("table");
     table.style.cssText =
