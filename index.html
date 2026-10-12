@@ -1510,7 +1510,8 @@ async function confirmTradeShowReturns() {
   }
 
   document.getElementById("tradeShowReturnsSection").style.display = "none";
-   document.getElementById("tradeShowCountingScreen").style.display = "none";
+  document.getElementById("tradeShowCountingScreen").style.display = "none";
+  document.getElementById("welcomeScreen").style.display = "none";
 
   document.getElementById("tradeShowReportScreen").style.display = "block";
 
@@ -2393,6 +2394,7 @@ if (privacyGlobe) {
   document.getElementById("stockApp").style.display = "none";
   document.getElementById("tradeShowSetupScreen").style.display = "none";
   document.getElementById("tradeShowCountingScreen").style.display = "none";
+   document.getElementById("tradeShowReportScreen").style.display = "none";
   document.getElementById("reportsScreen").style.display = "none";
   document.getElementById("reportOptionsScreen").style.display = "none";
 
@@ -3135,12 +3137,53 @@ status.textContent = tradeShow.status;
 const resume = document.createElement("button");
 resume.type = "button";
 resume.textContent = "Return to Trade Show";
+resume.disabled = true;
+(async () => {
+  try {
+    const idToken = await window.getCurrentStaffToken();
+
+    const response = await fetch(
+      "https://warehouse-stock-reports.tmerry.workers.dev",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action: "getTradeShowReturnsStatus",
+          idToken: idToken,
+          reportNumber: tradeShow.reportNumber
+        })
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || result.success !== true) {
+      throw new Error(result.error || "Unable to check returns.");
+    }
+
+    if (result.returnsConfirmed) {
+      resume.textContent = "Go to Report";
+      resume.onclick = () => {
+        localStorage.setItem("activeTradeShow", tradeShow.reportNumber);
+        showTradeShowReport();
+      };
+    }
+
+    resume.disabled = false;
+
+  } catch (error) {
+    resume.textContent = "Unable to check Trade Show";
+    resume.title = String(error.message || error);
+  }
+})();      
 
 resume.style.width = "auto";
 resume.style.display = "inline-block";
 resume.style.margin = "10px 0 0";
 
-resume.onclick = () => {
+resume.onclick = resume.onclick || (() => {
   localStorage.setItem(
     "activeTradeShow",
     tradeShow.reportNumber
@@ -3155,7 +3198,7 @@ resume.onclick = () => {
   document.getElementById("tradeShowCountingScreen").style.display = "block";
 
   updateTradeShowStage(tradeShow.endDate);
-};
+});
 
 row.append(details, status, resume);
 list.appendChild(row);
