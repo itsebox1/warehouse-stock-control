@@ -578,14 +578,28 @@ function validateTradeShowFields() {
   <button type="button" id="tradeShowReturnedProductsButton">
     📦 Returned Products
   </button>
+  <div
+  id="tradeShowReturnsEntrySection"
+  style="display:none; margin-top:20px;"
+>
+  <h3>Products Returned from Trade Show</h3>
+
+  <p>Enter the quantity returned for every product. Enter 0 if none were returned.</p>
+
+  <div id="tradeShowReturnsList">
+    No products loaded yet.
+  </div>
 
   <button
     type="button"
-    id="tradeShowFinishButton"
-    style="background:#dc3545; margin-top:20px;"
+    id="tradeShowConfirmReturnsButton"
+    style="margin-top:20px;"
   >
-    Finish Trade Show
+    Confirm Returned Products
   </button>
+
+  <div id="tradeShowReturnsMessage"></div>
+</div>
 
 </div>
 </div>
