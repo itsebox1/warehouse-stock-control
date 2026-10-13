@@ -301,6 +301,10 @@
     🎪 TR - Trade Show
   </button>
 
+<button type="button" onclick="showDeliverySetup()">
+  🚚 DL - Delivery
+</button>
+    
     <div id="homeOpenSessions" style="margin-top:25px;">
   <h3>Open Stock Sessions</h3>
       <div id="homeSessionsLoading"
@@ -333,6 +337,28 @@
    
 </div>
 
+  <!-- DL - Delivery Setup Screen -->
+<div id="deliverySetupScreen" style="display:none;">
+
+  <button type="button" onclick="showWelcomeScreen()">
+    🏠 Home
+  </button>
+
+  <h2>🚚 DL - Delivery</h2>
+
+  <h3>Start New Delivery</h3>
+
+  <button type="button" id="startNewDeliveryButton" disabled>
+    ➕ Start New Delivery
+  </button>
+
+  <h3>Open Deliveries</h3>
+
+  <div id="openDeliverySessions">
+    No deliveries currently started.
+  </div>
+
+</div>
   <!-- TR - Trade Show Setup Screen -->
 <div id="tradeShowSetupScreen" style="display:none;">
 
@@ -2555,6 +2581,16 @@ alertBox.textContent = overdue
   }
 }
 
+function showDeliverySetup() {
+  document.getElementById("welcomeScreen").style.display = "none";
+  document.getElementById("stockApp").style.display = "none";
+  document.getElementById("reportsScreen").style.display = "none";
+  document.getElementById("reportOptionsScreen").style.display = "none";
+  document.getElementById("tradeShowSetupScreen").style.display = "none";
+
+  document.getElementById("deliverySetupScreen").style.display = "block";
+}  
+  
 function showTradeShowSetup() {
   document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("stockApp").style.display = "none";
@@ -2566,6 +2602,7 @@ function showTradeShowSetup() {
   
  async function showWelcomeScreen() {
   document.getElementById("welcomeScreen").style.display = "block";
+     document.getElementById("deliverySetupScreen").style.display = "none";
   updateQuarterlyStockTakeAlert();
   const homeLoading = document.getElementById("homeSessionsLoading");
   const privacyGlobe = document.getElementById("homePrivacyGlobe");
