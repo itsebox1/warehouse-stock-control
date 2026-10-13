@@ -368,7 +368,7 @@
 
   <button
   type="button"
-  onclick="showDeliveryReview()">
+  onclick="testDeliveryProducts()">
   🧪 Test Delivery Review
 </button>
   <h3>Open Deliveries</h3>
@@ -2847,6 +2847,32 @@ section.appendChild(row);
 
   document.getElementById("deliveryReviewMessage").textContent =
     products.length + " invoice lines loaded. Please check the quantities received.";
+}
+  function testDeliveryProducts() {
+  showDeliveryReview();
+
+  document.getElementById("deliveryInvoiceNumber").textContent =
+    "TEST-200498-6COM";
+
+  document.getElementById("deliveryInvoiceDate").textContent =
+    "6 October 2026";
+
+  renderDeliveryProducts([
+    {
+      sku: "481012",
+      productName: "Test Product",
+      lot: "022T620-DD",
+      expiry: "31 January 2028",
+      quantity: 25
+    },
+    {
+      sku: "481012",
+      productName: "Test Product",
+      lot: "022T620-DD",
+      expiry: "31 January 2028",
+      quantity: 130
+    }
+  ]);
 }
   function showDeliveryReview() {
     const confirmButton = document.getElementById("confirmDeliveryInvoiceButton");
