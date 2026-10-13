@@ -2714,6 +2714,9 @@ alertBox.textContent = overdue
 
   try {
     const invoiceText = await extractDeliveryPdfText(file);
+    console.log("DL PDF EXTRACTED TEXT START");
+console.log(invoiceText);
+console.log("DL PDF EXTRACTED TEXT END");
 
     if (!invoiceText.trim()) {
       throw new Error(
