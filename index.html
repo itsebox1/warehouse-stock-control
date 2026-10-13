@@ -2801,8 +2801,6 @@ row.appendChild(lineNumber);
 
   input.reportValidity();
   updateDeliveryTotals();
-        document.getElementById("deliveryReviewMessage").textContent =
-  products.length + " invoice lines loaded. Please check the quantities received.";
 });
       input.addEventListener("input", () => {
   const invoiced = Number(line.quantity);
@@ -2845,7 +2843,10 @@ section.appendChild(row);
        container.appendChild(section);
   });
 
-  updateDeliveryTotals();
+   updateDeliveryTotals();
+
+  document.getElementById("deliveryReviewMessage").textContent =
+    products.length + " invoice lines loaded. Please check the quantities received.";
 }
   function showDeliveryReview() {
     const confirmButton = document.getElementById("confirmDeliveryInvoiceButton");
@@ -2864,6 +2865,7 @@ document.getElementById("deliveryReviewMessage").textContent = "";
   document.getElementById("deliveryReviewScreen").style.display = "block";
 }
 function showDeliverySetup() {
+  document.getElementById("deliveryReviewScreen").style.display = "none";
   document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("stockApp").style.display = "none";
   document.getElementById("reportsScreen").style.display = "none";
