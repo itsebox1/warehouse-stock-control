@@ -1535,6 +1535,9 @@ async function confirmTradeShowReturns() {
   const list = document.getElementById("tradeShowReportList");
   document.getElementById("tradeShowEmailButton").dataset.reportNumber = reportNumber;
   document.getElementById("tradeShowCommitQBButton").dataset.reportNumber = reportNumber;
+    const qbButton = document.getElementById("tradeShowCommitQBButton");
+qbButton.disabled = true;
+qbButton.textContent = "Checking QB status...";
 
   list.textContent = "Loading Trade Show report...";
 
