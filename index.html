@@ -1620,6 +1620,50 @@ table.appendChild(colgroup);
     });
 
     list.appendChild(table);
+    try {
+  const qbResponse = await fetch(
+    "https://warehouse-stock-reports.tmerry.workers.dev",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action: "getTradeShowQuickBooksStatus",
+        reportNumber: reportNumber,
+        idToken: idToken
+      })
+    }
+  );
+
+  const qbStatus = await qbResponse.json();
+
+  if (!qbResponse.ok || qbStatus.success === false) {
+    throw new Error(qbStatus.error || "Unable to check QB status.");
+  }
+
+  const status = String(qbStatus.status || "").trim().toLowerCase();
+
+  if (qbStatus.submitted || status === "submitted") {
+    qbButton.textContent = "✓ Committed to QB";
+    qbButton.style.background = "#28a745";
+    qbButton.disabled = true;
+  } else if (status === "pending") {
+    qbButton.textContent = "QB Submission Pending";
+    qbButton.style.background = "#777";
+    qbButton.disabled = true;
+  } else {
+    qbButton.textContent = "📤 Commit to QB";
+    qbButton.style.background = "#c62828";
+    qbButton.disabled = true; // Keep disabled during testing.
+  }
+
+} catch (qbError) {
+  qbButton.textContent = "QB Status Unavailable";
+  qbButton.style.background = "#777";
+  qbButton.disabled = true;
+  console.error("Trade Show QB status:", qbError);
+}
 
   } catch (error) {
     list.textContent =
