@@ -1625,7 +1625,7 @@ table.appendChild(colgroup);
   }
 }
 
-document.getElementById("tradeShowCommitQBButton").onclick = function () {
+ddocument.getElementById("tradeShowCommitQBButton").onclick = async function () {
   const reportNumber = this.dataset.reportNumber;
 
   if (!reportNumber) {
@@ -1636,10 +1636,52 @@ document.getElementById("tradeShowCommitQBButton").onclick = function () {
     return;
   }
 
-  window.showWSCMessage(
-    "QuickBooks Submission",
-    "Trade Show " + reportNumber + " is not yet enabled for QuickBooks submission."
-  );
+  const button = this;
+  button.disabled = true;
+
+  try {
+    const idToken = await window.getCurrentStaffToken();
+
+    const response = await fetch(
+      "https://warehouse-stock-reports.tmerry.workers.dev",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action: "commitTradeShowToQuickBooks",
+          reportNumber: reportNumber,
+          idToken: idToken
+        })
+      }
+    );
+
+    const responseText = await response.text();
+
+    const result = responseText.trim().startsWith("{")
+      ? JSON.parse(responseText)
+      : { success: false, error: responseText };
+
+    if (!response.ok || !result.success) {
+      throw new Error(
+        result.error || "QuickBooks submission is unavailable."
+      );
+    }
+
+    window.showWSCMessage(
+      "QuickBooks Submission",
+      "Trade Show " + reportNumber + " was submitted successfully."
+    );
+
+  } catch (error) {
+    window.showWSCMessage(
+      "QuickBooks Submission",
+      String(error.message || error)
+    );
+  } finally {
+    button.disabled = false;
+  }
 };
   
 document.getElementById("tradeShowEmailButton").onclick = async function () {
