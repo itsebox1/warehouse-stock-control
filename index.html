@@ -366,11 +366,65 @@
   ➕ Start New Delivery
 </button>
 
+  <button
+  type="button"
+  onclick="showDeliveryReview()">
+  🧪 Test Delivery Review
+</button>
   <h3>Open Deliveries</h3>
 
   <div id="openDeliverySessions">
     No deliveries currently started.
   </div>
+
+</div>
+  <!-- DL - Delivery Review Screen -->
+<div id="deliveryReviewScreen" style="display:none;">
+
+  <button type="button" onclick="showDeliverySetup()">
+    ← Back to Delivery
+  </button>
+
+  <h2>🚚 DL - Delivery Review</h2>
+
+  <div id="deliveryInvoiceDetails">
+    <p><strong>Invoice Number:</strong> <span id="deliveryInvoiceNumber"></span></p>
+    <p><strong>Invoice Date:</strong> <span id="deliveryInvoiceDate"></span></p>
+  </div>
+
+  <h3>Products to Check</h3>
+
+ <div id="deliveryReviewProducts" style="margin-top:15px;">
+  <p>No products loaded.</p>
+</div>
+
+<div id="deliveryReviewTotals" style="margin-top:20px; display:none;">
+  <h3>Delivery Totals</h3>
+
+  <p>
+    <strong>Total Invoice Quantity:</strong>
+    <span id="deliveryTotalInvoiced">0</span>
+  </p>
+
+  <p>
+    <strong>Total Actual Quantity:</strong>
+    <span id="deliveryTotalActual">0</span>
+  </p>
+
+  <p>
+    <strong>Total Missing Quantity:</strong>
+    <span id="deliveryTotalMissing">0</span>
+  </p>
+</div>
+
+  <button
+  type="button"
+  id="confirmDeliveryInvoiceButton"
+  disabled>
+  ✓ Confirm Invoice Details
+</button>
+  
+  <p id="deliveryReviewMessage"></p>
 
 </div>
   <!-- TR - Trade Show Setup Screen -->
@@ -2624,6 +2678,191 @@ alertBox.textContent = overdue
   message.textContent = "Invoice selected: " + file.name;
   message.style.color = "green";
 }
+  function updateDeliveryTotals() {
+  const inputs = document.querySelectorAll(
+    "#deliveryReviewProducts input[data-line-index]"
+  );
+
+  let totalInvoiced = 0;
+  let totalActual = 0;
+  let totalMissing = 0;
+  let allCounted = inputs.length > 0;
+
+  inputs.forEach(input => {
+    const invoiced = Number(input.dataset.invoicedQty);
+    const value = input.value.trim();
+
+    if (value === "") {
+      allCounted = false;
+    }
+
+    const actual = value === "" ? 0 : Number(value);
+
+   if (
+  !input.validity.valid ||
+  !Number.isSafeInteger(actual) ||
+  actual < 0
+) {
+      allCounted = false;
+      return;
+    }
+
+    totalInvoiced += invoiced;
+    totalActual += actual;
+
+    if (value !== "") {
+      totalMissing += invoiced - actual;
+    }
+  });
+
+  document.getElementById("deliveryTotalInvoiced").textContent = totalInvoiced;
+  document.getElementById("deliveryTotalActual").textContent = totalActual;
+  document.getElementById("deliveryTotalMissing").textContent =
+    allCounted ? totalMissing : "Incomplete";
+
+  document.getElementById("deliveryReviewTotals").style.display = "block";
+    const confirmButton = document.getElementById("confirmDeliveryInvoiceButton");
+
+if (confirmButton) {
+  confirmButton.disabled = !allCounted;
+}
+}
+  function renderDeliveryProducts(products) {
+  const container = document.getElementById("deliveryReviewProducts");
+  container.innerHTML = "";
+if (!Array.isArray(products) || products.length === 0) {
+  container.textContent = "No invoice products available.";
+
+  document.getElementById("deliveryReviewTotals").style.display = "none";
+  document.getElementById("confirmDeliveryInvoiceButton").disabled = true;
+
+  return;
+}
+    
+  const grouped = new Map();
+
+  products.forEach((product, index) => {
+    const sku = String(product.sku || "").trim();
+
+    if (!grouped.has(sku)) {
+      grouped.set(sku, []);
+    }
+
+    grouped.get(sku).push({ ...product, lineIndex: index });
+  });
+
+  grouped.forEach((lines, sku) => {
+    const section = document.createElement("div");
+    section.style.cssText =
+      "border:1px solid #ddd; border-radius:10px; padding:15px; margin-bottom:15px;";
+
+    const heading = document.createElement("h3");
+   heading.textContent =
+  "SKU: " + sku +
+  (lines[0].productName ? " — " + lines[0].productName : "");
+    section.appendChild(heading);
+
+    lines.forEach(line => {
+      const row = document.createElement("div");
+      row.style.cssText =
+        "padding:12px 0; border-top:1px solid #ddd;";
+
+      const lineNumber = document.createElement("p");
+lineNumber.style.fontWeight = "bold";
+lineNumber.textContent = "Invoice Line " + (line.lineIndex + 1);
+
+row.appendChild(lineNumber);
+      const details = document.createElement("p");
+      details.textContent =
+        "Lot: " + (line.lot || "Not specified") +
+        " | Expiry: " + (line.expiry || "Not specified") +
+        " | Invoice Qty: " + line.quantity;
+
+      const label = document.createElement("label");
+      label.textContent = "Actual Qty: ";
+
+      const input = document.createElement("input");
+      input.type = "number";
+      input.min = "0";
+      input.step = "1";
+      input.placeholder = "Enter quantity";
+      input.dataset.lineIndex = line.lineIndex;
+      input.dataset.invoicedQty = line.quantity;
+      input.addEventListener("input", () => {
+  const value = input.value.trim();
+
+  const valid =
+    value === "" ||
+    (/^\d+$/.test(value) && Number.isSafeInteger(Number(value)));
+
+  input.setCustomValidity(
+    valid ? "" : "Enter a whole number of zero or more."
+  );
+
+  input.reportValidity();
+  updateDeliveryTotals();
+        document.getElementById("deliveryReviewMessage").textContent =
+  products.length + " invoice lines loaded. Please check the quantities received.";
+});
+      input.addEventListener("input", () => {
+  const invoiced = Number(line.quantity);
+  const actual = input.value.trim() === ""
+    ? null
+    : Number(input.value);
+
+  let missing = null;
+
+  if (
+    actual !== null &&
+    Number.isSafeInteger(actual) &&
+input.validity.valid &&
+    actual >= 0
+  ) {
+    missing = invoiced - actual;
+  }
+
+  missingText.textContent =
+    missing === null
+      ? "Missing Qty: —"
+      : "Missing Qty: " + missing;
+});
+
+const missingText = document.createElement("p");
+missingText.textContent = "Missing Qty: —";
+
+      row.appendChild(details);
+      const invoiceQty = document.createElement("p");
+invoiceQty.style.fontWeight = "bold";
+invoiceQty.textContent = "Quantity Invoiced: " + line.quantity;
+
+row.appendChild(invoiceQty);
+      label.appendChild(input);
+     row.appendChild(label);
+row.appendChild(missingText);
+section.appendChild(row);
+    });
+
+       container.appendChild(section);
+  });
+
+  updateDeliveryTotals();
+}
+  function showDeliveryReview() {
+    const confirmButton = document.getElementById("confirmDeliveryInvoiceButton");
+
+if (confirmButton) {
+  confirmButton.disabled = true;
+}
+    document.getElementById("deliveryInvoiceNumber").textContent = "";
+document.getElementById("deliveryInvoiceDate").textContent = "";
+document.getElementById("deliveryReviewProducts").innerHTML =
+  "<p>No products loaded.</p>";
+document.getElementById("deliveryReviewTotals").style.display = "none";
+document.getElementById("deliveryReviewMessage").textContent = "";
+  document.getElementById("welcomeScreen").style.display = "none";
+  document.getElementById("deliverySetupScreen").style.display = "none";
+  document.getElementById("deliveryReviewScreen").style.display = "block";
+}
 function showDeliverySetup() {
   document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("stockApp").style.display = "none";
@@ -2646,6 +2885,7 @@ function showTradeShowSetup() {
  async function showWelcomeScreen() {
   document.getElementById("welcomeScreen").style.display = "block";
      document.getElementById("deliverySetupScreen").style.display = "none";
+   document.getElementById("deliveryReviewScreen").style.display = "none";
   updateQuarterlyStockTakeAlert();
   const homeLoading = document.getElementById("homeSessionsLoading");
   const privacyGlobe = document.getElementById("homePrivacyGlobe");
