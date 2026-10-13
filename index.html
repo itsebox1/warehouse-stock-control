@@ -2654,6 +2654,174 @@ alertBox.textContent = overdue
   }
 }
 
+  function parseDeliveryInvoiceProducts(invoiceText) {
+  const rows = findDeliveryInvoiceRows(invoiceText);
+  const products = [];
+  let previousEnd = 0;
+
+  for (const row of rows) {
+    if (!isDeliverySku(row.sku)) {
+  throw new Error(
+    "Invalid SKU found on supplier invoice: " + row.sku
+  );
+}
+    const lineText = getDeliveryInvoiceLineText(
+      invoiceText,
+      row,
+      previousEnd
+    );
+
+    const description = parseDeliveryProductDescription(
+      lineText,
+      row.sku
+    );
+
+    if (!description) {
+      throw new Error(
+        "Could not identify the description for SKU " + row.sku
+      );
+    }
+
+    products.push({
+      sku: row.sku,
+      productName: description,
+      invoicedQty: row.invoicedQty,
+      lot: parseDeliveryLot(lineText),
+      expiry: parseDeliveryProductExpiry(lineText)
+    });
+
+    previousEnd = row.end;
+  }
+
+  if (!products.length) {
+    throw new Error("No invoice product lines were found.");
+  }
+
+  return products;
+}
+  function getDeliveryInvoiceLineText(invoiceText, row, previousEnd = 0) {
+  const textBeforeRow = invoiceText.slice(
+    previousEnd,
+    row.start
+  );
+
+  const escapedSku = row.sku.replace(
+    /[.*+?^${}()|[\]\\]/g,
+    "\\$&"
+  );
+
+  const productStartPattern = new RegExp(
+    "(?:^|\\s)" + escapedSku + "\\s+(?:-\\s*)?",
+    "gi"
+  );
+
+  let match;
+  let lastMatch = null;
+
+  while ((match = productStartPattern.exec(textBeforeRow)) !== null) {
+    lastMatch = match;
+  }
+
+  if (!lastMatch) {
+    throw new Error(
+      "Could not locate the description for SKU " + row.sku
+    );
+  }
+
+  return textBeforeRow.slice(lastMatch.index).trim();
+}
+  function parseDeliveryProductExpiry(text) {
+  const match = String(text).match(
+    /\bExpDate:\s*([A-Za-z]{3}\s+\d{1,2},\s*\d{4})/i
+  );
+
+  return match ? parseDeliveryExpiry(match[1]) : "";
+}
+  function parseDeliveryLot(text) {
+  const match = String(text).match(
+    /\bLot#:\s*([A-Z0-9-]+)/i
+  );
+
+  return match ? match[1] : "";
+}
+  function parseDeliveryProductDescription(text, sku) {
+  const escapedSku = sku.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  const pattern = new RegExp(
+    "(?:^|\\s)" + escapedSku + "\\s*(?:-\\s*)?(.+)$",
+    "i"
+  );
+
+  const match = String(text).match(pattern);
+
+  if (!match) return "";
+
+  return match[1]
+    .replace(/\s+Lot#:.*/i, "")
+    .replace(/\s+ExpDate:.*/i, "")
+    .trim();
+}
+  function findDeliveryInvoiceRows(invoiceText) {
+  const rowPattern =
+    /\b(WATER|POOL\/SPA)\s+(\d{6}(?:-[A-Z0-9]+)*)\s+([\d,]+)\s+([\d,]+\.\d{2})\s+([\d,]+\.\d{2})\b/gi;
+
+  return Array.from(
+    invoiceText.matchAll(rowPattern),
+    match => ({
+      sku: match[2],
+      invoicedQty: parseDeliveryQuantity(match[3]),
+      start: match.index,
+      end: match.index + match[0].length
+    })
+  );
+}
+  function parseDeliveryExpiry(value) {
+  const match = String(value).match(
+    /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},\s*\d{4}/i
+  );
+
+  return match ? match[0] : "";
+}
+  function isDeliverySku(value) {
+  return /^\d{6}(?:-[A-Z0-9]+)*$/i.test(
+    String(value).trim()
+  );
+}
+  function parseDeliveryQuantity(value) {
+  const cleaned = String(value).replace(/,/g, "").trim();
+
+  if (!/^\d+$/.test(cleaned)) {
+    throw new Error("Invalid invoice quantity: " + value);
+  }
+
+  const quantity = Number(cleaned);
+
+  if (!Number.isSafeInteger(quantity)) {
+    throw new Error("Invoice quantity is too large: " + value);
+  }
+
+  return quantity;
+}
+  function parseDeliveryInvoiceHeader(invoiceText) {
+  const numberMatch = invoiceText.match(
+    /Invoice\s*#\s*([A-Z0-9-]+)/i
+  );
+
+  const dateMatch = invoiceText.match(
+    /Invoice\s+Date\s+(\d{1,2}\/\d{1,2}\/\d{4})/i
+  );
+
+  if (!numberMatch || !dateMatch) {
+    throw new Error(
+      "Could not identify the invoice number or date."
+    );
+  }
+
+  return {
+    invoiceNumber: numberMatch[1],
+    invoiceDate: dateMatch[1]
+  };
+}
   async function extractDeliveryPdfText(file) {
   if (!window.pdfjsLib) {
     throw new Error("PDF reader is not available.");
@@ -2714,9 +2882,8 @@ alertBox.textContent = overdue
 
   try {
     const invoiceText = await extractDeliveryPdfText(file);
-    console.log("DL PDF EXTRACTED TEXT START");
-console.log(invoiceText);
-console.log("DL PDF EXTRACTED TEXT END");
+    const invoiceHeader = parseDeliveryInvoiceHeader(invoiceText);
+    const invoiceProducts = parseDeliveryInvoiceProducts(invoiceText);
 
     if (!invoiceText.trim()) {
       throw new Error(
@@ -2724,10 +2891,11 @@ console.log("DL PDF EXTRACTED TEXT END");
       );
     }
 
-    message.textContent =
-      "PDF read successfully. " +
-      invoiceText.length +
-      " characters extracted.";
+   message.textContent =
+  "Invoice " + invoiceHeader.invoiceNumber +
+ " dated " + invoiceHeader.invoiceDate +
+" read successfully. " +
+invoiceProducts.length + " product lines found.";
 
     message.style.color = "green";
 
