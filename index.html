@@ -1624,6 +1624,13 @@ table.appendChild(colgroup);
       String(error.message || error);
   }
 }
+
+document.getElementById("tradeShowCommitQBButton").onclick = function () {
+  window.showWSCMessage(
+    "QuickBooks Submission",
+    "Trade Show submission is not yet enabled."
+  );
+};
 document.getElementById("tradeShowEmailButton").onclick = async function () {
   const reportNumber = this.dataset.reportNumber;
 
