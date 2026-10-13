@@ -347,10 +347,24 @@
   <h2>🚚 DL - Delivery</h2>
 
   <h3>Start New Delivery</h3>
+  <label for="deliveryInvoiceFile">
+  Upload Supplier Invoice:
+</label>
 
-  <button type="button" id="startNewDeliveryButton" disabled>
-    ➕ Start New Delivery
-  </button>
+<input
+  type="file"
+  id="deliveryInvoiceFile"
+  accept=".pdf,image/jpeg,image/png,image/heic,image/heif"
+  style="display:block; margin:15px 0;"
+>
+
+<p id="deliveryInvoiceMessage">
+  Select a PDF or photograph of the supplier invoice.
+</p>
+
+ <button type="button" id="startNewDeliveryButton" onclick="startNewDelivery()">
+  ➕ Start New Delivery
+</button>
 
   <h3>Open Deliveries</h3>
 
@@ -2581,6 +2595,35 @@ alertBox.textContent = overdue
   }
 }
 
+  function startNewDelivery() {
+  const invoiceInput = document.getElementById("deliveryInvoiceFile");
+  const message = document.getElementById("deliveryInvoiceMessage");
+
+  if (!invoiceInput.files || invoiceInput.files.length === 0) {
+    message.textContent = "Please select a supplier invoice first.";
+    message.style.color = "red";
+    return;
+  }
+
+  const file = invoiceInput.files[0];
+
+  const allowedTypes = [
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/heic",
+    "image/heif"
+  ];
+
+  if (!allowedTypes.includes(file.type)) {
+    message.textContent = "Please select a PDF or supported photograph.";
+    message.style.color = "red";
+    return;
+  }
+
+  message.textContent = "Invoice selected: " + file.name;
+  message.style.color = "green";
+}
 function showDeliverySetup() {
   document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("stockApp").style.display = "none";
