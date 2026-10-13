@@ -1627,11 +1627,22 @@ table.appendChild(colgroup);
 }
 
 document.getElementById("tradeShowCommitQBButton").onclick = function () {
+  const reportNumber = this.dataset.reportNumber;
+
+  if (!reportNumber) {
+    window.showWSCMessage(
+      "QuickBooks Submission",
+      "Please open a Trade Show report first."
+    );
+    return;
+  }
+
   window.showWSCMessage(
     "QuickBooks Submission",
-    "Trade Show submission is not yet enabled."
+    "Trade Show " + reportNumber + " is not yet enabled for QuickBooks submission."
   );
 };
+  
 document.getElementById("tradeShowEmailButton").onclick = async function () {
   const reportNumber = this.dataset.reportNumber;
 
