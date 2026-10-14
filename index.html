@@ -3669,6 +3669,76 @@ async function searchDeliveries() {
 document.getElementById("deliverySearchButton")
   .addEventListener("click", searchDeliveries);
 
+async function resumeDelivery(reportNumber) {
+  try {
+    const idToken = await window.getCurrentStaffToken();
+    if (!idToken) {
+      throw new Error("Please sign in first.");
+    }
+
+    const response = await fetch(
+      "https://warehouse-stock-reports.tmerry.workers.dev",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "getDeliverySession",
+          reportNumber,
+          idToken
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Unable to retrieve Delivery. HTTP " + response.status);
+    }
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || "Unable to retrieve Delivery.");
+    }
+
+    if (data.status !== "In Progress") {
+      throw new Error("This Delivery is no longer open.");
+    }
+
+    if (!Array.isArray(data.products) || data.products.length === 0) {
+      throw new Error("No saved products found for this Delivery.");
+    }
+
+    showDeliveryReview();
+
+    currentDeliveryReportNumber = data.reportNumber;
+    deliverySessionRequestAttempted = true;
+
+    deliveryReviewProducts = data.products.map(product => ({
+      sku: product.sku,
+      productName: product.productName,
+      lot: product.lot,
+      expiry: product.expiry,
+      invoicedQty: product.invoicedQty,
+      actualQty: product.actualQty,
+      notOnInvoice: product.notOnInvoice === true
+    }));
+
+    document.getElementById("deliveryInvoiceNumber").textContent =
+      data.invoiceNumber;
+
+    document.getElementById("deliveryInvoiceDate").textContent =
+      data.invoiceDate;
+
+    renderDeliveryProducts(deliveryReviewProducts);
+
+  } catch (error) {
+    console.error("Resume Delivery error:", error);
+    window.showWSCMessage(
+      "Unable to Resume Delivery",
+      error.message
+    );
+  }
+}
+  
 async function loadOpenDeliveries() {
   const container = document.getElementById("openDeliverySessions");
   if (!container) return;
