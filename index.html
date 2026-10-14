@@ -3579,11 +3579,6 @@ function updateDeliveryConfirmationButton() {
 }
   
   function showDeliveryReview() {
-    const confirmButton = document.getElementById("confirmDeliveryInvoiceButton");
-
-if (confirmButton) {
-  confirmButton.disabled = true;
-}
     document.getElementById("deliveryInvoiceNumber").textContent = "";
 document.getElementById("deliveryInvoiceDate").textContent = "";
 document.getElementById("deliveryReviewProducts").innerHTML =
