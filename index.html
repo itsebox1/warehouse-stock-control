@@ -1157,6 +1157,15 @@ async function handleDeliveryConfirmation() {
     return;
   }
 
+  const confirmed = await window.showWSCConfirm(
+  "Finish Delivery",
+  "Are you sure all invoice details and received quantities are correct? " +
+  "Once finished, this Delivery can no longer be amended."
+);
+
+if (!confirmed) {
+  return;
+}
 const savedSuccessfully = await saveDeliveryForReview();
 
 if (savedSuccessfully !== true) {
