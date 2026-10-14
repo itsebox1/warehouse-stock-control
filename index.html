@@ -1306,11 +1306,11 @@ async function saveDeliveryForReview() {
    } catch (error) {
     console.error("Delivery save error:", error);
     alert(error.message || "Unable to save Delivery.");
-  } finally {
     
-    button.disabled = false;
-    button.textContent = "✅ Confirm to Review";
-  }
+ } finally {
+  button.disabled = false;
+  updateDeliveryConfirmationButton();
+}
 }
   
 function addDeliveryExtraProduct() {
