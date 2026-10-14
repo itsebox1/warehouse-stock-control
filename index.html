@@ -3791,8 +3791,18 @@ async function loadOpenDeliveries() {
         "Invoice: " + delivery.invoiceNumber +
         " | Date: " + delivery.invoiceDate;
 
-      item.append(heading, details);
-      container.appendChild(item);
+     const resumeButton = document.createElement("button");
+resumeButton.type = "button";
+resumeButton.textContent = "▶ Resume Delivery";
+resumeButton.style.cssText =
+  "padding:10px 16px; margin-top:8px; cursor:pointer;";
+
+resumeButton.onclick = () => {
+  resumeDelivery(delivery.reportNumber);
+};
+
+item.append(heading, details, resumeButton);
+container.appendChild(item);
     });
 
   } catch (error) {
