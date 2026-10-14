@@ -3421,8 +3421,10 @@ if (!Array.isArray(products) || products.length === 0) {
   container.textContent = "No invoice products available.";
 
   document.getElementById("deliveryReviewTotals").style.display = "none";
-  document.getElementById("confirmDeliveryInvoiceButton").disabled = true;
-
+const confirmButton = document.getElementById("deliverySaveReviewButton");
+if (confirmButton) {
+  confirmButton.disabled = true;
+}
   return;
 }
     
