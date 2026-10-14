@@ -1189,15 +1189,6 @@ async function saveDeliveryForReview() {
       throw new Error("Please sign in before saving the Delivery.");
     }
 
-    if (currentDeliveryReportNumber) {
-      alert(
-        "This Delivery already has reference " +
-        currentDeliveryReportNumber +
-        ". We will save changes against this reference."
-      );
-      return;
-    }
-
     // Mark this before sending the session creation request.
     // The flag will be activated when the request is sent.
     const markDeliverySessionAttempt = () => {
