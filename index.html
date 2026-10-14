@@ -1278,7 +1278,33 @@ async function saveDeliveryForReview() {
       return result;
     };
 
-    alert("Delivery response checks prepared.");
+    alert("Delivery response chec    if (!currentDeliveryReportNumber) {
+      const sessionResponse = await fetch(
+        deliveryUrl,
+        deliveryFetchOptions
+      );
+
+      const sessionResult = await readDeliveryResponse(sessionResponse);
+      handleDeliverySessionResponse(sessionResult);
+    }
+
+    const productsResponse = await fetch(deliveryUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(deliveryProductsRequest)
+    });
+
+    const productsResult = await readDeliveryResponse(productsResponse);
+
+    sessionStorage.removeItem("wscDeliveryRequestId");
+
+    alert(
+      "Delivery " + currentDeliveryReportNumber +
+      " saved successfully. " +
+      productsResult.productsSaved + " product lines saved."
+    );ks prepared.");
     
    } catch (error) {
     console.error("Delivery save error:", error);
