@@ -2693,10 +2693,30 @@ alertBox.textContent = overdue
     previousEnd = row.end;
   }
 
+    for (const product of products) {
+  if (!product.productName.trim()) {
+    throw new Error(
+      "Missing product description for SKU " + product.sku
+    );
+  }
+}
   if (!products.length) {
     throw new Error("No invoice product lines were found.");
   }
+const missingLot = products.filter(
+  product => !product.lot
+).length;
 
+const missingExpiry = products.filter(
+  product => !product.expiry
+).length;
+
+console.info(
+  "Delivery extraction check:",
+  products.length + " lines,",
+  missingLot + " without lot,",
+  missingExpiry + " without expiry"
+);
   return products;
 }
   function getDeliveryInvoiceLineText(invoiceText, row, previousEnd = 0) {
