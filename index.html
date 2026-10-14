@@ -1198,14 +1198,6 @@ async function saveDeliveryForReview() {
       return;
     }
 
-    if (deliverySessionRequestAttempted) {
-      alert(
-        "A Delivery session request has already been attempted. " +
-        "Please check whether a DL number was created before trying again."
-      );
-      return;
-    }
-
     // Mark this before sending the session creation request.
     // The flag will be activated when the request is sent.
     const markDeliverySessionAttempt = () => {
