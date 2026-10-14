@@ -1303,11 +1303,12 @@ async function saveDeliveryForReview() {
 
     sessionStorage.removeItem("wscDeliveryRequestId");
 
-    alert(
-      "Delivery " + currentDeliveryReportNumber +
-      " saved successfully. " +
-      productsResult.productsSaved + " product lines saved."
-    );
+  window.showWSCMessage(
+  "Delivery Saved",
+  "Delivery " + currentDeliveryReportNumber +
+  " saved successfully. " +
+  productsResult.productsSaved + " product lines saved."
+);
     
    } catch (error) {
     console.error("Delivery save error:", error);
