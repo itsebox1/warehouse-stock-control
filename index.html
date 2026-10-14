@@ -390,7 +390,17 @@
     ← Back to Delivery
   </button>
 
+ <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
   <h2>🚚 DL - Delivery Review</h2>
+
+  <button
+    type="button"
+    id="deliverySaveReviewButton"
+    onclick="saveDeliveryForReview()"
+    style="width:auto; padding:10px 18px;">
+    ✅ Confirm to Review
+  </button>
+</div>
 
   <div id="deliveryInvoiceDetails">
     <p><strong>Invoice Number:</strong> <span id="deliveryInvoiceNumber"></span></p>
@@ -398,6 +408,21 @@
   </div>
 
   <h3>Products to Check</h3>
+  <div style="display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
+  <input
+    type="text"
+    id="deliveryInvoiceSkuSearch"
+    placeholder="Search invoice SKU"
+    style="flex:1; min-width:180px;">
+
+  <button
+    type="button"
+    id="deliveryInvoiceSkuSearchButton"
+    style="width:auto; padding:10px 18px;"
+    onclick="findDeliveryInvoiceSku()">
+    🔍 Find SKU
+  </button>
+</div>
 
   <div style="margin:15px 0;">
   <label for="deliveryExtraSku">
@@ -463,6 +488,14 @@ onclick="addDeliveryExtraProduct()">
     <strong>Total Missing Quantity:</strong>
     <span id="deliveryTotalMissing">0</span>
   </p>
+</div>
+
+  <div style="display:flex; justify-content:flex-end; margin:12px 0;">
+  <button type="button"
+          style="width:auto; padding:10px 22px;"
+          onclick="window.scrollTo({top:0, behavior:'smooth'})">
+    ⬆ Top
+  </button>
 </div>
 
   <button
@@ -1043,6 +1076,72 @@ function resetProductLookup() {
     .forEach(script => script.remove());
 }
 
+function findDeliveryInvoiceSku() {
+  const searchInput = document.getElementById("deliveryInvoiceSkuSearch");
+  const sku = searchInput.value.trim().toUpperCase();
+
+  if (!sku) {
+    searchInput.focus();
+    return;
+  }
+
+  const inputs = document.querySelectorAll(
+    '#deliveryReviewScreen input[data-line-index]'
+  );
+
+  const match = [...inputs].find(input => {
+    const index = Number(input.dataset.lineIndex);
+    const product = deliveryReviewProducts[index];
+
+    return product &&
+      !product.notOnInvoice &&
+      String(product.sku).trim().toUpperCase() === sku;
+  });
+
+  if (!match) {
+    alert("SKU " + sku + " was not found on this invoice.");
+    return;
+  }
+
+  match.scrollIntoView({
+    behavior: "smooth",
+    block: "center"
+  });
+
+  match.focus({ preventScroll: true });
+}
+
+async function saveDeliveryForReview() {
+  const button = document.getElementById("deliverySaveReviewButton");
+
+  if (!button || button.disabled) return;
+
+  button.disabled = true;
+  button.textContent = "⏳ Saving Delivery...";
+
+  try {
+    const invoiceNumber = document
+      .getElementById("deliveryInvoiceNumber")
+      .textContent.trim();
+
+    const invoiceDate = document
+      .getElementById("deliveryInvoiceDate")
+      .textContent.trim();
+
+    if (!invoiceNumber || !invoiceDate ||
+        invoiceNumber === "—" || invoiceDate === "—") {
+      alert("Invoice number and date are required.");
+      return;
+    }
+
+    alert("Invoice details ready: " + invoiceNumber);
+    
+  } finally {
+    button.disabled = false;
+    button.textContent = "✅ Confirm to Review";
+  }
+}
+  
 function addDeliveryExtraProduct() {
   const message = document.getElementById("deliverySkuSearchMessage");
   const qtyInput = document.getElementById("deliveryExtraQty");
