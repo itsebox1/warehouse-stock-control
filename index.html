@@ -1340,10 +1340,12 @@ async function saveDeliveryForReview() {
   " saved successfully. " +
   productsResult.productsSaved + " product lines saved."
 );
-    
+
+    return true;
    } catch (error) {
     console.error("Delivery save error:", error);
     alert(error.message || "Unable to save Delivery.");
+    return false;
     
  } finally {
   button.disabled = false;
