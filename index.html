@@ -1157,11 +1157,14 @@ async function handleDeliveryConfirmation() {
     return;
   }
 
-  window.showWSCMessage(
-    "Confirm Invoice Details",
-    "Delivery " + currentDeliveryReportNumber +
-    " is ready for final confirmation. The finishing and PDF process will be connected next."
-  );
+await saveDeliveryForReview();
+
+window.showWSCMessage(
+  "Delivery Quantities Saved",
+  "The latest quantities for Delivery " +
+  currentDeliveryReportNumber +
+  " have been saved. Final confirmation will be connected next."
+);
 }
   
 async function saveDeliveryForReview() {
