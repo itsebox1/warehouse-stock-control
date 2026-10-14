@@ -3668,6 +3668,68 @@ async function searchDeliveries() {
 
 document.getElementById("deliverySearchButton")
   .addEventListener("click", searchDeliveries);
+
+async function loadOpenDeliveries() {
+  const container = document.getElementById("openDeliverySessions");
+  if (!container) return;
+
+  container.textContent = "Loading Open Deliveries...";
+
+  try {
+    const idToken = await window.getCurrentStaffToken();
+    if (!idToken) throw new Error("Please sign in first.");
+
+    const response = await fetch(
+      "https://warehouse-stock-reports.tmerry.workers.dev",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "listOpenDeliverySessions",
+          idToken
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Unable to load Deliveries. HTTP " + response.status);
+    }
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || "Unable to load Deliveries.");
+    }
+
+    container.replaceChildren();
+
+    if (!data.deliveries || data.deliveries.length === 0) {
+      container.textContent = "No open Deliveries.";
+      return;
+    }
+
+    data.deliveries.forEach(delivery => {
+      const item = document.createElement("div");
+      item.style.cssText =
+        "padding:12px;margin:8px 0;border:1px solid #ccc;border-radius:8px;";
+
+      const heading = document.createElement("strong");
+      heading.textContent = delivery.reportNumber;
+
+      const details = document.createElement("p");
+      details.textContent =
+        "Invoice: " + delivery.invoiceNumber +
+        " | Date: " + delivery.invoiceDate;
+
+      item.append(heading, details);
+      container.appendChild(item);
+    });
+
+  } catch (error) {
+    console.error("Open Deliveries error:", error);
+    container.textContent = error.message;
+  }
+}
   
 function showDeliverySetup() {
   document.getElementById("deliveryReviewScreen").style.display = "none";
