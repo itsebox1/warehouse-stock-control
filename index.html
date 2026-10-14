@@ -1128,6 +1128,41 @@ let currentDeliveryReportNumber = null;
 let deliverySessionRequestAttempted = false;
 let currentDeliveryRequestId =
   sessionStorage.getItem("wscDeliveryRequestId") || null;
+
+async function handleDeliveryConfirmation() {
+  if (!currentDeliveryReportNumber) {
+    await saveDeliveryForReview();
+    return;
+  }
+
+  const inputs = document.querySelectorAll(
+    "#deliveryReviewProducts input[data-line-index]"
+  );
+
+  const allCounted = inputs.length > 0 &&
+    Array.from(inputs).every(input => {
+      const value = input.value.trim();
+
+      return value !== "" &&
+        input.validity.valid &&
+        Number.isSafeInteger(Number(value)) &&
+        Number(value) >= 0;
+    });
+
+  if (!allCounted) {
+    window.showWSCMessage(
+      "Delivery Incomplete",
+      "Please enter a valid received quantity for every product."
+    );
+    return;
+  }
+
+  window.showWSCMessage(
+    "Confirm Invoice Details",
+    "Delivery " + currentDeliveryReportNumber +
+    " is ready for final confirmation. The finishing and PDF process will be connected next."
+  );
+}
   
 async function saveDeliveryForReview() {
   const button = document.getElementById("deliverySaveReviewButton");
