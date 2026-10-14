@@ -3857,11 +3857,14 @@ if (privacyGlobe) {
 
    try {
   await new Promise(resolve => setTimeout(resolve, 1000));
+     
  await Promise.all([
   loadStockTakeList(),
   loadStockCountList(),
-  loadTradeShowList()
+  loadTradeShowList(),
+  loadOpenDeliveries()
 ]);
+     
 } finally {
       
     if (homeLoading) {
