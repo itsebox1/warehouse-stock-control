@@ -373,7 +373,29 @@
   ➕ Start New Delivery
 </button>
 
+<h3>Find Delivery</h3>
 
+<label for="deliverySearchType">Search by:</label>
+<select id="deliverySearchType" style="width:100%; padding:12px; margin:8px 0;">
+  <option value="number">DL Number</option>
+  <option value="invoice">Invoice Number</option>
+  <option value="date">Invoice Date</option>
+</select>
+
+<label for="deliverySearchValue">Search:</label>
+<input
+  type="text"
+  id="deliverySearchValue"
+  placeholder="Enter DL number"
+  style="width:100%; padding:12px; box-sizing:border-box; margin:8px 0;"
+>
+
+<button type="button" id="deliverySearchButton">
+  🔍 Find Delivery
+</button>
+
+<div id="deliverySearchResults" style="margin-top:15px;"></div>
+  
   <h3>Open Deliveries</h3>
 
   <div id="openDeliverySessions">
