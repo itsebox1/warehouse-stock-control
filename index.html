@@ -3374,9 +3374,9 @@ message.style.color = "black";
     totalInvoiced += invoiced;
     totalActual += actual;
 
-    if (value !== "") {
-      totalMissing += invoiced - actual;
-    }
+   if (value !== "" && invoiced > 0) {
+  totalMissing += Math.max(0, invoiced - actual);
+}
   });
 
   document.getElementById("deliveryTotalInvoiced").textContent = totalInvoiced;
