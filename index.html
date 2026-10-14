@@ -1157,7 +1157,14 @@ async function handleDeliveryConfirmation() {
     return;
   }
 
-await saveDeliveryForReview();
+const savedSuccessfully = await saveDeliveryForReview();
+
+if (savedSuccessfully !== true) {
+  return;
+}
+
+window.showWSCMessage(
+  "Delivery Quantities Saved",
 
 window.showWSCMessage(
   "Delivery Quantities Saved",
