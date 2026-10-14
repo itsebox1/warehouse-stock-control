@@ -1163,12 +1163,54 @@ if (savedSuccessfully !== true) {
   return;
 }
 
-window.showWSCMessage(
-  "Delivery Quantities Saved",
-  "The latest quantities for Delivery " +
-  currentDeliveryReportNumber +
-  " have been saved. Final confirmation will be connected next."
-);
+const idToken = await window.getCurrentStaffToken();
+
+if (!idToken) {
+  window.showWSCMessage(
+    "Sign In Required",
+    "Please sign in before finishing the Delivery."
+  );
+  return;
+}
+
+try {
+  const response = await fetch(
+    "https://warehouse-stock-reports.tmerry.workers.dev",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action: "finishDeliverySession",
+        reportNumber: currentDeliveryReportNumber,
+        idToken: idToken
+      })
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error("Finish Delivery request failed.");
+  }
+
+  const result = await response.json();
+
+  if (!result.success) {
+    throw new Error(result.error || "Unable to finish Delivery.");
+  }
+
+  window.showWSCMessage(
+    "Delivery Finished",
+    "Delivery " + currentDeliveryReportNumber +
+    " has been finished successfully."
+  );
+
+} catch (error) {
+  window.showWSCMessage(
+    "Unable to Finish Delivery",
+    error.message || "Please try again."
+  );
+}
 }
   
 async function saveDeliveryForReview() {
