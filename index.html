@@ -3087,7 +3087,9 @@ if (!Array.isArray(products) || products.length === 0) {
   lineIndex: index
 });
 
-  grouped.forEach((lines, sku) => {
+});
+
+grouped.forEach((lines, sku) => {
     const section = document.createElement("div");
     section.style.cssText =
       "border:1px solid #ddd; border-radius:10px; padding:15px; margin-bottom:15px;";
