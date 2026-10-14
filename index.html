@@ -1111,6 +1111,11 @@ function findDeliveryInvoiceSku() {
   match.focus({ preventScroll: true });
 }
 
+let currentDeliveryReportNumber = null;
+let deliverySessionRequestAttempted = false;
+let clet currentDeliveryRequestId =
+  sessionStorage.getItem("wscDeliveryRequestId") || null;urrentDeliveryRequestId = null;
+  
 async function saveDeliveryForReview() {
   const button = document.getElementById("deliverySaveReviewButton");
 
@@ -1134,9 +1139,152 @@ async function saveDeliveryForReview() {
       return;
     }
 
-    alert("Invoice details ready: " + invoiceNumber);
+        document.querySelectorAll(
+      "#deliveryReviewScreen input[data-line-index]"
+    ).forEach(input => {
+      const index = Number(input.dataset.lineIndex);
+      const product = deliveryReviewProducts[index];
+
+      if (product) {
+        product.actualQty = input.value.trim() === ""
+          ? null
+          : Number(input.value);
+      }
+    });
+        const products = deliveryReviewProducts.map(product => ({
+      sku: product.sku,
+      productName: product.productName,
+      lot: product.lot,
+      expiry: product.expiry,
+      invoicedQty: product.invoicedQty,
+      actualQty: product.actualQty,
+      notOnInvoice: product.notOnInvoice === true
+    }));
+
+    if (products.length === 0) {
+      alert("There are no products to save.");
+      return;
+    }
+
+       const invalidProduct = products.find(product => {
+      const invoicedQty = Number(product.invoicedQty);
+      const actualQty = product.actualQty;
+
+      return !String(product.sku || "").trim() ||
+        !Number.isSafeInteger(invoicedQty) ||
+        invoicedQty < 0 ||
+        (actualQty !== null && actualQty !== "" &&
+          (!Number.isSafeInteger(Number(actualQty)) ||
+            Number(actualQty) < 0));
+    });
+
+    if (invalidProduct) {
+      alert("Please check the quantities for SKU " + invalidProduct.sku);
+      return;
+    }
+
+       const idToken = await window.getCurrentStaffToken();
+
+    if (!idToken) {
+      throw new Error("Please sign in before saving the Delivery.");
+    }
+
+    if (currentDeliveryReportNumber) {
+      alert(
+        "This Delivery already has reference " +
+        currentDeliveryReportNumber +
+        ". We will save changes against this reference."
+      );
+      return;
+    }
+
+    if (deliverySessionRequestAttempted) {
+      alert(
+        "A Delivery session request has already been attempted. " +
+        "Please check whether a DL number was created before trying again."
+      );
+      return;
+    }
+
+    // Mark this before sending the session creation request.
+    // The flag will be activated when the request is sent.
+    const markDeliverySessionAttempt = () => {
+      deliverySessionRequestAttempted = true;
+    };
+
+    if (!currentDeliveryRequestId) {
+      currentDeliveryRequestId = crypto.randomUUID();
+    }
+
+    sessionStorage.setItem(
+      "wscDeliveryRequestId",
+      currentDeliveryRequestId
+    );
     
+      const deliveryRequest = {
+      action: "startDeliverySession",
+      requestId: currentDeliveryRequestId,
+      invoiceNumber: invoiceNumber,
+      invoiceDate: invoiceDate,
+      idToken: idToken
+    };
+
+      const deliveryUrl =
+      "https://warehouse-stock-reports.tmerry.workers.dev";
+
+    const deliveryFetchOptions = {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(deliveryRequest)
+    };
+
+    const deliveryProductsRequest = {
+      action: "saveDeliveryProducts",
+      reportNumber: currentDeliveryReportNumber,
+      products: products,
+      idToken: idToken
+    };
+    
+       const handleDeliverySessionResponse = (result) => {
+      if (!result.success || !/^DL-\d{6}$/.test(result.reportNumber || "")) {
+        throw new Error(
+          result.error || "Unable to create Delivery reference."
+        );
+      }
+
+      currentDeliveryReportNumber = result.reportNumber;
+      deliveryProductsRequest.reportNumber = result.reportNumber;
+
+      return result.reportNumber;
+    };
+
+        const readDeliveryResponse = async (response) => {
+      if (!response.ok) {
+        throw new Error(
+          "Delivery request failed. HTTP " + response.status
+        );
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(
+          result.error || "Delivery could not be saved."
+        );
+      }
+
+      return result;
+    };
+
+    alert("Delivery response checks prepared.");
+    
+   } catch (error) {
+    console.error("Delivery save error:", error);
+    alert(error.message || "Unable to save Delivery.");
   } finally {
+    
     button.disabled = false;
     button.textContent = "✅ Confirm to Review";
   }
