@@ -1213,6 +1213,7 @@ try {
     "Delivery " + currentDeliveryReportNumber +
     " has been finished successfully."
   );
+  await showWelcomeScreen();
 
 } catch (error) {
   window.showWSCMessage(
