@@ -3748,8 +3748,18 @@ async function searchDeliveries() {
         " | Date: " + delivery.invoiceDate +
         " | Status: " + delivery.status;
 
-      item.append(heading, details);
-      results.appendChild(item);
+     const viewPdfButton = document.createElement("button");
+viewPdfButton.type = "button";
+viewPdfButton.textContent = "📄 View PDF";
+viewPdfButton.style.cssText =
+  "padding:10px 16px; margin-top:8px; cursor:pointer;";
+
+viewPdfButton.onclick = () => {
+  window.openDeliveryPdf(delivery.reportNumber);
+};
+
+item.append(heading, details, viewPdfButton);
+results.appendChild(item);
     });
 
   } catch (error) {
