@@ -3399,9 +3399,9 @@ message.style.color = "black";
     allCounted ? totalMissing : "Incomplete";
 
   document.getElementById("deliveryReviewTotals").style.display = "block";
-    const confirmButton = document.getElementById("confirmDeliveryInvoiceButton");
+    const confirmButton = document.getElementById("deliverySaveReviewButton");
 
-if (confirmButton) {
+if (confirmButton && currentDeliveryReportNumber) {
   confirmButton.disabled = !allCounted;
 }
 }
