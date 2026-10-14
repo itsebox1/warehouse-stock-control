@@ -3564,6 +3564,17 @@ section.appendChild(row);
   document.getElementById("deliveryReviewMessage").textContent =
     products.length + " invoice lines loaded. Please check the quantities received.";
 }
+
+function updateDeliveryConfirmationButton() {
+  const button = document.getElementById("deliverySaveReviewButton");
+  if (!button) return;
+
+  if (currentDeliveryReportNumber) {
+    button.textContent = "✓ Confirm Invoice Details";
+  } else {
+    button.textContent = "✅ Confirm to Review";
+  }
+}
   
   function showDeliveryReview() {
     const confirmButton = document.getElementById("confirmDeliveryInvoiceButton");
