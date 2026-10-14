@@ -399,6 +399,27 @@
 
   <h3>Products to Check</h3>
 
+  <div style="margin:15px 0;">
+  <label for="deliveryExtraSku">
+    <strong>Add Product Not on Invoice:</strong>
+  </label>
+
+  <input
+    type="text"
+    id="deliveryExtraSku"
+    placeholder="Enter or scan SKU"
+    autocomplete="off"
+    style="width:100%; max-width:350px; margin-top:8px;"
+  >
+
+ <button
+  type="button"
+  id="deliveryFindExtraSkuButton"
+  onclick="findDeliveryExtraSku()">
+  🔍 Find Product
+</button>
+    
+</div>
  <div id="deliveryReviewProducts" style="margin-top:15px;">
   <p>No products loaded.</p>
 </div>
@@ -999,7 +1020,72 @@ function resetProductLookup() {
     .querySelectorAll('script[data-wsc-lookup="true"]')
     .forEach(script => script.remove());
 }
+
+async function findDeliveryExtraSku() {
+  const input = document.getElementById("deliveryExtraSku");
+  const message = document.getElementById("deliveryReviewMessage");
+  const sku = input.value.trim().toUpperCase();
+
+  if (!sku) {
+    message.textContent = "Please enter a SKU.";
+    return;
+  }
+
+  message.textContent = "Looking up SKU " + sku + "...";
+
+  try {
+    const product = await lookupDeliveryProduct(sku);
+
+    if (!product || !product.sku) {
+      message.textContent = "Product not found: " + sku;
+      return;
+    }
+
+    message.textContent =
+      "Product found: " + product.sku +
+      " — " + product.name;
+
+  } catch (error) {
+    message.textContent = "Lookup failed: " + error.message;
+  }
+}
   
+  function lookupDeliveryProduct(sku) {
+  return new Promise((resolve, reject) => {
+    const callbackName = "deliveryProductCallback";
+    const script = document.createElement("script");
+
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error("Product lookup timed out."));
+    }, 30000);
+
+    function cleanup() {
+      clearTimeout(timeout);
+      delete window[callbackName];
+      script.remove();
+    }
+
+    window[callbackName] = function(product) {
+      cleanup();
+      resolve(product);
+    };
+
+    script.onerror = function() {
+      cleanup();
+      reject(new Error("Could not load product details."));
+    };
+
+    script.src =
+      workerUrl +
+      "?page=api&sku=" +
+      encodeURIComponent(sku) +
+      "&callback=" +
+      callbackName;
+
+    document.body.appendChild(script);
+  });
+}
 async function lookupProduct(sku) {
   const result = document.getElementById("result");
   const details = document.getElementById("productDetails");
@@ -2995,8 +3081,11 @@ if (!Array.isArray(products) || products.length === 0) {
       grouped.set(sku, []);
     }
 
-    grouped.get(sku).push({ ...product, lineIndex: index });
-  });
+    grouped.get(sku).push({
+  ...product,
+  quantity: product.invoicedQty,
+  lineIndex: index
+});
 
   grouped.forEach((lines, sku) => {
     const section = document.createElement("div");
@@ -3021,9 +3110,8 @@ lineNumber.textContent = "Invoice Line " + (line.lineIndex + 1);
 row.appendChild(lineNumber);
       const details = document.createElement("p");
       details.textContent =
-        "Lot: " + (line.lot || "Not specified") +
-        " | Expiry: " + (line.expiry || "Not specified") +
-        " | Invoice Qty: " + line.quantity;
+  "Lot: " + (line.lot || "Not specified") +
+  " | Expiry: " + (line.expiry || "Not specified");
 
       const label = document.createElement("label");
       label.textContent = "Actual Qty: ";
