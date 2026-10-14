@@ -3587,6 +3587,87 @@ document.getElementById("deliveryReviewMessage").textContent = "";
   document.getElementById("deliverySetupScreen").style.display = "none";
   document.getElementById("deliveryReviewScreen").style.display = "block";
 }
+
+async function searchDeliveries() {
+  const button = document.getElementById("deliverySearchButton");
+  const results = document.getElementById("deliverySearchResults");
+  const searchType = document.getElementById("deliverySearchType").value;
+  const searchValue = document.getElementById("deliverySearchValue").value.trim();
+
+  if (!searchValue) {
+    results.textContent = "Please enter a search value.";
+    return;
+  }
+
+  button.disabled = true;
+  results.textContent = "Searching Deliveries...";
+
+  try {
+    const idToken = await window.getCurrentStaffToken();
+    if (!idToken) throw new Error("Please sign in first.");
+
+    const response = await fetch(
+      "https://warehouse-stock-reports.tmerry.workers.dev",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "searchDeliverySessions",
+          searchType,
+          searchValue,
+          idToken
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Search failed. HTTP " + response.status);
+    }
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.error || "Delivery search failed.");
+    }
+
+    results.replaceChildren();
+
+    if (!data.deliveries || data.deliveries.length === 0) {
+      results.textContent = "No matching Deliveries found.";
+      return;
+    }
+
+    data.deliveries.forEach(delivery => {
+      const item = document.createElement("div");
+      item.style.padding = "12px";
+      item.style.marginBottom = "8px";
+      item.style.border = "1px solid #ccc";
+      item.style.borderRadius = "8px";
+
+      const heading = document.createElement("strong");
+      heading.textContent = delivery.reportNumber;
+
+      const details = document.createElement("p");
+      details.textContent =
+        "Invoice: " + delivery.invoiceNumber +
+        " | Date: " + delivery.invoiceDate +
+        " | Status: " + delivery.status;
+
+      item.append(heading, details);
+      results.appendChild(item);
+    });
+
+  } catch (error) {
+    console.error("Delivery search error:", error);
+    results.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+document.getElementById("deliverySearchButton")
+  .addEventListener("click", searchDeliveries);
+  
 function showDeliverySetup() {
   document.getElementById("deliveryReviewScreen").style.display = "none";
   document.getElementById("welcomeScreen").style.display = "none";
