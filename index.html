@@ -3733,6 +3733,7 @@ async function resumeDelivery(reportNumber) {
       data.invoiceDate;
 
     renderDeliveryProducts(deliveryReviewProducts);
+    updateDeliveryConfirmationButton();
 
   } catch (error) {
     console.error("Resume Delivery error:", error);
