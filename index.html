@@ -1380,12 +1380,9 @@ async function saveDeliveryForReview() {
 
     sessionStorage.removeItem("wscDeliveryRequestId");
 
-  window.showWSCMessage(
-  "Delivery Saved",
-  "Delivery " + currentDeliveryReportNumber +
-  " saved successfully. " +
-  productsResult.productsSaved + " product lines saved."
-);
+  if (!currentDeliveryReportNumber) {
+  throw new Error("Delivery reference was not created.");
+}
 
     return true;
    } catch (error) {
