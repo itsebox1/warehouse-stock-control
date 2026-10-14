@@ -1261,7 +1261,7 @@ async function saveDeliveryForReview() {
       return result;
     };
 
-    alert("Delivery response chec    if (!currentDeliveryReportNumber) {
+    if (!currentDeliveryReportNumber) {
       const sessionResponse = await fetch(
         deliveryUrl,
         deliveryFetchOptions
@@ -1287,7 +1287,7 @@ async function saveDeliveryForReview() {
       "Delivery " + currentDeliveryReportNumber +
       " saved successfully. " +
       productsResult.productsSaved + " product lines saved."
-    );ks prepared.");
+    );
     
    } catch (error) {
     console.error("Delivery save error:", error);
