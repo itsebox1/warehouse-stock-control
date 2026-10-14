@@ -418,6 +418,28 @@
   onclick="findDeliveryExtraSku()">
   🔍 Find Product
 </button>
+
+<p id="deliverySkuSearchMessage"></p>
+    <div id="deliveryExtraProductEntry" style="display:none; margin-top:12px;">
+  <label for="deliveryExtraQty">
+    <strong>Quantity Received:</strong>
+  </label>
+
+  <input
+    type="number"
+    id="deliveryExtraQty"
+    min="1"
+    step="1"
+    placeholder="Enter quantity"
+  >
+
+  <button
+    type="button"
+   id="deliveryAddExtraProductButton"
+onclick="addDeliveryExtraProduct()">
+    ➕ Add to Delivery
+  </button>
+</div>
     
 </div>
  <div id="deliveryReviewProducts" style="margin-top:15px;">
@@ -1021,6 +1043,51 @@ function resetProductLookup() {
     .forEach(script => script.remove());
 }
 
+function addDeliveryExtraProduct() {
+  const message = document.getElementById("deliverySkuSearchMessage");
+  const qtyInput = document.getElementById("deliveryExtraQty");
+
+  if (!deliveryExtraFoundProduct) {
+    message.textContent = "Please find a product first.";
+    return;
+  }
+
+  const quantity = qtyInput.value.trim();
+
+  if (
+    !/^[0-9]+$/.test(quantity) ||
+    !Number.isSafeInteger(Number(quantity)) ||
+    Number(quantity) <= 0
+  ) {
+    message.textContent =
+      "Please enter a valid quantity received greater than zero.";
+    return;
+  }
+
+ deliveryReviewProducts.push({
+  sku: deliveryExtraFoundProduct.sku,
+  productName: deliveryExtraFoundProduct.name,
+  invoicedQty: 0,
+  actualQty: Number(quantity),
+  lot: "",
+  expiry: "",
+  notOnInvoice: true
+});
+
+message.textContent =
+  "Added " + quantity + " of " +
+  deliveryExtraFoundProduct.sku + " to the delivery.";
+  renderDeliveryProducts(deliveryReviewProducts);
+  document.getElementById("deliveryExtraSku").value = "";
+document.getElementById("deliveryExtraQty").value = "";
+document.getElementById("deliveryExtraProductEntry").style.display = "none";
+
+deliveryExtraFoundProduct = null;
+}
+
+let deliveryReviewProducts = [];
+  
+  let deliveryExtraFoundProduct = null;
 async function findDeliveryExtraSku() {
   const input = document.getElementById("deliveryExtraSku");
   const message = document.getElementById("deliveryReviewMessage");
@@ -1041,9 +1108,11 @@ async function findDeliveryExtraSku() {
       return;
     }
 
+    deliveryExtraFoundProduct = product;
     message.textContent =
       "Product found: " + product.sku +
       " — " + product.name;
+    document.getElementById("deliveryExtraProductEntry").style.display = "block";
 
   } catch (error) {
     message.textContent = "Lookup failed: " + error.message;
@@ -2977,13 +3046,19 @@ alertBox.textContent = overdue
     const invoiceText = await extractDeliveryPdfText(file);
     const invoiceHeader = parseDeliveryInvoiceHeader(invoiceText);
     const invoiceProducts = parseDeliveryInvoiceProducts(invoiceText);
+    deliveryReviewProducts = invoiceProducts.map(product => ({
+  ...product,
+  actualQty: null,
+  notOnInvoice: false
+}));
+    
     showDeliveryReview();
     document.getElementById("deliveryInvoiceNumber").textContent =
   invoiceHeader.invoiceNumber;
 
 document.getElementById("deliveryInvoiceDate").textContent =
   invoiceHeader.invoiceDate;
-    renderDeliveryProducts(invoiceProducts);
+   renderDeliveryProducts(deliveryReviewProducts);
 
     if (!invoiceText.trim()) {
       throw new Error(
@@ -3062,6 +3137,15 @@ if (confirmButton) {
 }
   function renderDeliveryProducts(products) {
   const container = document.getElementById("deliveryReviewProducts");
+    container.querySelectorAll("input[data-line-index]").forEach(input => {
+  const index = Number(input.dataset.lineIndex);
+  const product = deliveryReviewProducts[index];
+
+  if (product) {
+    product.actualQty =
+      input.value.trim() === "" ? null : Number(input.value);
+  }
+});
   container.innerHTML = "";
 if (!Array.isArray(products) || products.length === 0) {
   container.textContent = "No invoice products available.";
@@ -3074,14 +3158,22 @@ if (!Array.isArray(products) || products.length === 0) {
     
   const grouped = new Map();
 
-  products.forEach((product, index) => {
+const displayProducts = [
+  ...products.filter(product => !product.notOnInvoice),
+  ...products.filter(product => product.notOnInvoice)
+];
+
+displayProducts.forEach((product, index) => {
     const sku = String(product.sku || "").trim();
+  const groupKey = product.notOnInvoice
+  ? "EXTRA-" + index
+  : sku;
 
-    if (!grouped.has(sku)) {
-      grouped.set(sku, []);
-    }
+  if (!grouped.has(groupKey)) {
+  grouped.set(groupKey, []);
+}
 
-    grouped.get(sku).push({
+grouped.get(groupKey).push({
   ...product,
   quantity: product.invoicedQty,
   lineIndex: index
@@ -3090,6 +3182,7 @@ if (!Array.isArray(products) || products.length === 0) {
 });
 
 grouped.forEach((lines, sku) => {
+  sku = lines[0].sku;
     const section = document.createElement("div");
     section.style.cssText =
       "border:1px solid #ddd; border-radius:10px; padding:15px; margin-bottom:15px;";
@@ -3107,7 +3200,9 @@ grouped.forEach((lines, sku) => {
 
       const lineNumber = document.createElement("p");
 lineNumber.style.fontWeight = "bold";
-lineNumber.textContent = "Invoice Line " + (line.lineIndex + 1);
+lineNumber.textContent = line.notOnInvoice
+  ? "Received on Pallet - Not on Invoice"
+  : "Invoice Line " + (line.lineIndex + 1);
 
 row.appendChild(lineNumber);
       const details = document.createElement("p");
@@ -3123,7 +3218,20 @@ row.appendChild(lineNumber);
       input.min = "0";
       input.step = "1";
       input.placeholder = "Enter quantity";
+    if (line.actualQty != null) {
+  input.value = line.actualQty;
+}
       input.dataset.lineIndex = line.lineIndex;
+      input.addEventListener("input", () => {
+  const value = input.value.trim();
+
+  if (value === "") {
+    deliveryReviewProducts[line.lineIndex].actualQty = null;
+  } else if (/^\d+$/.test(value) &&
+             Number.isSafeInteger(Number(value))) {
+    deliveryReviewProducts[line.lineIndex].actualQty = Number(value);
+  }
+});
       input.dataset.invoicedQty = line.quantity;
       input.addEventListener("input", () => {
   const value = input.value.trim();
@@ -3156,10 +3264,11 @@ input.validity.valid &&
     missing = invoiced - actual;
   }
 
-  missingText.textContent =
-    missing === null
-      ? "Missing Qty: —"
-      : "Missing Qty: " + missing;
+ missingText.textContent = line.notOnInvoice
+  ? "Extra Received: " + (actual === null ? "—" : actual)
+  : missing === null
+    ? "Missing Qty: —"
+    : "Missing Qty: " + missing;
 });
 
 const missingText = document.createElement("p");
