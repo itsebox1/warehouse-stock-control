@@ -2703,20 +2703,7 @@ alertBox.textContent = overdue
   if (!products.length) {
     throw new Error("No invoice product lines were found.");
   }
-const missingLot = products.filter(
-  product => !product.lot
-).length;
 
-const missingExpiry = products.filter(
-  product => !product.expiry
-).length;
-
-console.info(
-  "Delivery extraction check:",
-  products.length + " lines,",
-  missingLot + " without lot,",
-  missingExpiry + " without expiry"
-);
   return products;
 }
   function getDeliveryInvoiceLineText(invoiceText, row, previousEnd = 0) {
@@ -2904,6 +2891,13 @@ console.info(
     const invoiceText = await extractDeliveryPdfText(file);
     const invoiceHeader = parseDeliveryInvoiceHeader(invoiceText);
     const invoiceProducts = parseDeliveryInvoiceProducts(invoiceText);
+    showDeliveryReview();
+    document.getElementById("deliveryInvoiceNumber").textContent =
+  invoiceHeader.invoiceNumber;
+
+document.getElementById("deliveryInvoiceDate").textContent =
+  invoiceHeader.invoiceDate;
+    renderDeliveryProducts(invoiceProducts);
 
     if (!invoiceText.trim()) {
       throw new Error(
