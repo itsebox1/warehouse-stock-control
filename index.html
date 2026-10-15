@@ -3765,8 +3765,17 @@ viewPdfButton.onclick = () => {
   window.openDeliveryPdf(delivery.reportNumber);
 };
 
+const emailPdfButton = document.createElement("button");
+emailPdfButton.type = "button";
+emailPdfButton.textContent = "✉️ Email PDF";
+emailPdfButton.style.cssText =
+  "padding:10px 16px; margin:8px 0 0 8px; cursor:pointer;";
 
-item.append(heading, details, viewPdfButton);
+emailPdfButton.onclick = () => {
+  window.emailDeliveryPdf(delivery.reportNumber);
+};
+      
+item.append(heading, details, viewPdfButton, emailPdfButton);
 results.appendChild(item);
     });
 
