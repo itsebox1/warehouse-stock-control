@@ -5631,8 +5631,9 @@ function unlockWSC() {
     localStorage.setItem("wscDevicePin", enteredPin);
     pinMessage.textContent = "";
     sessionStorage.setItem(PIN_SESSION_KEY, Date.now().toString());
-    document.getElementById("pinLockScreen").style.display = "none";
-    showWelcomeScreen();
+   document.getElementById("pinLockScreen").style.display = "none";
+showITSSplash();
+showWelcomeScreen();
     return;
   }
 
@@ -5641,8 +5642,9 @@ function unlockWSC() {
     pinMessage.textContent = "";
     pinInput.value = "";
     sessionStorage.setItem(PIN_SESSION_KEY, Date.now().toString());
-    document.getElementById("pinLockScreen").style.display = "none";
-    showWelcomeScreen();
+   document.getElementById("pinLockScreen").style.display = "none";
+showITSSplash();
+showWelcomeScreen();
   } else {
     pinMessage.textContent = "Incorrect PIN.";
     pinInput.value = "";
