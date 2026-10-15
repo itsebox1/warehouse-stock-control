@@ -4002,6 +4002,27 @@ function showTradeShowSetup() {
 
   document.getElementById("tradeShowSetupScreen").style.display = "block";
 }
+
+// ITS Europe splash screen controls
+function showITSSplash() {
+  const splash = document.getElementById("itsSplashScreen");
+  if (!splash) return;
+
+  splash.classList.remove("its-splash-exit");
+  splash.style.display = "flex";
+}
+
+async function hideITSSplash() {
+  const splash = document.getElementById("itsSplashScreen");
+  if (!splash || splash.style.display === "none") return;
+
+  splash.classList.add("its-splash-exit");
+
+  await new Promise(resolve => setTimeout(resolve, 800));
+
+  splash.style.display = "none";
+  splash.classList.remove("its-splash-exit");
+}
   
  async function showWelcomeScreen() {
   document.getElementById("welcomeScreen").style.display = "block";
