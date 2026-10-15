@@ -4058,7 +4058,7 @@ if (privacyGlobe) {
 ]);
      
 } finally {
-      
+
     if (homeLoading) {
       homeLoading.style.display = "none";
     }
@@ -4066,6 +4066,8 @@ if (privacyGlobe) {
     if (privacyGlobe) {
       privacyGlobe.style.display = "";
     }
+
+    await hideITSSplash();
   }
 }
 
