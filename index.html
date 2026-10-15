@@ -3758,6 +3758,16 @@ viewPdfButton.onclick = () => {
   window.openDeliveryPdf(delivery.reportNumber);
 };
 
+const viewPdfButton = document.createElement("button");
+viewPdfButton.type = "button";
+viewPdfButton.textContent = "📄 View PDF";
+viewPdfButton.style.cssText =
+  "padding:10px 16px; margin-top:8px; cursor:pointer;";
+
+viewPdfButton.onclick = () => {
+  window.openDeliveryPdf(delivery.reportNumber);
+};
+
 item.append(heading, details, viewPdfButton);
 results.appendChild(item);
     });
