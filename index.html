@@ -235,7 +235,7 @@
 
 <style>
   #itsSplashScreen {
-    display: none;
+    display: flex;
     position: fixed;
     inset: 0;
     z-index: 99999;
@@ -4025,6 +4025,7 @@ async function hideITSSplash() {
 }
   
  async function showWelcomeScreen() {
+     showITSSplash();
   document.getElementById("welcomeScreen").style.display = "block";
      document.getElementById("deliverySetupScreen").style.display = "none";
    document.getElementById("deliveryReviewScreen").style.display = "none";
@@ -5593,10 +5594,11 @@ if (user) {
     document.getElementById("pinInput").value = "";
     document.getElementById("pinMessage").textContent = "";
     document.getElementById("pinLockScreen").style.display = "none";
-   if (isPinSessionValid()) {
+  if (isPinSessionValid()) {
   showWelcomeScreen();
 } else {
   document.getElementById("pinLockScreen").style.display = "block";
+  hideITSSplash();
 }
 
 } else {
@@ -6267,6 +6269,7 @@ async function checkForWSCUpdate() {
 }
 
 window.updateWSC = function() {
+  showITSSplash();
   window.location.reload(true);
 }
 
