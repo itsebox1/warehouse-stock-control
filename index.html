@@ -224,6 +224,55 @@
   <p id="loginMessage"></p>
 </div>
 
+<!-- ITS EUROPE LOADING SPLASH -->
+<div id="itsSplashScreen">
+  <img
+    src="its-europe-splash.png"
+    alt="ITS Europe"
+    id="itsSplashLogo"
+  >
+</div>
+
+<style>
+  #itsSplashScreen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: white;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    transition: transform 0.8s ease-in-out;
+  }
+
+  #itsSplashLogo {
+    width: 85%;
+    max-width: 650px;
+    height: auto;
+    animation: itsLogoMove 3s ease-in-out infinite alternate;
+  }
+
+  @keyframes itsLogoMove {
+    from { transform: translateX(-8%); }
+    to   { transform: translateX(8%); }
+  }
+
+  #itsSplashScreen.its-splash-exit {
+    transform: translateY(100%);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #itsSplashLogo {
+      animation: none;
+    }
+
+    #itsSplashScreen {
+      transition: none;
+    }
+  }
+</style>
+  
  <!-- WSC PIN LOCK SCREEN -->
 <div id="pinLockScreen" style="display:none; text-align:center; padding:40px 20px;">
 
