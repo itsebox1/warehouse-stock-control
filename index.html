@@ -1208,12 +1208,19 @@ try {
     throw new Error(result.error || "Unable to finish Delivery.");
   }
 
-  window.showWSCMessage(
-    "Delivery Finished",
-    "Delivery " + currentDeliveryReportNumber +
-    " has been finished successfully."
-  );
+   const finishedReportNumber = currentDeliveryReportNumber;
+
   await showWelcomeScreen();
+
+  const viewPdf = await window.showWSCConfirm(
+    "Delivery Finished",
+    "Delivery " + finishedReportNumber +
+    " has been finished successfully. Would you like to view its PDF report?"
+  );
+
+  if (viewPdf) {
+    await window.openDeliveryPdf(finishedReportNumber);
+  }
 
 } catch (error) {
   window.showWSCMessage(
