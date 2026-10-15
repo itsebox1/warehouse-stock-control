@@ -5746,6 +5746,67 @@ window.openFinalPdf = async function(reportNumber) {
   }
 };
 
+// DL - Email finished Delivery PDF
+window.emailDeliveryPdf = async function(reportNumber) {
+  const recipient = window.prompt(
+    "Enter the email address for " + reportNumber + ":"
+  );
+
+  if (recipient === null) return;
+
+  const email = recipient.trim();
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    window.showWSCMessage(
+      "Invalid Email Address",
+      "Please enter a valid email address."
+    );
+    return;
+  }
+
+  try {
+    const idToken = await window.getCurrentStaffToken();
+
+    if (!idToken) {
+      throw new Error("Please sign in first.");
+    }
+
+    const response = await fetch(
+      "https://warehouse-stock-reports.tmerry.workers.dev",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action: "emailDeliveryPdf",
+          reportNumber: reportNumber,
+          recipient: email,
+          idToken: idToken
+        })
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.error || "Unable to email Delivery PDF.");
+    }
+
+    window.showWSCMessage(
+      "Email Sent",
+      "Delivery report " + reportNumber +
+      " has been emailed to " + email + "."
+    );
+
+  } catch (error) {
+    window.showWSCMessage(
+      "Email Failed",
+      error.message || "Please try again."
+    );
+  }
+};
+  
 // DL - View finished Delivery PDF
 window.openDeliveryPdf = async function(reportNumber) {
   try {
