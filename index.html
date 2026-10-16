@@ -4079,10 +4079,19 @@ async function fetchHomeDashboard() {
 }
 
 // ITS Europe splash screen controls
+// On a page refresh, the splash is already visible in the HTML from navigation start.
+let itsSplashStartedAt = 0;
+let itsSplashHideTimer = null;
+
 function showITSSplash() {
   const splash = document.getElementById("itsSplashScreen");
   if (!splash) return;
 
+  if (itsSplashHideTimer !== null) {
+    clearTimeout(itsSplashHideTimer);
+    itsSplashHideTimer = null;
+  }
+  itsSplashStartedAt = performance.now();
   splash.classList.remove("its-splash-exit");
   splash.style.display = "flex";
 }
@@ -4091,6 +4100,10 @@ async function hideITSSplash() {
   const splash = document.getElementById("itsSplashScreen");
   if (!splash || splash.style.display === "none") return;
 
+  if (itsSplashHideTimer !== null) {
+    clearTimeout(itsSplashHideTimer);
+    itsSplashHideTimer = null;
+  }
   splash.classList.add("its-splash-exit");
 
   await new Promise(resolve => setTimeout(resolve, 800));
@@ -4100,8 +4113,16 @@ async function hideITSSplash() {
 }
   
  async function showWelcomeScreen() {
-     // Show the home screen immediately; do not block it behind the splash.
-     document.getElementById("itsSplashScreen")?.style.setProperty("display", "none");
+     // Prepare the home screen immediately, while keeping the splash visible
+     // for three seconds. Loading continues behind the splash.
+     const splash = document.getElementById("itsSplashScreen");
+     if (splash && splash.style.display !== "none" && itsSplashHideTimer === null) {
+       const remaining = Math.max(0, 3000 - (performance.now() - itsSplashStartedAt));
+       itsSplashHideTimer = setTimeout(() => {
+         itsSplashHideTimer = null;
+         hideITSSplash();
+       }, remaining);
+     }
   document.getElementById("welcomeScreen").style.display = "block";
      document.getElementById("deliverySetupScreen").style.display = "none";
    document.getElementById("deliveryReviewScreen").style.display = "none";
@@ -4150,7 +4171,7 @@ if (privacyGlobe) {
       privacyGlobe.style.display = "";
     }
 
-    // The dashboard is already visible; no splash animation to wait for.
+    // The splash closes on its own timer; do not delay dashboard loading.
   }
 }
 
