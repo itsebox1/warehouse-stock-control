@@ -4150,7 +4150,7 @@ async function hideITSSplash() {
      // for three seconds. Loading continues behind the splash.
      const splash = document.getElementById("itsSplashScreen");
      if (splash && splash.style.display !== "none" && itsSplashHideTimer === null) {
-       const remaining = Math.max(0, 3000 - (performance.now() - itsSplashStartedAt));
+       const remaining = Math.max(0, 6000 - (performance.now() - itsSplashStartedAt));
        itsSplashHideTimer = setTimeout(() => {
          itsSplashHideTimer = null;
          hideITSSplash();
