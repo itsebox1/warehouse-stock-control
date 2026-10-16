@@ -2840,12 +2840,30 @@ if (startLoading) {
 }
   
 async function startStockCount() {
-  const button = document.getElementById("startStockCountButton");
+  const button =
+    document.getElementById("startNewStockCountFromReport")?.offsetParent
+      ? document.getElementById("startNewStockCountFromReport")
+      : document.getElementById("startStockCountButton");
   const status = document.getElementById("stockCountStatus");
+  const reportGlobe = document.querySelector(".report-globe");
+  const reportHomeButton = document.querySelector(".report-back-button");
+  const startingFromReport =
+    document.getElementById("reportOptionsScreen")?.style.display !== "none";
 
-  button.disabled = true;
-  status.style.display = "block";
-  status.textContent = "Starting stock count...";
+  if (button) button.disabled = true;
+  if (status) {
+    status.style.display = "block";
+    status.textContent = "Starting stock count...";
+  }
+
+  startGlobeLoading();
+  if (startingFromReport) {
+    if (reportGlobe) {
+      reportGlobe.style.display = "block";
+      reportGlobe.classList.add("spinning");
+    }
+    reportHomeButton?.classList.add("loading");
+  }
 
   try {
     const idToken = await window.getCurrentStaffToken();
@@ -2875,8 +2893,10 @@ async function startStockCount() {
       result.reportNumber
     );
 
-    status.textContent =
-      "Stock count in progress: " + result.reportNumber;
+    if (status) {
+      status.textContent =
+        "Stock count in progress: " + result.reportNumber;
+    }
 
     document.getElementById(
       "activeStockTakeNumber"
@@ -2886,11 +2906,24 @@ async function startStockCount() {
     showCountingScreen();
 
   } catch (error) {
-    status.textContent =
-      "Error: " + String(error.message || error);
+    const message = "Error: " + String(error.message || error);
+    if (status) {
+      status.textContent = message;
+      status.style.display = "block";
+    } else {
+      alert(message);
+    }
 
   } finally {
-    button.disabled = false;
+    if (button) button.disabled = false;
+    if (startingFromReport) {
+      if (reportGlobe) {
+        reportGlobe.style.display = "none";
+        reportGlobe.classList.remove("spinning");
+      }
+      reportHomeButton?.classList.remove("loading");
+    }
+    stopGlobeLoading();
   }
 }
 
