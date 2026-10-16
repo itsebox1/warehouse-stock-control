@@ -269,7 +269,7 @@
   }
 
   .its-logo-copy:nth-child(2) {
-    animation-delay: -3s;
+    animation-delay: -5s;
   }
 
   @keyframes itsLogoScroll {
@@ -4623,7 +4623,7 @@ if (reportOptions) {
 
 async function finishStockCount(reportNumber, finishButton) {
   if (!reportNumber || !/^SC-\d{6}$/.test(reportNumber)) {
-    alert("No valid Stock Count session selected.");
+    window.showWSCMessage("Stock Count", "No valid Stock Count session selected.");
     return;
   }
 
@@ -4683,10 +4683,10 @@ async function finishStockCount(reportNumber, finishButton) {
       changeSCSearch();
     }
 
-    alert(reportNumber + " finished successfully.");
+    window.showWSCMessage("Stock Count Finished", reportNumber + " has been finished successfully.");
 
   } catch (error) {
-    alert("Unable to finish Stock Count: " + error.message);
+    window.showWSCMessage("Unable to Finish Stock Count", error.message);
     finishButton.disabled = false;
     finishButton.textContent = "Finish Stock Count";
   } finally {
