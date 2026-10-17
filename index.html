@@ -58,7 +58,8 @@
     width: calc(100% - 75px);
 }
 
-#tradeShowSetupHomeButton.loading {
+#tradeShowSetupHomeButton.loading,
+#tradeShowCountingHomeButton.loading {
     width: calc(100% - 75px);
 }
 
@@ -808,7 +809,11 @@ function validateTradeShowFields() {
 <!-- TR - Trade Show Counting Screen -->
 <div id="tradeShowCountingScreen" style="display:none;">
 
-  <button type="button" onclick="showWelcomeScreen()">
+  <img src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
+       id="tradeShowCountingGlobe" class="about-globe spinning"
+       style="display:none; top:36px; right:18px;" alt="Loading Trade Show">
+
+  <button type="button" id="tradeShowCountingHomeButton" onclick="showWelcomeScreen()">
     🏠 Home
   </button>
 
@@ -1849,7 +1854,7 @@ async function lookupTradeShowProduct(sku) {
   }
 
   details.textContent = "Looking up product: " + sku;
-  startGlobeLoading();
+  startTradeShowCountingLoading();
 
   try {
     const product = await new Promise((resolve, reject) => {
@@ -1946,6 +1951,7 @@ if (!reportNumber) {
 
 saveButton.disabled = true;
 note.textContent = "Saving to Trade Show...";
+startTradeShowCountingLoading();
 
 const requestId = crypto.randomUUID();
 
@@ -1976,12 +1982,19 @@ try {
     throw new Error(result.error || "Unable to save Trade Show quantity.");
   }
 
-  note.textContent = "Quantity saved successfully.";
-  quantityInput.value = "";
+  // Clear the product card only after the server confirms a successful save.
+  // Keep a visible confirmation outside the card for the next SKU or review.
+  details.replaceChildren();
+  const savedMessage = document.createElement("p");
+  savedMessage.textContent = "Quantity saved successfully.";
+  details.appendChild(savedMessage);
+  const manualSku = document.getElementById("tradeShowManualSku");
+  if (manualSku) manualSku.value = "";
 
 } catch (error) {
   note.textContent = "Save error: " + String(error.message || error);
 } finally {
+  stopTradeShowCountingLoading();
   saveButton.disabled = false;
 }
 };
@@ -2007,7 +2020,7 @@ try {
     details.textContent =
       "Lookup error: " + String(error.message || error);
   } finally {
-    stopGlobeLoading();
+    stopTradeShowCountingLoading();
   }
 }  
 
@@ -6614,6 +6627,20 @@ window.updateWSC = function() {
 }
 
 checkForWSCUpdate();
+
+// Trade Show counting uses its own globe, not the Stock screen's globe.
+window.startTradeShowCountingLoading = function() {
+  const globe = document.getElementById("tradeShowCountingGlobe");
+  const home = document.getElementById("tradeShowCountingHomeButton");
+  if (globe) globe.style.display = "block";
+  if (home) home.classList.add("loading");
+};
+window.stopTradeShowCountingLoading = function() {
+  const globe = document.getElementById("tradeShowCountingGlobe");
+  const home = document.getElementById("tradeShowCountingHomeButton");
+  if (globe) globe.style.display = "none";
+  if (home) home.classList.remove("loading");
+};
 
 window.startGlobeLoading = function() {
     const globe = document.querySelector(".stock-globe");
