@@ -5597,9 +5597,10 @@ const isInProgress = !!inProgressStockTake;
     type="button"
     id="qb-${reportNumber}"
     disabled
-    title="SC QuickBooks submission is disabled pending Sandbox validation"
+    title="Checking SC QuickBooks status before enabling submission"
+    onclick="event.preventDefault(); event.stopPropagation(); window.confirmStockCountQuickBooksCommit('${reportNumber}');"
     style="width:auto; background:#777; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:not-allowed; font-weight:bold;"
-  >SC — QB Disabled</button>
+  >SC — Checking QB Status</button>
   ` : `
   <button
     type="button"
@@ -6389,40 +6390,88 @@ async function getQuickBooksCommitStatus(reportNumber) {
 
 }
 
-// SC status check only — deliberately does not submit an adjustment.
+// SC Sandbox submission is limited to SC-000001. The status check must succeed first.
+window.scQuickBooksSubmitting = false;
+window.readStockCountQuickBooksStatus = async function(reportNumber) {
+  if (reportNumber !== "SC-000001") throw new Error("Only SC-000001 is authorised for Sandbox testing.");
+  const idToken = await window.getCurrentStaffToken();
+  const response = await fetch("https://warehouse-stock-reports.tmerry.workers.dev", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "getStockCountQuickBooksStatus", reportNumber, idToken })
+  });
+  const result = await response.json();
+  if (!response.ok || result.success === false || result.error) {
+    throw new Error(result.error || "SC QuickBooks status unavailable.");
+  }
+  return result;
+};
+
 window.updateStockCountQuickBooksStatus = async function(reportNumber) {
   const button = document.getElementById("qb-" + reportNumber);
   if (!button || reportNumber !== "SC-000001") return;
+  button.disabled = true;
+  button.style.background = "#777";
+  button.style.cursor = "not-allowed";
+  button.textContent = "SC — Checking QB Status";
   try {
-    const idToken = await window.getCurrentStaffToken();
-    const response = await fetch("https://warehouse-stock-reports.tmerry.workers.dev", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "getStockCountQuickBooksStatus",
-        reportNumber,
-        idToken
-      })
-    });
-    const result = await response.json();
-    if (!response.ok || result.success === false) {
-      throw new Error(result.error || "SC QuickBooks status unavailable.");
-    }
-    if (result.submitted === true) {
+    const result = await window.readStockCountQuickBooksStatus(reportNumber);
+    if (result.submitted === true || String(result.qbStatus || "").toLowerCase() === "submitted") {
       button.textContent = "Committed to QB";
       button.style.background = "#28a745";
       button.title = "Already submitted to QuickBooks";
-    } else if (String(result.qbStatus || "").toLowerCase() === "pending") {
-      button.textContent = "SC — QB Pending";
-      button.title = "Submission requires manual verification before retrying";
+    } else if (String(result.qbStatus || "").trim()) {
+      button.textContent = "SC — QB " + result.qbStatus;
+      button.title = "Existing submission status requires manual verification; no retry permitted";
     } else {
-      button.textContent = "SC — QB Disabled";
-      button.title = "SC QuickBooks submission is disabled pending Sandbox validation";
+      button.disabled = false;
+      button.style.background = "#dc3545";
+      button.style.cursor = "pointer";
+      button.textContent = "Commit to QB";
+      button.title = "Submit SC-000001 to QuickBooks Sandbox after confirmation";
     }
   } catch (error) {
     console.warn("SC QuickBooks status check failed:", error.message);
     button.textContent = "SC — Status Unavailable";
-    button.title = "Could not verify SC QuickBooks status. Submission remains disabled.";
+    button.title = "Could not verify status. Submission is blocked.";
+  }
+};
+
+window.confirmStockCountQuickBooksCommit = async function(reportNumber) {
+  if (reportNumber !== "SC-000001" || window.scQuickBooksSubmitting) return;
+  const button = document.getElementById("qb-" + reportNumber);
+  if (!button || button.disabled) return;
+  window.scQuickBooksSubmitting = true;
+  button.disabled = true;
+  button.textContent = "Checking QB Status...";
+  try {
+    const before = await window.readStockCountQuickBooksStatus(reportNumber);
+    if (before.submitted || String(before.qbStatus || "").trim()) {
+      throw new Error("A QuickBooks submission status already exists. Do not retry; verify the record first.");
+    }
+    const approved = await window.showWSCConfirm(
+      "WSC — QuickBooks Sandbox",
+      "Submit SC-000001 to QuickBooks Sandbox? This will adjust stock for the counted products. Please confirm the quantities are correct."
+    );
+    if (!approved) return;
+    button.textContent = "Submitting to QB...";
+    // No automatic retry: an ambiguous response may mean QuickBooks already received the write.
+    const idToken = await window.getCurrentStaffToken();
+    const response = await fetch("https://warehouse-stock-reports.tmerry.workers.dev", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "commitStockCountToQuickBooks", reportNumber, idToken })
+    });
+    const result = await response.json();
+    if (!response.ok || result.success !== true) {
+      throw new Error(result.error || "QuickBooks submission could not be confirmed. Check status before taking any further action.");
+    }
+    window.showWSCMessage("Submitted to QuickBooks", "SC-000001 was submitted to QuickBooks Sandbox successfully.");
+  } catch (error) {
+    window.showWSCMessage("SC QuickBooks Submission", error.message + " Do not retry until the QuickBooks and session status have been checked.");
+  } finally {
+    window.scQuickBooksSubmitting = false;
+    await window.updateStockCountQuickBooksStatus(reportNumber);
   }
 };
 
