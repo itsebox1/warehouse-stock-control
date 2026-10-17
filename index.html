@@ -6454,6 +6454,14 @@ window.confirmStockCountQuickBooksCommit = async function(reportNumber) {
       "Submit SC-000001 to QuickBooks Sandbox? This will adjust stock for the counted products. Please confirm the quantities are correct."
     );
     if (!approved) return;
+    // Reuse the existing report globe and Home-button loading layout during SC submission.
+    const reportGlobe = document.querySelector("#reportOptionsScreen .report-globe");
+    const reportHomeButton = document.querySelector("#reportOptionsScreen .report-back-button");
+    if (reportGlobe) {
+      reportGlobe.style.display = "block";
+      reportGlobe.classList.add("spinning");
+    }
+    if (reportHomeButton) reportHomeButton.classList.add("loading");
     button.textContent = "Submitting to QB...";
     // No automatic retry: an ambiguous response may mean QuickBooks already received the write.
     const idToken = await window.getCurrentStaffToken();
@@ -6470,6 +6478,13 @@ window.confirmStockCountQuickBooksCommit = async function(reportNumber) {
   } catch (error) {
     window.showWSCMessage("SC QuickBooks Submission", error.message + " Do not retry until the QuickBooks and session status have been checked.");
   } finally {
+    const reportGlobe = document.querySelector("#reportOptionsScreen .report-globe");
+    const reportHomeButton = document.querySelector("#reportOptionsScreen .report-back-button");
+    if (reportGlobe) {
+      reportGlobe.classList.remove("spinning");
+      reportGlobe.style.display = "none";
+    }
+    if (reportHomeButton) reportHomeButton.classList.remove("loading");
     window.scQuickBooksSubmitting = false;
     await window.updateStockCountQuickBooksStatus(reportNumber);
   }
