@@ -58,6 +58,10 @@
     width: calc(100% - 75px);
 }
 
+#tradeShowSetupHomeButton.loading {
+    width: calc(100% - 75px);
+}
+
 #quarterlyStockTakeAlert {
     max-width: 700px;
     margin: 20px auto 40px auto;
@@ -604,7 +608,11 @@ onclick="addDeliveryExtraProduct()">
   <!-- TR - Trade Show Setup Screen -->
 <div id="tradeShowSetupScreen" style="display:none;">
 
-  <button type="button" onclick="showWelcomeScreen()">
+  <img src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
+       id="tradeShowCreateGlobe" class="about-globe spinning"
+       style="display:none; top:36px; right:18px;" alt="Creating Trade Show">
+
+  <button type="button" id="tradeShowSetupHomeButton" onclick="showWelcomeScreen()">
     🏠 Home
   </button>
 
@@ -3003,6 +3011,10 @@ async function createTradeShow() {
   }
 
   button.disabled = true;
+  const createGlobe = document.getElementById("tradeShowCreateGlobe");
+  const setupHomeButton = document.getElementById("tradeShowSetupHomeButton");
+  if (createGlobe) createGlobe.style.display = "block";
+  if (setupHomeButton) setupHomeButton.classList.add("loading");
 
   try {
     const idToken = await window.getCurrentStaffToken();
@@ -3045,6 +3057,8 @@ document.getElementById("tradeShowCountingScreen").style.display = "block";
     alert("Error: " + String(error.message || error));
 
   } finally {
+    if (createGlobe) createGlobe.style.display = "none";
+    if (setupHomeButton) setupHomeButton.classList.remove("loading");
     validateTradeShowFields();
   }
 }
