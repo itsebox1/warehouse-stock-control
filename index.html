@@ -466,14 +466,24 @@
 
 <h3>Find Delivery</h3>
 
-<label for="deliverySearchType">Search by:</label>
-<select id="deliverySearchType" style="width:100%; padding:12px; margin:8px 0;">
-  <option value="number">DL Number</option>
-  <option value="invoice">Invoice Number</option>
-  <option value="date">Invoice Date</option>
-</select>
+<p><strong>Search Delivery by:</strong></p>
 
-<label for="deliverySearchValue">Search:</label>
+<div id="deliverySearchType" role="radiogroup" aria-label="Search Delivery by">
+  <label style="display:block; margin:12px 0;">
+    <input type="radio" name="deliverySearchMode" value="number" checked onchange="changeDeliverySearch()">
+    DL Number
+  </label>
+  <label style="display:block; margin:12px 0;">
+    <input type="radio" name="deliverySearchMode" value="invoice" onchange="changeDeliverySearch()">
+    Invoice Number
+  </label>
+  <label style="display:block; margin:12px 0;">
+    <input type="radio" name="deliverySearchMode" value="date" onchange="changeDeliverySearch()">
+    Invoice Date
+  </label>
+</div>
+
+<label id="deliverySearchValueLabel" for="deliverySearchValue">DL Number:</label>
 <input
   type="text"
   id="deliverySearchValue"
@@ -3850,10 +3860,28 @@ document.getElementById("deliveryReviewMessage").textContent = "";
   document.getElementById("deliveryReviewScreen").style.display = "block";
 }
 
+function changeDeliverySearch() {
+  const selected = document.querySelector('input[name="deliverySearchMode"]:checked');
+  if (!selected) return;
+  const input = document.getElementById("deliverySearchValue");
+  const label = document.getElementById("deliverySearchValueLabel");
+  const config = {
+    number: { label: "DL Number:", placeholder: "Enter DL number", type: "text" },
+    invoice: { label: "Invoice Number:", placeholder: "Enter invoice number", type: "text" },
+    date: { label: "Invoice Date:", placeholder: "", type: "date" }
+  }[selected.value];
+  if (!config) return;
+  label.textContent = config.label;
+  input.type = config.type;
+  input.placeholder = config.placeholder;
+  input.value = "";
+  document.getElementById("deliverySearchResults").replaceChildren();
+}
+
 async function searchDeliveries() {
   const button = document.getElementById("deliverySearchButton");
   const results = document.getElementById("deliverySearchResults");
-  const searchType = document.getElementById("deliverySearchType").value;
+  const searchType = document.querySelector('input[name="deliverySearchMode"]:checked').value;
   const searchValue = document.getElementById("deliverySearchValue").value.trim();
 
   if (!searchValue) {
