@@ -666,6 +666,26 @@ function validateTradeShowFields() {
   ➕ Create Trade Show
 </button>
 
+<section id="tradeShowSearchSection" style="margin-top:28px;padding-top:16px;border-top:1px solid #ccc;">
+  <h3>TR – Trade Show Report</h3>
+  <p>Search by:</p>
+  <label style="display:block;margin:10px 0;"><input type="radio" name="trReportSearchType" value="number" checked onchange="updateTRReportSearchFields()"> Trade Show Number</label>
+  <label style="display:block;margin:10px 0;"><input type="radio" name="trReportSearchType" value="date" onchange="updateTRReportSearchFields()"> Date Range</label>
+  <label style="display:block;margin:10px 0;"><input type="radio" name="trReportSearchType" value="name" onchange="updateTRReportSearchFields()"> Name of Show</label>
+  <div id="trReportTextField">
+    <input id="trReportSearchValue" type="text" placeholder="Enter TR-000001" style="width:100%;box-sizing:border-box;padding:14px;">
+  </div>
+  <div id="trReportDateFields" style="display:none;">
+    <label for="trReportStartDate">From:</label>
+    <input id="trReportStartDate" type="date" style="width:100%;box-sizing:border-box;padding:14px;margin:8px 0;">
+    <label for="trReportEndDate">To:</label>
+    <input id="trReportEndDate" type="date" style="width:100%;box-sizing:border-box;padding:14px;margin:8px 0;">
+  </div>
+  <button type="button" id="trReportSearchButton" onclick="searchTRReports()" style="margin-top:14px;">📄 Generate Report</button>
+  <div id="trReportSearchMessage" role="status" style="margin-top:12px;"></div>
+  <div id="trReportSearchResults"></div>
+</section>
+
 </div>
 <div id="stockApp" style="display:none;">
 
@@ -4058,6 +4078,56 @@ function showDeliverySetup() {
   loadOpenDeliveries();
 }  
   
+function updateTRReportSearchFields() {
+  const type = document.querySelector('input[name="trReportSearchType"]:checked').value;
+  document.getElementById("trReportTextField").style.display = type === "date" ? "none" : "block";
+  document.getElementById("trReportDateFields").style.display = type === "date" ? "block" : "none";
+  document.getElementById("trReportSearchValue").placeholder = type === "name" ? "Enter show name" : "Enter TR-000001";
+  document.getElementById("trReportSearchMessage").textContent = "";
+  document.getElementById("trReportSearchResults").replaceChildren();
+}
+
+async function searchTRReports() {
+  const type = document.querySelector('input[name="trReportSearchType"]:checked').value;
+  const value = document.getElementById("trReportSearchValue").value.trim();
+  const startDate = document.getElementById("trReportStartDate").value;
+  const endDate = document.getElementById("trReportEndDate").value;
+  const message = document.getElementById("trReportSearchMessage");
+  const results = document.getElementById("trReportSearchResults");
+  const button = document.getElementById("trReportSearchButton");
+  results.replaceChildren();
+  if ((type !== "date" && !value) || (type === "date" && (!startDate || !endDate || startDate > endDate))) {
+    message.textContent = "Enter a valid search before generating a report.";
+    return;
+  }
+  button.disabled = true;
+  message.textContent = "Searching Trade Show reports...";
+  try {
+    const idToken = await window.getCurrentStaffToken();
+    const response = await fetch("https://warehouse-stock-reports.tmerry.workers.dev", {
+      method: "POST", headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({action:"searchTradeShowReports",idToken,searchType:type,searchValue:value,startDate,endDate})
+    });
+    const data = await response.json();
+    if (!response.ok || data.success !== true) throw new Error(data.error || "Unable to search Trade Shows.");
+    const matches = data.tradeShows || [];
+    message.textContent = matches.length ? matches.length + " Trade Show report(s) found. Select a report:" : "No completed Trade Show reports found.";
+    matches.forEach(show => {
+      const item = document.createElement("button");
+      item.type = "button";
+      item.style.marginTop = "10px";
+      item.textContent = show.reportNumber + " – " + show.showName + " (" + show.startDate + " to " + show.endDate + ")";
+      item.onclick = () => {
+        localStorage.setItem("activeTradeShow", show.reportNumber);
+        showTradeShowReport();
+      };
+      results.appendChild(item);
+    });
+  } catch (error) {
+    message.textContent = "Search failed: " + String(error.message || error);
+  } finally { button.disabled = false; }
+}
+
 function showTradeShowSetup() {
   document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("stockApp").style.display = "none";
