@@ -446,24 +446,6 @@
 
   <h2>🚚 DL - Delivery</h2>
 
-  <h3>Start New Delivery</h3>
-  <label for="deliveryInvoiceFile">
-  Upload Supplier Invoice:
-</label>
-
-<input
-  type="file"
-  id="deliveryInvoiceFile"
-  accept=".pdf,image/jpeg,image/png,image/heic,image/heif"
-  style="display:block; margin:15px 0;"
->
-
-<p id="deliveryInvoiceMessage"></p>
- 
- <button type="button" id="startNewDeliveryButton" onclick="startNewDelivery()">
-  ➕ Start New Delivery
-</button>
-
 <h3>Find Delivery</h3>
 
 <p><strong>Search Delivery by:</strong></p>
@@ -497,6 +479,24 @@
 
 <div id="deliverySearchResults" style="margin-top:15px;"></div>
 
+<hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
+  <h3>Start New Delivery</h3>
+  <label for="deliveryInvoiceFile">
+  Upload Supplier Invoice:
+</label>
+
+<input
+  type="file"
+  id="deliveryInvoiceFile"
+  accept=".pdf,image/jpeg,image/png,image/heic,image/heif"
+  style="display:block; margin:15px 0;"
+>
+
+<p id="deliveryInvoiceMessage"></p>
+ 
+ <button type="button" id="startNewDeliveryButton" onclick="startNewDelivery()">
+  ➕ Start New Delivery
+</button>
 </div>
   <!-- DL - Delivery Review Screen -->
 <div id="deliveryReviewScreen" style="display:none;">
@@ -629,6 +629,26 @@ onclick="addDeliveryExtraProduct()">
 
   <h2>🎪 TR - Trade Show</h2>
 
+<section id="tradeShowSearchSection" style="margin-bottom:28px;">
+  <h3>TR – Trade Show Report</h3>
+  <p>Search by:</p>
+  <label style="display:block;margin:10px 0;"><input type="radio" name="trReportSearchType" value="number" checked onchange="updateTRReportSearchFields()"> Trade Show Number</label>
+  <label style="display:block;margin:10px 0;"><input type="radio" name="trReportSearchType" value="date" onchange="updateTRReportSearchFields()"> Date Range</label>
+  <label style="display:block;margin:10px 0;"><input type="radio" name="trReportSearchType" value="name" onchange="updateTRReportSearchFields()"> Name of Show</label>
+  <div id="trReportTextField">
+    <input id="trReportSearchValue" type="text" placeholder="Enter TR-000001" style="width:100%;box-sizing:border-box;padding:14px;">
+  </div>
+  <div id="trReportDateFields" style="display:none;">
+    <label for="trReportStartDate">From:</label>
+    <input id="trReportStartDate" type="date" style="width:100%;box-sizing:border-box;padding:14px;margin:8px 0;">
+    <label for="trReportEndDate">To:</label>
+    <input id="trReportEndDate" type="date" style="width:100%;box-sizing:border-box;padding:14px;margin:8px 0;">
+  </div>
+  <button type="button" id="trReportSearchButton" onclick="searchTRReports()" style="margin-top:14px;">📄 Generate Report</button>
+  <div id="trReportSearchMessage" role="status" style="margin-top:12px;"></div>
+  <div id="trReportSearchResults"></div>
+</section>
+<hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
   <h3>Start New Trade Show</h3>
 
   <label for="tradeShowName">Trade Show Name:</label>
@@ -684,26 +704,6 @@ function validateTradeShowFields() {
 >
   ➕ Create Trade Show
 </button>
-
-<section id="tradeShowSearchSection" style="margin-top:28px;padding-top:16px;border-top:1px solid #ccc;">
-  <h3>TR – Trade Show Report</h3>
-  <p>Search by:</p>
-  <label style="display:block;margin:10px 0;"><input type="radio" name="trReportSearchType" value="number" checked onchange="updateTRReportSearchFields()"> Trade Show Number</label>
-  <label style="display:block;margin:10px 0;"><input type="radio" name="trReportSearchType" value="date" onchange="updateTRReportSearchFields()"> Date Range</label>
-  <label style="display:block;margin:10px 0;"><input type="radio" name="trReportSearchType" value="name" onchange="updateTRReportSearchFields()"> Name of Show</label>
-  <div id="trReportTextField">
-    <input id="trReportSearchValue" type="text" placeholder="Enter TR-000001" style="width:100%;box-sizing:border-box;padding:14px;">
-  </div>
-  <div id="trReportDateFields" style="display:none;">
-    <label for="trReportStartDate">From:</label>
-    <input id="trReportStartDate" type="date" style="width:100%;box-sizing:border-box;padding:14px;margin:8px 0;">
-    <label for="trReportEndDate">To:</label>
-    <input id="trReportEndDate" type="date" style="width:100%;box-sizing:border-box;padding:14px;margin:8px 0;">
-  </div>
-  <button type="button" id="trReportSearchButton" onclick="searchTRReports()" style="margin-top:14px;">📄 Generate Report</button>
-  <div id="trReportSearchMessage" role="status" style="margin-top:12px;"></div>
-  <div id="trReportSearchResults"></div>
-</section>
 
 </div>
 <div id="stockApp" style="display:none;">
