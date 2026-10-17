@@ -465,13 +465,11 @@
   </label>
 </div>
 
-<label id="deliverySearchValueLabel" for="deliverySearchValue">DL Number:</label>
-<input
-  type="text"
-  id="deliverySearchValue"
-  placeholder="Enter DL number"
-  style="width:100%; padding:12px; box-sizing:border-box; margin:8px 0;"
->
+<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:10px 0 16px;">
+  <label id="deliverySearchValueLabel" for="deliverySearchValue" style="margin:0;">DL Number:</label>
+  <strong id="deliverySearchPrefix">DL-</strong>
+  <input type="text" id="deliverySearchValue" placeholder="000001" style="width:190px;max-width:100%;padding:6px 9px;box-sizing:border-box;margin:0;">
+</div>
 
 <button type="button" id="deliverySearchButton">
   🔍 Find Delivery
@@ -635,14 +633,14 @@ onclick="addDeliveryExtraProduct()">
   <label style="display:block;margin:10px 0;"><input type="radio" name="trReportSearchType" value="number" checked onchange="updateTRReportSearchFields()"> Trade Show Number</label>
   <label style="display:block;margin:10px 0;"><input type="radio" name="trReportSearchType" value="date" onchange="updateTRReportSearchFields()"> Date Range</label>
   <label style="display:block;margin:10px 0;"><input type="radio" name="trReportSearchType" value="name" onchange="updateTRReportSearchFields()"> Name of Show</label>
-  <div id="trReportTextField">
-    <input id="trReportSearchValue" type="text" placeholder="Enter TR-000001" style="width:100%;box-sizing:border-box;padding:14px;">
+  <div id="trReportTextField" style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:14px 0;">
+    <label id="trReportSearchLabel" for="trReportSearchValue" style="margin:0;">Trade Show Number:</label>
+    <strong id="trReportSearchPrefix">TR-</strong>
+    <input id="trReportSearchValue" type="text" placeholder="000001" style="width:190px;max-width:100%;box-sizing:border-box;padding:6px 9px;margin:0;">
   </div>
-  <div id="trReportDateFields" style="display:none;">
-    <label for="trReportStartDate">From:</label>
-    <input id="trReportStartDate" type="date" style="width:100%;box-sizing:border-box;padding:14px;margin:8px 0;">
-    <label for="trReportEndDate">To:</label>
-    <input id="trReportEndDate" type="date" style="width:100%;box-sizing:border-box;padding:14px;margin:8px 0;">
+  <div id="trReportDateFields" style="display:none;margin:14px 0;">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0;"><label for="trReportStartDate" style="margin:0;">Date From:</label><input id="trReportStartDate" type="date" style="width:175px;max-width:100%;box-sizing:border-box;padding:6px 9px;margin:0;"></div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0;"><label for="trReportEndDate" style="margin:0;">Date To:</label><input id="trReportEndDate" type="date" style="width:175px;max-width:100%;box-sizing:border-box;padding:6px 9px;margin:0;"></div>
   </div>
   <button type="button" id="trReportSearchButton" onclick="searchTRReports()" style="margin-top:14px;">📄 Generate Report</button>
   <div id="trReportSearchMessage" role="status" style="margin-top:12px;"></div>
@@ -3872,8 +3870,10 @@ function changeDeliverySearch() {
   }[selected.value];
   if (!config) return;
   label.textContent = config.label;
+  document.getElementById("deliverySearchPrefix").style.display = selected.value === "number" ? "inline" : "none";
+  input.style.width = selected.value === "invoice" ? "310px" : selected.value === "date" ? "175px" : "190px";
   input.type = config.type;
-  input.placeholder = config.placeholder;
+  input.placeholder = selected.value === "number" ? "000001" : config.placeholder;
   input.value = "";
   document.getElementById("deliverySearchResults").replaceChildren();
 }
@@ -3882,7 +3882,8 @@ async function searchDeliveries() {
   const button = document.getElementById("deliverySearchButton");
   const results = document.getElementById("deliverySearchResults");
   const searchType = document.querySelector('input[name="deliverySearchMode"]:checked').value;
-  const searchValue = document.getElementById("deliverySearchValue").value.trim();
+  const rawDeliverySearchValue = document.getElementById("deliverySearchValue").value.trim();
+  const searchValue = searchType === "number" && rawDeliverySearchValue ? ("DL-" + rawDeliverySearchValue.replace(/^DL-/i, "")) : rawDeliverySearchValue;
 
   if (!searchValue) {
     results.textContent = "Please enter a search value.";
@@ -4135,16 +4136,20 @@ function showDeliverySetup() {
   
 function updateTRReportSearchFields() {
   const type = document.querySelector('input[name="trReportSearchType"]:checked').value;
-  document.getElementById("trReportTextField").style.display = type === "date" ? "none" : "block";
+  document.getElementById("trReportTextField").style.display = type === "date" ? "none" : "flex";
   document.getElementById("trReportDateFields").style.display = type === "date" ? "block" : "none";
-  document.getElementById("trReportSearchValue").placeholder = type === "name" ? "Enter show name" : "Enter TR-000001";
+  document.getElementById("trReportSearchLabel").textContent = type === "name" ? "Name of Show:" : "Trade Show Number:";
+  document.getElementById("trReportSearchPrefix").style.display = type === "name" ? "none" : "inline";
+  document.getElementById("trReportSearchValue").style.width = type === "name" ? "310px" : "190px";
+  document.getElementById("trReportSearchValue").placeholder = type === "name" ? "Enter show name" : "000001";
   document.getElementById("trReportSearchMessage").textContent = "";
   document.getElementById("trReportSearchResults").replaceChildren();
 }
 
 async function searchTRReports() {
   const type = document.querySelector('input[name="trReportSearchType"]:checked').value;
-  const value = document.getElementById("trReportSearchValue").value.trim();
+  const rawTRValue = document.getElementById("trReportSearchValue").value.trim();
+  const value = type === "number" && rawTRValue ? ("TR-" + rawTRValue.replace(/^TR-/i, "")) : rawTRValue;
   const startDate = document.getElementById("trReportStartDate").value;
   const endDate = document.getElementById("trReportEndDate").value;
   const message = document.getElementById("trReportSearchMessage");
