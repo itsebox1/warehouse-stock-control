@@ -833,13 +833,13 @@ function validateTradeShowFields() {
   
   <div id="productDetails"></div>
   
- <button
-  id="nextProductButton"
-  onclick="scanNextProduct()"
-  style="display:none; margin-top:16px;"
->
-  📷 Scan Next Product
-</button>
+ <button id="nextProductButton" onclick="scanNextProduct()" style="display:none; margin-top:16px;">📷 Scan Next Product</button>
+ <section id="stCountReviewSection" style="display:none; margin-top:18px;">
+   <button type="button" id="stCountReviewToggle" onclick="toggleSTCountReview()" style="background:#244b72;">📋 Review Products Counted</button>
+   <div id="stCountReviewPanel" style="display:none; margin-top:12px;">
+     <div id="stCountReviewContent" aria-live="polite"></div>
+   </div>
+ </section>
   
   <div id="result"></div>
   
@@ -1237,6 +1237,12 @@ function escapeHtml(value) {
 
 function resetProductLookup() {
   lookupInProgress = false;
+
+  // Clear the previous lookup whenever a counting session opens or resumes.
+  const manualSku = document.getElementById("manualSku");
+  if (manualSku) manualSku.value = "";
+  const nextProductButton = document.getElementById("nextProductButton");
+  if (nextProductButton) nextProductButton.style.display = "none";
 
   const result = document.getElementById("result");
   const details = document.getElementById("productDetails");
@@ -3241,7 +3247,9 @@ document.getElementById("manualSku").value = "";
 document.getElementById("result").textContent =
   "Count submitted for " + product.sku;
 
-document.getElementById("nextProductButton").style.display = "block";
+document.getElementById("nextProductButton").style.display =
+  document.querySelector('input[name="countType"]:checked')?.value === "ST" ? "none" : "block";
+if (document.getElementById("stCountReviewPanel")?.style.display !== "none") refreshSTCountReview();
 
 
   } catch (error) {
@@ -3252,6 +3260,92 @@ document.getElementById("nextProductButton").style.display = "block";
   } finally {
     button.disabled = false;
     stopGlobeLoading();
+  }
+}
+
+
+// ST review is read-only until a staff member explicitly chooses Amend.
+async function stReviewRequest(action, payload) {
+  const idToken = await window.getCurrentStaffToken();
+  const response = await fetch(workerUrl, {
+    method: "POST", headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({action, ...payload, idToken})
+  });
+  const result = await response.json();
+  if (!response.ok || result.success !== true) throw new Error(result.error || "Stock Take request failed.");
+  return result;
+}
+function stReviewActiveNumber() {
+  return document.querySelector('input[name="countType"]:checked')?.value === "ST"
+    ? localStorage.getItem("activeStockTake") : null;
+}
+function stReviewReset() {
+  const section = document.getElementById("stCountReviewSection");
+  const panel = document.getElementById("stCountReviewPanel");
+  if (section) section.style.display = stReviewActiveNumber() ? "block" : "none";
+  if (panel) panel.style.display = "none";
+  const content = document.getElementById("stCountReviewContent");
+  if (content) content.replaceChildren();
+  const next = document.getElementById("nextProductButton");
+  if (next) next.style.display = stReviewActiveNumber() ? "none" : next.style.display;
+}
+async function toggleSTCountReview() {
+  const panel = document.getElementById("stCountReviewPanel");
+  if (!panel) return;
+  if (panel.style.display !== "none") { panel.style.display = "none"; return; }
+  panel.style.display = "block";
+  await refreshSTCountReview();
+}
+async function refreshSTCountReview() {
+  const number = stReviewActiveNumber();
+  const content = document.getElementById("stCountReviewContent");
+  if (!number || !content) return;
+  content.textContent = "Loading counted products…";
+  try {
+    const data = await stReviewRequest("getStockTakeReview", {reportNumber:number});
+    if (stReviewActiveNumber() !== number) return;
+    if (!data.products?.length) { content.textContent = "No products counted in this Stock Take yet."; return; }
+    const table = document.createElement("table");
+    table.style.cssText = "width:100%;border-collapse:collapse;font-size:13px;";
+    const header = table.createTHead().insertRow();
+    ["SKU","Product","QB Stock","Counted Qty","Difference","Amend"].forEach(label => {
+      const th = document.createElement("th"); th.textContent = label;
+      th.style.cssText = "padding:7px;background:#244b72;color:white;text-align:left;";header.appendChild(th);
+    });
+    const body = table.createTBody();
+    data.products.forEach(product => {
+      const row = body.insertRow();
+      [product.sku,product.productName,product.qbStock,product.actualQty,product.difference].forEach(value => {
+        const cell = row.insertCell(); cell.textContent = String(value ?? "");
+        cell.style.cssText = "padding:7px;border-bottom:1px solid #ccc;";
+      });
+      const cell = row.insertCell();
+      const button = document.createElement("button"); button.type = "button";
+      button.textContent = "Amend"; button.style.cssText = "padding:7px 10px;background:#244b72;";
+      button.onclick = () => amendSTCount(product, number, button);
+      cell.appendChild(button);
+    });
+    content.replaceChildren(table);
+  } catch (error) { content.textContent = "Could not load Stock Take review: " + String(error.message || error); }
+}
+async function amendSTCount(product, number, button) {
+  if (stReviewActiveNumber() !== number) return;
+  const input = prompt("New counted quantity for " + product.productName + " (" + product.sku + "):", String(product.actualQty));
+  if (input === null) return;
+  const value = input.trim();
+  if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value))) {
+    window.showWSCMessage("Invalid Quantity", "Enter a valid whole-number quantity, including zero."); return;
+  }
+  if (Number(value) === Number(product.actualQty)) return;
+  if (!confirm("Change " + product.sku + " from " + product.actualQty + " to " + value + "? This will be recorded in Stock Count History.")) return;
+  button.disabled = true;
+  const requestId = crypto.randomUUID();
+  try {
+    await stReviewRequest("amendStockTakeQuantity", {reportNumber:number,sku:product.sku,newQuantity:Number(value),requestId});
+    await refreshSTCountReview();
+  } catch (error) {
+    window.showWSCMessage("Amendment Failed", String(error.message || error));
+    button.disabled = false;
   }
 }
 
@@ -5256,6 +5350,7 @@ function openSelectedStock() {
   
  function showCountingScreen() {
      resetProductLookup();
+     stReviewReset();
    
      const skuInput = document.querySelector('input[placeholder*="SKU"]');
   if (skuInput) skuInput.value = "";
@@ -5811,8 +5906,9 @@ const isInProgress = !!inProgressStockTake;
     type="button"
     id="qb-${reportNumber}"
     onclick="event.preventDefault(); event.stopPropagation(); confirmQuickBooksCommit('${reportNumber}');"
-    style="width:auto; background:${committedToQB ? '#28a745' : '#dc3545'}; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
-  >${committedToQB ? 'Committed to QB' : 'Commit to QB'}</button>
+    ${committedToQB ? '' : 'disabled'}
+    style="width:auto; background:${committedToQB ? '#28a745' : '#777'}; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:${committedToQB ? 'pointer' : 'not-allowed'}; font-weight:bold;"
+  >${committedToQB ? 'Committed to QB' : 'QB Submissions Disabled'}</button>
   `}
 `}
 ${committedToQB && emailFailed ? `
@@ -5914,6 +6010,20 @@ function wscPaintPermissions(permissions) {
     button.style.display = areas[button.dataset.wscArea] === true ? "" : "none";
   });
   if (cog) cog.style.display = permissions?.admin === true ? "block" : "none";
+  document.querySelectorAll('button[id^="qb-ST-"]').forEach(button => {
+    if (button.textContent.trim() === "Committed to QB") return;
+    if (permissions?.quickBooks?.ST !== true) {
+      button.disabled = true;
+      button.textContent = "QB Submissions Disabled";
+      button.style.background = "#777";
+      button.style.cursor = "not-allowed";
+    } else if (button.textContent.trim() === "QB Submissions Disabled") {
+      button.disabled = false;
+      button.textContent = "Commit to QB";
+      button.style.background = "#dc3545";
+      button.style.cursor = "pointer";
+    }
+  });
   const sections = {homeOpenSessions:["ST","SC"],homeTradeShowSection:["TR"],homeDeliverySection:["DL"]};
   Object.entries(sections).forEach(([id, allowed]) => {
     const el = document.getElementById(id);
@@ -6704,7 +6814,7 @@ async function getQuickBooksCommitStatus(reportNumber) {
 } catch (error) {
   console.log("Could not load QuickBooks commit status:", error);
 }
-
+if (wscPermissions) wscPaintPermissions(wscPermissions);
 }
 
 // SC Sandbox submission is limited to SC-000001. The status check must succeed first.
