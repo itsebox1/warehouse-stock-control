@@ -921,10 +921,6 @@ function validateTradeShowFields() {
  <div id="tradeShowReportOriginalPosition"></div>
  <div id="tradeShowReportScreen" style="display:none;">
 
-  <button onclick="showWelcomeScreen()">
-    🏠 Home
-  </button>
-
   <h2>🎪 TR — Trade Show Report</h2>
 
   <div id="tradeShowReportList"></div>
@@ -2275,6 +2271,15 @@ async function confirmTradeShowReturns() {
   }
 }
 
+  let trReportLoadingCount = 0;
+  function setTRReportLoading(active) {
+    trReportLoadingCount = Math.max(0, trReportLoadingCount + (active ? 1 : -1));
+    const globe = document.getElementById("tradeShowCreateGlobe");
+    const home = document.getElementById("tradeShowSetupHomeButton");
+    if (globe) globe.style.display = trReportLoadingCount ? "block" : "none";
+    if (home) home.classList.toggle("loading", trReportLoadingCount > 0);
+  }
+
   function showTradeShowReport(inlineInSearch = false) {
   const reportNumber = localStorage.getItem("activeTradeShow");
 
@@ -2314,6 +2319,7 @@ qbButton.textContent = "Checking QB status...";
 
   list.textContent = "Loading Trade Show report...";
 
+  setTRReportLoading(true);
   try {
     const idToken = await window.getCurrentStaffToken();
 
@@ -2442,6 +2448,8 @@ table.appendChild(colgroup);
     list.textContent =
       "Unable to load Trade Show report: " +
       String(error.message || error);
+  } finally {
+    setTRReportLoading(false);
   }
 }
 
@@ -4190,6 +4198,7 @@ async function searchTRReports() {
     return;
   }
   button.disabled = true;
+  setTRReportLoading(true);
   message.textContent = "Searching Trade Show reports...";
   try {
     const idToken = await window.getCurrentStaffToken();
@@ -4214,7 +4223,7 @@ async function searchTRReports() {
     });
   } catch (error) {
     message.textContent = "Search failed: " + String(error.message || error);
-  } finally { button.disabled = false; }
+  } finally { button.disabled = false; setTRReportLoading(false); }
 }
 
 function toggleNewTradeShow() {
