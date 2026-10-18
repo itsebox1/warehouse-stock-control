@@ -6062,7 +6062,16 @@ async function wscCancelInventoryReport() {
     if (typeof loadStockTakeList === "function") loadStockTakeList().catch(console.warn);
     if (typeof loadStockCountList === "function") loadStockCountList().catch(console.warn);
   } catch (error) {
-    status.textContent = "Unable to cancel: " + error.message;
+    const errorMessage = String(error?.message || "Cancellation failed.");
+    // Escape server-provided text before passing it to the existing WSC HTML modal.
+    const safeMessage = errorMessage.replace(/[&<>"']/g, ch => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    })[ch]);
+    status.textContent = "";
+    window.showWSCMessage(
+      "Report cancellation blocked",
+      "Report " + reportNumber + " could not be cancelled.<br><br>" + safeMessage
+    );
   } finally {
     button.disabled = false;
     button.textContent = "Cancel report";
