@@ -5968,12 +5968,14 @@ ${committedToQB && emailFailed ? `
   
 `);
 
-// SC status is read-only. The Worker and QuickBooks.gs still block SC writes.
+// Newly rendered report buttons must use the already-verified permissions.
+// Otherwise ST remains grey until another permission refresh occurs.
+if (wscPermissions) wscPaintPermissions(wscPermissions);
+
+// SC status is checked individually for every report, without report-number exceptions.
 if (selectedReportType === "SC") {
   for (const number of Object.keys(reportGroups)) {
-    if (number === "SC-000001") {
-      void window.updateStockCountQuickBooksStatus(number);
-    }
+    void window.updateStockCountQuickBooksStatus(number);
   }
 }
 
@@ -6855,10 +6857,10 @@ async function getQuickBooksCommitStatus(reportNumber) {
 if (wscPermissions) wscPaintPermissions(wscPermissions);
 }
 
-// SC Sandbox submission is limited to SC-000001. The status check must succeed first.
+// SC Sandbox submission requires a verified status and administrator switch.
 window.scQuickBooksSubmitting = false;
 window.readStockCountQuickBooksStatus = async function(reportNumber) {
-  if (reportNumber !== "SC-000001") throw new Error("Only SC-000001 is authorised for Sandbox testing.");
+  if (!/^SC-\d{6}$/.test(reportNumber)) throw new Error("Invalid SC report number.");
   const idToken = await window.getCurrentStaffToken();
   const response = await fetch("https://warehouse-stock-reports.tmerry.workers.dev", {
     method: "POST",
@@ -6874,7 +6876,7 @@ window.readStockCountQuickBooksStatus = async function(reportNumber) {
 
 window.updateStockCountQuickBooksStatus = async function(reportNumber) {
   const button = document.getElementById("qb-" + reportNumber);
-  if (!button || reportNumber !== "SC-000001") return;
+  if (!button || !/^SC-\d{6}$/.test(reportNumber)) return;
   button.disabled = true;
   button.style.background = "#777";
   button.style.cursor = "not-allowed";
@@ -6888,12 +6890,15 @@ window.updateStockCountQuickBooksStatus = async function(reportNumber) {
     } else if (String(result.qbStatus || "").trim()) {
       button.textContent = "SC — QB " + result.qbStatus;
       button.title = "Existing submission status requires manual verification; no retry permitted";
-    } else {
+    } else if (wscPermissions?.quickBooks?.SC === true) {
       button.disabled = false;
       button.style.background = "#dc3545";
       button.style.cursor = "pointer";
       button.textContent = "Commit to QB";
-      button.title = "Submit SC-000001 to QuickBooks Sandbox after confirmation";
+      button.title = "Submit " + reportNumber + " to QuickBooks Sandbox after confirmation";
+    } else {
+      button.textContent = "QB Submissions Disabled";
+      button.title = "SC QuickBooks submissions are disabled in Administrator Settings";
     }
   } catch (error) {
     console.warn("SC QuickBooks status check failed:", error.message);
@@ -6903,9 +6908,9 @@ window.updateStockCountQuickBooksStatus = async function(reportNumber) {
 };
 
 window.confirmStockCountQuickBooksCommit = async function(reportNumber) {
-  if (reportNumber !== "SC-000001" || window.scQuickBooksSubmitting) return;
+  if (!/^SC-\d{6}$/.test(reportNumber) || window.scQuickBooksSubmitting) return;
   const button = document.getElementById("qb-" + reportNumber);
-  if (!button || button.disabled) return;
+  if (!button || button.disabled || wscPermissions?.quickBooks?.SC !== true) return;
   window.scQuickBooksSubmitting = true;
   button.disabled = true;
   button.textContent = "Checking QB Status...";
@@ -6916,7 +6921,7 @@ window.confirmStockCountQuickBooksCommit = async function(reportNumber) {
     }
     const approved = await window.showWSCConfirm(
       "WSC — QuickBooks Sandbox",
-      "Submit SC-000001 to QuickBooks Sandbox? This will adjust stock for the counted products. Please confirm the quantities are correct."
+      "Submit " + reportNumber + " to QuickBooks Sandbox? This will adjust stock for the counted products. Please confirm the quantities are correct."
     );
     if (!approved) return;
     // Reuse the existing report globe and Home-button loading layout during SC submission.
@@ -6939,7 +6944,7 @@ window.confirmStockCountQuickBooksCommit = async function(reportNumber) {
     if (!response.ok || result.success !== true) {
       throw new Error(result.error || "QuickBooks submission could not be confirmed. Check status before taking any further action.");
     }
-    window.showWSCMessage("Submitted to QuickBooks", "SC-000001 was submitted to QuickBooks Sandbox successfully.");
+    window.showWSCMessage("Submitted to QuickBooks", reportNumber + " was submitted to QuickBooks Sandbox successfully.");
   } catch (error) {
     window.showWSCMessage("SC QuickBooks Submission", error.message + " Do not retry until the QuickBooks and session status have been checked.");
   } finally {
