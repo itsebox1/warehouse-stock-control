@@ -2951,17 +2951,10 @@ console.log("BEFORE showCountingScreen =", localStorage.getItem("activeStockTake
 showCountingScreen();
 
   } catch (error) {
-   status.textContent = "Checking newly created stock take...";
-
-try {
- resumeStockTake(localStorage.getItem("activeStockTake"), stockTakePeriod);
-} catch (recoveryError) {
-  status.textContent =
-    "Error: " + String(error.message || error);
-
-  button.disabled = false;
-}
-
+    // Never resume a cached session when the server has refused a new one.
+    // In particular, a cancelled ST must not reappear as an active count.
+    status.textContent = "Error: " + String(error.message || error);
+    button.disabled = false;
   } finally {
    const startLoading =
   document.getElementById("startStockTakeLoading");
@@ -6024,6 +6017,13 @@ async function wscCancelInventoryReport() {
     const result = await wscAdminRequest("cancelInventorySession", {reportNumber, reason});
     if (!result.success) throw new Error(result.error || "Cancellation failed.");
     status.textContent = reportNumber + " cancelled. Audit entry saved.";
+    if (reportNumber === localStorage.getItem("activeStockTake")) {
+      localStorage.removeItem("activeStockTake");
+      localStorage.removeItem("activeStockTakePeriod");
+    }
+    if (reportNumber === localStorage.getItem("activeStockCount")) {
+      localStorage.removeItem("activeStockCount");
+    }
     document.getElementById("wscCancelReportNumber").value = "";
     document.getElementById("wscCancelReason").value = "";
     // Refresh the home session lists after a successful cancellation.
