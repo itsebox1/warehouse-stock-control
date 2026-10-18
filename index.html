@@ -2882,6 +2882,38 @@ function selectStockTakeQuarter(clickedButton) {
   document.body.appendChild(overlay);
 }
   
+  // Shared ST/SC sequence rejection dialog. Preserve the server's actual
+  // outstanding report number and never allow a rejected start to resume.
+  function showInventoryStartFailure(type, error) {
+    const raw = String(error && error.message ? error.message : error || "Unable to start session.");
+    const blocked = /BLOCKED:|unresolved|awaiting|cannot start|can't start/i.test(raw);
+    const escapeHtml = value => String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#39;");
+    if (!blocked) {
+      window.showWSCMessage("Unable to start " + (type === "ST" ? "Stock Take" : "Stock Count"), escapeHtml(raw));
+      return;
+    }
+    // The backend supplies the blocking report number and its current status.
+    // Never guess a report number or use an example as a live report.
+    const match = raw.match(/\b(ST|SC)-\d{6}\b/i);
+    const report = match ? match[0].toUpperCase() : null;
+    const statusMatch = raw.match(/\b(?:ST|SC)-\d{6}\s*\(([^)]+)\)/i);
+    const status = statusMatch ? statusMatch[1].trim() : "";
+    let message;
+    if (report) {
+      const inProgress = /in progress/i.test(status);
+      const state = inProgress ? "is still in progress" : /closed|finished/i.test(status) ? "has been finished but is awaiting submission to QuickBooks" : "is still outstanding";
+      const nextStep = inProgress
+        ? "It must be finished and submitted to QuickBooks, or cancelled by an administrator."
+        : "It must be submitted to QuickBooks, or cancelled by an administrator.";
+      message = "Report <strong>" + escapeHtml(report) + "</strong> " + state + ".<br><br>" +
+        "A new Stock Take or Stock Count cannot be started until <strong>" + escapeHtml(report) + "</strong> is resolved. " + nextStep;
+    } else {
+      message = escapeHtml(raw.replace(/^BLOCKED:\s*/i, "")) +
+        "<br><br>A new Stock Take or Stock Count cannot be started until the outstanding report is resolved.";
+    }
+    window.showWSCMessage("New Stock Take / Stock Count blocked", message);
+  }
+
   async function startStockTake(clickedButton, stockTakePeriod) {
     document.querySelector(".report-back-button")?.classList.add("loading");
   const button =
@@ -2954,6 +2986,7 @@ showCountingScreen();
     // Never resume a cached session when the server has refused a new one.
     // In particular, a cancelled ST must not reappear as an active count.
     status.textContent = "Error: " + String(error.message || error);
+    showInventoryStartFailure("ST", error);
     button.disabled = false;
   } finally {
    const startLoading =
@@ -3039,9 +3072,8 @@ async function startStockCount() {
     if (status) {
       status.textContent = message;
       status.style.display = "block";
-    } else {
-      alert(message);
     }
+    showInventoryStartFailure("SC", error);
 
   } finally {
     if (button) button.disabled = false;
