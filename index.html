@@ -908,6 +908,8 @@ function validateTradeShowFields() {
     Confirm Returned Products
   </button>
 
+  <button type="button" id="tradeShowGoToReportButton" onclick="showTradeShowReport()" style="display:none; margin-top:12px;">📋 Go to Report</button>
+
   <div id="tradeShowReturnsMessage"></div>
 </div>
 
@@ -2037,6 +2039,8 @@ async function openTradeShowReturns() {
   const list = document.getElementById("tradeShowReturnsList");
   const message = document.getElementById("tradeShowReturnsMessage");
   const button = document.getElementById("tradeShowReturnedProductsButton");
+  const goToReportButton = document.getElementById("tradeShowGoToReportButton");
+  goToReportButton.style.display = "none";
 
   section.style.display = "block";
   list.textContent = "Loading products...";
@@ -2081,7 +2085,10 @@ if (!statusResponse.ok || statusResult.success !== true) {
 }
 
 if (statusResult.returnsConfirmed) {
-  showTradeShowReport();
+  list.textContent = "Returned products have already been confirmed for " + reportNumber + ".";
+  confirmButton.textContent = "Returned Products Confirmed";
+  confirmButton.disabled = true;
+  goToReportButton.style.display = "inline-block";
   return;
 }
     const response = await fetch(
@@ -2250,8 +2257,8 @@ async function confirmTradeShowReturns() {
       "Returned products saved successfully for " + reportNumber + ".";
 
     button.textContent = "Returned Products Confirmed";
-    button.disabled = false;
-    button.onclick = () => showTradeShowReport();
+    button.disabled = true;
+    document.getElementById("tradeShowGoToReportButton").style.display = "inline-block";
     document.querySelectorAll(".tradeShowReturnQty").forEach(input => {
       input.disabled = true;
     });
