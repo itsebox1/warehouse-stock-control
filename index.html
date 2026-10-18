@@ -647,7 +647,8 @@ onclick="addDeliveryExtraProduct()">
   <div id="trReportSearchResults"></div>
 </section>
 <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
-  <h3>Start New Trade Show</h3>
+  <button type="button" id="toggleNewTradeShowButton" aria-expanded="false" onclick="toggleNewTradeShow()">➕ New Trade Show</button>
+  <div id="newTradeShowFields" style="display:none; margin-top:15px;">
 
   <label for="tradeShowName">Trade Show Name:</label>
   <input
@@ -702,6 +703,7 @@ function validateTradeShowFields() {
 >
   ➕ Create Trade Show
 </button>
+  </div> <!-- /newTradeShowFields -->
 
 </div>
 <div id="stockApp" style="display:none;">
@@ -916,6 +918,7 @@ function validateTradeShowFields() {
 </div>
 </div>
 
+ <div id="tradeShowReportOriginalPosition"></div>
  <div id="tradeShowReportScreen" style="display:none;">
 
   <button onclick="showWelcomeScreen()">
@@ -2272,7 +2275,7 @@ async function confirmTradeShowReturns() {
   }
 }
 
-  function showTradeShowReport() {
+  function showTradeShowReport(inlineInSearch = false) {
   const reportNumber = localStorage.getItem("activeTradeShow");
 
   if (!reportNumber) {
@@ -2284,7 +2287,17 @@ async function confirmTradeShowReturns() {
   document.getElementById("tradeShowCountingScreen").style.display = "none";
   document.getElementById("welcomeScreen").style.display = "none";
 
-  document.getElementById("tradeShowReportScreen").style.display = "block";
+  const reportScreen = document.getElementById("tradeShowReportScreen");
+  const originalPosition = document.getElementById("tradeShowReportOriginalPosition");
+  const setupScreen = document.getElementById("tradeShowSetupScreen");
+  if (inlineInSearch) {
+    document.getElementById("tradeShowSearchSection").insertAdjacentElement("afterend", reportScreen);
+    setupScreen.style.display = "block";
+  } else {
+    originalPosition.insertAdjacentElement("afterend", reportScreen);
+    setupScreen.style.display = "none";
+  }
+  reportScreen.style.display = "block";
 
   document.getElementById("tradeShowReportList").textContent =
     "Loading Trade Show report...";
@@ -3071,6 +3084,13 @@ async function createTradeShow() {
     }
 
     localStorage.setItem("activeTradeShow", result.reportNumber);
+
+    // Reset and collapse the creation form after a successful creation.
+    ["tradeShowName", "tradeShowStartDate", "tradeShowEndDate"].forEach(id => {
+      document.getElementById(id).value = "";
+    });
+    document.getElementById("newTradeShowFields").style.display = "none";
+    document.getElementById("toggleNewTradeShowButton").setAttribute("aria-expanded", "false");
 
     document.getElementById("tradeShowSetupScreen").style.display = "none";
 
@@ -4151,6 +4171,7 @@ function updateTRReportSearchFields() {
   document.getElementById("trReportSearchValue").placeholder = type === "name" ? "Enter show name" : "000001";
   document.getElementById("trReportSearchMessage").textContent = "";
   document.getElementById("trReportSearchResults").replaceChildren();
+  document.getElementById("tradeShowReportScreen").style.display = "none";
 }
 
 async function searchTRReports() {
@@ -4163,6 +4184,7 @@ async function searchTRReports() {
   const results = document.getElementById("trReportSearchResults");
   const button = document.getElementById("trReportSearchButton");
   results.replaceChildren();
+  document.getElementById("tradeShowReportScreen").style.display = "none";
   if ((type !== "date" && !value) || (type === "date" && (!startDate || !endDate || startDate > endDate))) {
     message.textContent = "Enter a valid search before generating a report.";
     return;
@@ -4183,16 +4205,24 @@ async function searchTRReports() {
       const item = document.createElement("button");
       item.type = "button";
       item.style.marginTop = "10px";
-      item.textContent = show.reportNumber + " – " + show.showName + " (" + show.startDate + " to " + show.endDate + ")";
+      item.textContent = show.reportNumber + " – " + show.showName + " (" + formatTradeShowDates(show.startDate, show.endDate) + ")";
       item.onclick = () => {
         localStorage.setItem("activeTradeShow", show.reportNumber);
-        showTradeShowReport();
+        showTradeShowReport(true);
       };
       results.appendChild(item);
     });
   } catch (error) {
     message.textContent = "Search failed: " + String(error.message || error);
   } finally { button.disabled = false; }
+}
+
+function toggleNewTradeShow() {
+  const fields = document.getElementById("newTradeShowFields");
+  const toggle = document.getElementById("toggleNewTradeShowButton");
+  const opening = fields.style.display === "none";
+  fields.style.display = opening ? "block" : "none";
+  toggle.setAttribute("aria-expanded", String(opening));
 }
 
 function showTradeShowSetup() {
@@ -4974,42 +5004,26 @@ function updateTradeShowStage(endDate) {
 }
   
 function formatTradeShowDates(startDate, endDate) {
-  function ordinal(day) {
-    if (day >= 11 && day <= 13) return day + "th";
-
-    const suffix = ["th", "st", "nd", "rd"];
-    return day + (suffix[day % 10] || "th");
-  }
-
-  const start = new Date(startDate + "T12:00:00");
-  const end = new Date(endDate + "T12:00:00");
-
-  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-    return "";
-  }
-
-  const month = date =>
-    date.toLocaleDateString("en-GB", { month: "long" });
-
-  const startDay = ordinal(start.getDate());
-  const endDay = ordinal(end.getDate());
-
-  if (startDate === endDate) {
-    return startDay + " " + month(start) + " " + start.getFullYear();
-  }
-
-  if (
-    start.getMonth() === end.getMonth() &&
-    start.getFullYear() === end.getFullYear()
-  ) {
-    return startDay + "–" + endDay + " " +
-      month(end) + " " + end.getFullYear();
-  }
-
-  return startDay + " " + month(start) + " " +
-    start.getFullYear() + " – " +
-    endDay + " " + month(end) + " " + end.getFullYear();
-}  
+  const ordinal = n => n + ((n % 100 >= 11 && n % 100 <= 13) ? "th" : ({1:"st",2:"nd",3:"rd"}[n % 10] || "th"));
+  const parse = value => {
+    const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return null;
+    const date = new Date(Date.UTC(+match[1], +match[2] - 1, +match[3]));
+    if (date.getUTCFullYear() !== +match[1] || date.getUTCMonth() !== +match[2] - 1 || date.getUTCDate() !== +match[3]) return null;
+    return date;
+  };
+  const start = parse(startDate), end = parse(endDate);
+  if (!start || !end) return "";
+  const month = d => d.toLocaleString("en-GB", {month:"long", timeZone:"UTC"});
+  const day = d => ordinal(d.getUTCDate());
+  const year = d => d.getUTCFullYear();
+  if (start.getTime() === end.getTime()) return `${day(start)} ${month(start)} ${year(start)}`;
+  if (year(start) === year(end) && start.getUTCMonth() === end.getUTCMonth())
+    return `${day(start)} – ${day(end)} ${month(end)} ${year(end)}`;
+  if (year(start) === year(end))
+    return `${day(start)} ${month(start)} – ${day(end)} ${month(end)} ${year(end)}`;
+  return `${day(start)} ${month(start)} ${year(start)} – ${day(end)} ${month(end)} ${year(end)}`;
+}
 async function loadTradeShowList() {
   const list = document.getElementById("homeTradeShowSessions");
 
