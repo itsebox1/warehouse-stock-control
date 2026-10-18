@@ -941,7 +941,7 @@ function validateTradeShowFields() {
   </button>
 
   <p id="tradeShowQBStatus" style="font-size:14px; margin-top:8px;">
-  QuickBooks submission is disabled while testing.
+  Sandbox test: Only TR-000001 is authorised for QuickBooks submission.
 </p>
 
 </div>
@@ -2434,7 +2434,7 @@ table.appendChild(colgroup);
   } else {
     qbButton.textContent = "📤 Commit to QB";
     qbButton.style.background = "#c62828";
-    qbButton.disabled = true; // Keep disabled during testing.
+    qbButton.disabled = reportNumber !== "TR-000001"; // Sandbox test: allow only TR-000001.
   }
 
 } catch (qbError) {
@@ -2455,6 +2455,11 @@ table.appendChild(colgroup);
 
 document.getElementById("tradeShowCommitQBButton").onclick = async function () {
   const reportNumber = this.dataset.reportNumber;
+
+  if (reportNumber && reportNumber !== "TR-000001") {
+    window.showWSCMessage("QuickBooks Submission", "Sandbox test is restricted to TR-000001.");
+    return;
+  }
 
   if (!reportNumber) {
     window.showWSCMessage(
