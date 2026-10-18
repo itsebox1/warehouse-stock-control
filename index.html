@@ -4366,7 +4366,7 @@ async function hideITSSplash() {
 }
   
  async function showWelcomeScreen() {
-  wscRefreshPermissions();
+  void wscRefreshPermissions();
      // Prepare the home screen immediately, while keeping the splash visible
      // for three seconds. Loading continues behind the splash.
      const splash = document.getElementById("itsSplashScreen");
@@ -5903,18 +5903,56 @@ async function wscAdminRequest(action, extra={}) {
   if (!response.ok || !result.success) throw new Error(result.error || "Unable to retrieve administrator settings.");
   return result;
 }
-async function wscRefreshPermissions() {
+// Keep the last verified permissions visible while a fresh permission check runs.
+// Never show module buttons before this signed-in account has been verified.
+let wscPermissionEmail = null;
+let wscPermissionRequest = null;
+function wscPaintPermissions(permissions) {
   const cog = document.getElementById("wscAdminCog");
-  if (cog) cog.style.display = "none";
-  document.querySelectorAll("[data-wsc-area]").forEach(b=>b.style.display="none");
-  ["homeOpenSessions","homeTradeShowSection","homeDeliverySection"].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display="none";});
-  try {
-    wscPermissions = await wscAdminRequest("getWSCPermissions");
-    document.querySelectorAll("[data-wsc-area]").forEach(b=>b.style.display=wscPermissions.functions[b.dataset.wscArea] ? "" : "none");
-    if(cog) cog.style.display=wscPermissions.admin ? "block" : "none";
-    const sections={homeOpenSessions:["ST","SC"],homeTradeShowSection:["TR"],homeDeliverySection:["DL"]};
-    Object.entries(sections).forEach(([id,areas])=>{const e=document.getElementById(id);if(e)e.style.display=areas.some(a=>wscPermissions.functions[a])?"":"none";});
-  } catch(e) {console.error("Permissions unavailable:",e);}
+  const areas = permissions?.functions || {};
+  document.querySelectorAll("[data-wsc-area]").forEach(button => {
+    button.style.display = areas[button.dataset.wscArea] === true ? "" : "none";
+  });
+  if (cog) cog.style.display = permissions?.admin === true ? "block" : "none";
+  const sections = {homeOpenSessions:["ST","SC"],homeTradeShowSection:["TR"],homeDeliverySection:["DL"]};
+  Object.entries(sections).forEach(([id, allowed]) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = allowed.some(area => areas[area] === true) ? "" : "none";
+  });
+}
+async function wscRefreshPermissions() {
+  const email = String(window.getCurrentStaffEmail?.() || "").trim().toLowerCase();
+  if (!email) {
+    wscPermissions = null;
+    wscPermissionEmail = null;
+    wscPaintPermissions(null);
+    return;
+  }
+  if (wscPermissionEmail !== email) {
+    wscPermissions = null;
+    wscPermissionEmail = email;
+    wscPaintPermissions(null);
+  } else if (wscPermissions) {
+    // Immediately paint the last server-confirmed permissions on every Home press.
+    wscPaintPermissions(wscPermissions);
+  }
+  if (wscPermissionRequest) return wscPermissionRequest;
+  wscPermissionRequest = (async () => {
+    try {
+      const permissions = await wscAdminRequest("getWSCPermissions");
+      if (wscPermissionEmail !== email) return;
+      wscPermissions = permissions;
+      wscPaintPermissions(permissions);
+    } catch (error) {
+      console.error("Permissions unavailable:", error);
+      // Fail closed if the fresh server check fails.
+      if (wscPermissionEmail === email) {
+        wscPermissions = null;
+        wscPaintPermissions(null);
+      }
+    }
+  })();
+  try { await wscPermissionRequest; } finally { wscPermissionRequest = null; }
 }
 function wscCloseAdmin() {document.getElementById("wscAdminPanel").style.display="none";}
 async function wscOpenAdmin() {
@@ -6009,6 +6047,11 @@ function isPinSessionValid() {
 }  
   
   onAuthStateChanged(auth, (user) => {
+  if (!user || (wscPermissionEmail && wscPermissionEmail !== String(user.email || "").toLowerCase())) {
+    wscPermissions = null;
+    wscPermissionEmail = null;
+    wscPaintPermissions(null);
+  }
   document.getElementById("loginScreen").style.display = user ? "none" : "block";
 
 document.getElementById("welcomeUser").textContent = user
