@@ -192,6 +192,24 @@
   to { transform: rotate(360deg); }
 }
 
+
+/* WSC mouse cursors: arrow normally, pointing hand on clickable controls. */
+html, body { cursor: default; }
+button:not(:disabled),
+input[type="button"]:not(:disabled),
+input[type="submit"]:not(:disabled),
+input[type="reset"]:not(:disabled),
+a[href],
+[role="button"]:not([aria-disabled="true"]),
+summary,
+label[for],
+[onclick] { cursor: pointer !important; }
+button:disabled,
+input[type="button"]:disabled,
+input[type="submit"]:disabled,
+input[type="reset"]:disabled,
+[role="button"][aria-disabled="true"] { cursor: not-allowed !important; }
+
   </style>
 </head>
 
