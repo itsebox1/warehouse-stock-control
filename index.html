@@ -472,6 +472,15 @@ input[type="reset"]:disabled,
         <p style="font-size:13px;">Turning OFF prevents new submissions for all staff, including administrators. Only administrators can turn it back ON.</p>
         <div id="wscQBToggles"></div>
         <p style="opacity:.7;">DL – Delivery: QuickBooks not available</p>
+        <hr>
+        <h3>Cancel unresolved ST / SC report</h3>
+        <p style="font-size:13px;">Administrator only. Cancelling preserves count history and records an audit entry. Reports already submitted to QuickBooks cannot be cancelled. This cannot be undone.</p>
+        <label for="wscCancelReportNumber">Report number</label>
+        <input id="wscCancelReportNumber" type="text" placeholder="ST-000004 or SC-000002" autocomplete="off" style="width:100%; box-sizing:border-box; padding:10px; margin:6px 0 12px;">
+        <label for="wscCancelReason">Reason for cancellation (minimum 8 characters)</label>
+        <textarea id="wscCancelReason" rows="3" placeholder="Explain why this report is being cancelled" style="width:100%; box-sizing:border-box; padding:10px; margin:6px 0 12px;"></textarea>
+        <button id="wscCancelButton" type="button" onclick="wscCancelInventoryReport()" style="width:auto; background:#9b3434; color:white; padding:10px 14px;">Cancel report</button>
+        <p id="wscCancelStatus" role="status" aria-live="polite" style="font-size:13px;"></p>
       </div>
     </section>
   </div>
@@ -5999,6 +6008,35 @@ async function wscAdminRequest(action, extra={}) {
   if (!response.ok || !result.success) throw new Error(result.error || "Unable to retrieve administrator settings.");
   return result;
 }
+async function wscCancelInventoryReport() {
+  const status = document.getElementById("wscCancelStatus");
+  const button = document.getElementById("wscCancelButton");
+  const reportNumber = document.getElementById("wscCancelReportNumber").value.trim().toUpperCase();
+  const reason = document.getElementById("wscCancelReason").value.trim();
+  status.textContent = "";
+  if (wscPermissions?.admin !== true) { status.textContent = "Administrator permission required."; return; }
+  if (!/^(ST|SC)-\d{6}$/.test(reportNumber)) { status.textContent = "Enter a valid ST or SC report number."; return; }
+  if (reason.length < 8) { status.textContent = "Enter a cancellation reason of at least 8 characters."; return; }
+  if (!window.confirm("Cancel " + reportNumber + "? This will preserve the history, record an audit entry, and cannot be undone.\n\nReason: " + reason)) return;
+  button.disabled = true;
+  button.textContent = "Cancelling…";
+  try {
+    const result = await wscAdminRequest("cancelInventorySession", {reportNumber, reason});
+    if (!result.success) throw new Error(result.error || "Cancellation failed.");
+    status.textContent = reportNumber + " cancelled. Audit entry saved.";
+    document.getElementById("wscCancelReportNumber").value = "";
+    document.getElementById("wscCancelReason").value = "";
+    // Refresh the home session lists after a successful cancellation.
+    if (typeof loadStockTakeList === "function") loadStockTakeList().catch(console.warn);
+    if (typeof loadStockCountList === "function") loadStockCountList().catch(console.warn);
+  } catch (error) {
+    status.textContent = "Unable to cancel: " + error.message;
+  } finally {
+    button.disabled = false;
+    button.textContent = "Cancel report";
+  }
+}
+
 // Keep the last verified permissions visible while a fresh permission check runs.
 // Never show module buttons before this signed-in account has been verified.
 let wscPermissionEmail = null;
