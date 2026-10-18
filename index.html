@@ -5849,6 +5849,8 @@ document.getElementById("reportOptionsScreen").insertAdjacentHTML(
     )
   : null;
 
+  const isCancelled = String(stockTake?.status || "").trim().toLowerCase() === "cancelled";
+  const cancellationReason = String(stockTake?.cancellationReason || "No cancellation reason recorded.");
   const committedToQB = stockTake?.committedToQB === true;
  const emailFailed =
   String(stockTake?.emailStatus || "").trim().toLowerCase() === "failed";
@@ -5887,7 +5889,13 @@ const isInProgress = !!inProgressStockTake;
       style="width:auto; background:#244b72; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
     >View</button>
 
-    ${isInProgress ? `
+    ${isCancelled ? `
+  <button
+    type="button"
+    onclick="event.preventDefault(); event.stopPropagation(); window.showWSCMessage('Cancelled — ${reportNumber}', decodeURIComponent('${encodeURIComponent(cancellationReason).replace(/'/g, "%27")}'));"
+    style="width:auto; background:#777; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
+  >Cancelled</button>
+` : isInProgress ? `
   <button
     type="button"
     onclick="event.preventDefault(); event.stopPropagation(); showStockScreen();"
@@ -6716,15 +6724,28 @@ window.showWSCConfirm = function(title, message) {
     
 window.commitReportToQuickBooks = async function commitReportToQuickBooks(reportNumber) {
 startGlobeLoading();
+  const submissionReportGlobe = document.querySelector("#reportOptionsScreen .report-globe");
+  if (submissionReportGlobe) {
+    submissionReportGlobe.style.display = "block";
+    submissionReportGlobe.classList.add("spinning");
+  }
   
   if (!auth.currentUser) {
     stopGlobeLoading();
+  if (submissionReportGlobe) {
+    submissionReportGlobe.classList.remove("spinning");
+    submissionReportGlobe.style.display = "none";
+  }
     alert("Please sign in before committing a report to QuickBooks.");
     return;
   }
 
   if (!String(reportNumber).startsWith("ST-")) {
     stopGlobeLoading();
+  if (submissionReportGlobe) {
+    submissionReportGlobe.classList.remove("spinning");
+    submissionReportGlobe.style.display = "none";
+  }
     alert("Only Stock Take (ST) reports can be committed to QuickBooks.");
     return;
   }
@@ -6757,6 +6778,10 @@ try {
   }
 
   stopGlobeLoading();
+  if (submissionReportGlobe) {
+    submissionReportGlobe.classList.remove("spinning");
+    submissionReportGlobe.style.display = "none";
+  }
    window.showWSCMessage(
   "Submitted to QuickBooks",
   reportNumber + " has been successfully committed to QuickBooks."
@@ -6777,6 +6802,10 @@ if (button) {
 
 } catch (error) {
   stopGlobeLoading();
+  if (submissionReportGlobe) {
+    submissionReportGlobe.classList.remove("spinning");
+    submissionReportGlobe.style.display = "none";
+  }
 
   try {
     const status = await getQuickBooksCommitStatus(reportNumber);
