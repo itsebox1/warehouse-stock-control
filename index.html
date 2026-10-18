@@ -2882,38 +2882,6 @@ function selectStockTakeQuarter(clickedButton) {
   document.body.appendChild(overlay);
 }
   
-  // Shared ST/SC sequence rejection dialog. Preserve the server's actual
-  // outstanding report number and never allow a rejected start to resume.
-  function showInventoryStartFailure(type, error) {
-    const raw = String(error && error.message ? error.message : error || "Unable to start session.");
-    const blocked = /BLOCKED:|unresolved|awaiting|cannot start|can't start/i.test(raw);
-    const escapeHtml = value => String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#39;");
-    if (!blocked) {
-      window.showWSCMessage("Unable to start " + (type === "ST" ? "Stock Take" : "Stock Count"), escapeHtml(raw));
-      return;
-    }
-    // The backend supplies the blocking report number and its current status.
-    // Never guess a report number or use an example as a live report.
-    const match = raw.match(/\b(ST|SC)-\d{6}\b/i);
-    const report = match ? match[0].toUpperCase() : null;
-    const statusMatch = raw.match(/\b(?:ST|SC)-\d{6}\s*\(([^)]+)\)/i);
-    const status = statusMatch ? statusMatch[1].trim() : "";
-    let message;
-    if (report) {
-      const inProgress = /in progress/i.test(status);
-      const state = inProgress ? "is still in progress" : /closed|finished/i.test(status) ? "has been finished but is awaiting submission to QuickBooks" : "is still outstanding";
-      const nextStep = inProgress
-        ? "It must be finished and submitted to QuickBooks, or cancelled by an administrator."
-        : "It must be submitted to QuickBooks, or cancelled by an administrator.";
-      message = "Report <strong>" + escapeHtml(report) + "</strong> " + state + ".<br><br>" +
-        "A new Stock Take or Stock Count cannot be started until <strong>" + escapeHtml(report) + "</strong> is resolved. " + nextStep;
-    } else {
-      message = escapeHtml(raw.replace(/^BLOCKED:\s*/i, "")) +
-        "<br><br>A new Stock Take or Stock Count cannot be started until the outstanding report is resolved.";
-    }
-    window.showWSCMessage("New Stock Take / Stock Count blocked", message);
-  }
-
   async function startStockTake(clickedButton, stockTakePeriod) {
     document.querySelector(".report-back-button")?.classList.add("loading");
   const button =
@@ -2983,11 +2951,17 @@ console.log("BEFORE showCountingScreen =", localStorage.getItem("activeStockTake
 showCountingScreen();
 
   } catch (error) {
-    // Never resume a cached session when the server has refused a new one.
-    // In particular, a cancelled ST must not reappear as an active count.
-    status.textContent = "Error: " + String(error.message || error);
-    showInventoryStartFailure("ST", error);
-    button.disabled = false;
+   status.textContent = "Checking newly created stock take...";
+
+try {
+ resumeStockTake(localStorage.getItem("activeStockTake"), stockTakePeriod);
+} catch (recoveryError) {
+  status.textContent =
+    "Error: " + String(error.message || error);
+
+  button.disabled = false;
+}
+
   } finally {
    const startLoading =
   document.getElementById("startStockTakeLoading");
@@ -3072,8 +3046,9 @@ async function startStockCount() {
     if (status) {
       status.textContent = message;
       status.style.display = "block";
+    } else {
+      alert(message);
     }
-    showInventoryStartFailure("SC", error);
 
   } finally {
     if (button) button.disabled = false;
@@ -6049,29 +6024,13 @@ async function wscCancelInventoryReport() {
     const result = await wscAdminRequest("cancelInventorySession", {reportNumber, reason});
     if (!result.success) throw new Error(result.error || "Cancellation failed.");
     status.textContent = reportNumber + " cancelled. Audit entry saved.";
-    if (reportNumber === localStorage.getItem("activeStockTake")) {
-      localStorage.removeItem("activeStockTake");
-      localStorage.removeItem("activeStockTakePeriod");
-    }
-    if (reportNumber === localStorage.getItem("activeStockCount")) {
-      localStorage.removeItem("activeStockCount");
-    }
     document.getElementById("wscCancelReportNumber").value = "";
     document.getElementById("wscCancelReason").value = "";
     // Refresh the home session lists after a successful cancellation.
     if (typeof loadStockTakeList === "function") loadStockTakeList().catch(console.warn);
     if (typeof loadStockCountList === "function") loadStockCountList().catch(console.warn);
   } catch (error) {
-    const errorMessage = String(error?.message || "Cancellation failed.");
-    // Escape server-provided text before passing it to the existing WSC HTML modal.
-    const safeMessage = errorMessage.replace(/[&<>"']/g, ch => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-    })[ch]);
-    status.textContent = "";
-    window.showWSCMessage(
-      "Report cancellation blocked",
-      "Report " + reportNumber + " could not be cancelled.<br><br>" + safeMessage
-    );
+    status.textContent = "Unable to cancel: " + error.message;
   } finally {
     button.disabled = false;
     button.textContent = "Cancel report";
