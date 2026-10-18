@@ -401,22 +401,23 @@ input[type="reset"]:disabled,
 </div>
 
 
-  <button onclick="showReportOptions('ST')">
+  <button data-wsc-area="ST" onclick="showReportOptions('ST')">
     📦 ST - Stock Take
   </button>
 
-  <button onclick="showReportOptions('SC')">
+  <button data-wsc-area="SC" onclick="showReportOptions('SC')">
     📋 SC - Stock Count
   </button>
 
-    <button type="button" onclick="showTradeShowSetup()">
+    <button data-wsc-area="TR" type="button" onclick="showTradeShowSetup()">
     🎪 TR - Trade Show
   </button>
 
-<button type="button" onclick="showDeliverySetup()">
+<button data-wsc-area="DL" type="button" onclick="showDeliverySetup()">
   🚚 DL - Delivery
 </button>
     
+    <button id="wscAdminCog" type="button" onclick="wscOpenAdmin()" aria-label="Administrator settings" title="Administrator settings" style="display:none; position:fixed; right:16px; bottom:16px; z-index:1200; width:52px; height:52px; border-radius:50%; padding:0; font-size:25px; background:#164b84; color:white; box-shadow:0 2px 12px #0004;">⚙️</button>
     <div id="homeOpenSessions" style="margin-top:25px;">
   <h3>Open Stock Sessions</h3>
       <div id="homeSessionsLoading"
@@ -454,6 +455,26 @@ input[type="reset"]:disabled,
    </p>
    
 </div>
+
+  <div id="wscAdminPanel" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:2500; overflow-y:auto; padding:20px; box-sizing:border-box;">
+    <section role="dialog" aria-modal="true" aria-label="Administrator settings" style="max-width:500px; margin:30px auto; background:white; color:#172b4d; border-radius:14px; padding:22px; box-shadow:0 8px 32px #0004;">
+      <button type="button" onclick="wscCloseAdmin()" style="float:right; width:auto; padding:7px 13px;">✕ Close</button>
+      <h2>⚙️ Administrator Settings</h2>
+      <p id="wscAdminStatus" role="status">Loading settings…</p>
+      <div id="wscAdminControls" style="display:none;">
+        <h3>Staff function access</h3>
+        <label for="wscStaffSelect">Select staff member</label>
+        <select id="wscStaffSelect" onchange="wscRenderAdminStaff()" style="width:100%; padding:10px; margin:8px 0 14px;"></select>
+        <div id="wscStaffToggles"></div>
+        <p style="font-size:13px;">Administrators always retain access to all four functions.</p>
+        <hr>
+        <h3>QuickBooks — applies to everyone</h3>
+        <p style="font-size:13px;">Turning OFF prevents new submissions for all staff, including administrators. Only administrators can turn it back ON.</p>
+        <div id="wscQBToggles"></div>
+        <p style="opacity:.7;">DL – Delivery: QuickBooks not available</p>
+      </div>
+    </section>
+  </div>
 
   <!-- DL - Delivery Setup Screen -->
 <div id="deliverySetupScreen" style="display:none;">
@@ -4345,6 +4366,7 @@ async function hideITSSplash() {
 }
   
  async function showWelcomeScreen() {
+  wscRefreshPermissions();
      // Prepare the home screen immediately, while keeping the splash visible
      // for three seconds. Loading continues behind the splash.
      const splash = document.getElementById("itsSplashScreen");
@@ -5866,6 +5888,75 @@ if (selectedReportType === "SC") {
   reportBackButton.classList.remove("loading");
   }
 }
+}
+
+
+// Administrator controls: UI is advisory; Apps Script enforces all permissions.
+const WSC_ADMIN_URL = "https://warehouse-stock-reports.tmerry.workers.dev";
+let wscAdminData = null;
+let wscPermissions = null;
+const wscLabels = {ST:"📦 ST – Stock Take",SC:"📋 SC – Stock Count",TR:"🎪 TR – Trade Show",DL:"🚚 DL – Delivery"};
+async function wscAdminRequest(action, extra={}) {
+  const idToken = await window.getCurrentStaffToken();
+  const response = await fetch(WSC_ADMIN_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,idToken,...extra})});
+  const result = await response.json();
+  if (!response.ok || !result.success) throw new Error(result.error || "Unable to retrieve administrator settings.");
+  return result;
+}
+async function wscRefreshPermissions() {
+  const cog = document.getElementById("wscAdminCog");
+  if (cog) cog.style.display = "none";
+  document.querySelectorAll("[data-wsc-area]").forEach(b=>b.style.display="none");
+  ["homeOpenSessions","homeTradeShowSection","homeDeliverySection"].forEach(id=>{const e=document.getElementById(id);if(e)e.style.display="none";});
+  try {
+    wscPermissions = await wscAdminRequest("getWSCPermissions");
+    document.querySelectorAll("[data-wsc-area]").forEach(b=>b.style.display=wscPermissions.functions[b.dataset.wscArea] ? "" : "none");
+    if(cog) cog.style.display=wscPermissions.admin ? "block" : "none";
+    const sections={homeOpenSessions:["ST","SC"],homeTradeShowSection:["TR"],homeDeliverySection:["DL"]};
+    Object.entries(sections).forEach(([id,areas])=>{const e=document.getElementById(id);if(e)e.style.display=areas.some(a=>wscPermissions.functions[a])?"":"none";});
+  } catch(e) {console.error("Permissions unavailable:",e);}
+}
+function wscCloseAdmin() {document.getElementById("wscAdminPanel").style.display="none";}
+async function wscOpenAdmin() {
+  const panel=document.getElementById("wscAdminPanel"),status=document.getElementById("wscAdminStatus");
+  panel.style.display="block";
+  document.getElementById("wscAdminControls").style.display="none";
+  status.textContent="Loading settings…";
+  try {
+    wscAdminData=await wscAdminRequest("getWSCAdminSettings");
+    const select=document.getElementById("wscStaffSelect");
+    select.replaceChildren();
+    wscAdminData.staff.filter(s=>s.active).forEach(s=>{const option=document.createElement("option");option.value=s.email;option.textContent=s.name+" ("+s.email+")";select.appendChild(option);});
+    if(!select.options.length){const option=document.createElement("option");option.textContent="No other active staff members";option.value="";select.appendChild(option);}
+    wscRenderAdminStaff();wscRenderAdminQB();
+    document.getElementById("wscAdminControls").style.display="block";
+    status.textContent="Settings shared across devices";
+  }catch(e){status.textContent=e.message;}
+}
+function wscSwitchRow(label,enabled,onChange,disabled=false){
+  const row=document.createElement("label");row.style.cssText="display:flex;justify-content:space-between;align-items:center;padding:12px 4px;border-bottom:1px solid #ddd;gap:15px;cursor:pointer";
+  const name=document.createElement("span");name.textContent=label;
+  const input=document.createElement("input");input.type="checkbox";input.checked=!!enabled;input.disabled=disabled;input.style.cssText="width:23px;height:23px;flex-shrink:0";input.addEventListener("change",()=>onChange(input));
+  row.append(name,input);return row;
+}
+function wscRenderAdminStaff(){
+  const box=document.getElementById("wscStaffToggles"),email=document.getElementById("wscStaffSelect").value;
+  box.replaceChildren();const member=wscAdminData?.staff.find(s=>s.email===email);if(!member)return;
+  ["ST","SC","TR","DL"].forEach(area=>box.appendChild(wscSwitchRow(wscLabels[area],member.functions[area],input=>wscSaveSwitch(input,"STAFF",area,email))));
+}
+function wscRenderAdminQB(){
+  const box=document.getElementById("wscQBToggles");box.replaceChildren();
+  ["ST","SC","TR"].forEach(area=>box.appendChild(wscSwitchRow(wscLabels[area],wscAdminData.quickBooks[area],input=>wscSaveSwitch(input,"QB",area))));
+}
+async function wscSaveSwitch(input,settingType,area,staffEmail){
+  const enabled=input.checked;input.disabled=true;
+  const status=document.getElementById("wscAdminStatus");status.textContent="Saving…";
+  try {
+    wscAdminData=await wscAdminRequest("saveWSCAdminSettings",{settingType,area,enabled,...(staffEmail?{staffEmail}:{})});
+    status.textContent="Saved";
+    wscRenderAdminStaff();wscRenderAdminQB();
+    await wscRefreshPermissions();
+  }catch(e){input.checked=!enabled;input.disabled=false;status.textContent="Not saved: "+e.message;}
 }
 
 </script>
