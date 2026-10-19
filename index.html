@@ -3273,8 +3273,7 @@ document.getElementById("manualSku").value = "";
 document.getElementById("result").textContent =
   "Count submitted for " + product.sku;
 
-document.getElementById("nextProductButton").style.display =
-  document.querySelector('input[name="countType"]:checked')?.value === "ST" ? "none" : "block";
+document.getElementById("nextProductButton").style.display = "none";
 if (document.getElementById("stCountReviewPanel")?.style.display !== "none") refreshSTCountReview();
 
 
@@ -3302,8 +3301,12 @@ async function stReviewRequest(action, payload) {
   return result;
 }
 function stReviewActiveNumber() {
-  return document.querySelector('input[name="countType"]:checked')?.value === "ST"
-    ? localStorage.getItem("activeStockTake") : null;
+  const type = document.querySelector('input[name="countType"]:checked')?.value;
+  return type === "SC" ? localStorage.getItem("activeStockCount")
+    : type === "ST" ? localStorage.getItem("activeStockTake") : null;
+}
+function stReviewType() {
+  return document.querySelector('input[name="countType"]:checked')?.value === "SC" ? "SC" : "ST";
 }
 function stReviewReset() {
   const section = document.getElementById("stCountReviewSection");
@@ -3313,7 +3316,7 @@ function stReviewReset() {
   const content = document.getElementById("stCountReviewContent");
   if (content) content.replaceChildren();
   const next = document.getElementById("nextProductButton");
-  if (next) next.style.display = stReviewActiveNumber() ? "none" : next.style.display;
+  if (next) next.style.display = "none";
 }
 async function toggleSTCountReview() {
   const panel = document.getElementById("stCountReviewPanel");
@@ -3328,9 +3331,10 @@ async function refreshSTCountReview() {
   if (!number || !content) return;
   content.textContent = "Loading counted products…";
   try {
-    const data = await stReviewRequest("getStockTakeReview", {reportNumber:number});
-    if (stReviewActiveNumber() !== number) return;
-    if (!data.products?.length) { content.textContent = "No products counted in this Stock Take yet."; return; }
+    const type = stReviewType();
+    const data = await stReviewRequest(type === "SC" ? "getStockCountReview" : "getStockTakeReview", {reportNumber:number});
+    if (stReviewActiveNumber() !== number || stReviewType() !== type) return;
+    if (!data.products?.length) { content.textContent = "No products counted in this " + (type === "SC" ? "Stock Count" : "Stock Take") + " yet."; return; }
     const table = document.createElement("table");
     table.style.cssText = "width:100%;border-collapse:collapse;font-size:13px;";
     const header = table.createTHead().insertRow();
@@ -3352,22 +3356,24 @@ async function refreshSTCountReview() {
       cell.appendChild(button);
     });
     content.replaceChildren(table);
-  } catch (error) { content.textContent = "Could not load Stock Take review: " + String(error.message || error); }
+  } catch (error) { content.textContent = "Could not load Stock review: " + String(error.message || error); }
 }
 async function amendSTCount(product, number, button) {
   if (stReviewActiveNumber() !== number) return;
-  const input = await window.showWSCInput("Amend Stock Take Quantity", "New counted quantity for " + product.productName + " (" + product.sku + "):", String(product.actualQty));
+  const type = stReviewType();
+  const input = await window.showWSCInput("Amend Stock " + (type === "SC" ? "Count" : "Take") + " Quantity", "New counted quantity for " + product.productName + " (" + product.sku + "):", String(product.actualQty));
   if (input === null) return;
   const value = input.trim();
   if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value))) {
     window.showWSCMessage("Invalid Quantity", "Enter a valid whole-number quantity, including zero."); return;
   }
   if (Number(value) === Number(product.actualQty)) return;
-  if (!(await window.showWSCConfirm("Confirm Stock Take Amendment", "Change " + product.sku + " from " + product.actualQty + " to " + value + "? This will be recorded in Stock Count History."))) return;
+  if (!(await window.showWSCConfirm("Confirm Stock " + (type === "SC" ? "Count" : "Take") + " Amendment", "Change " + product.sku + " from " + product.actualQty + " to " + value + "? This will be recorded in Stock Count History."))) return;
+  if (stReviewActiveNumber() !== number || stReviewType() !== type) return;
   button.disabled = true;
   const requestId = crypto.randomUUID();
   try {
-    await stReviewRequest("amendStockTakeQuantity", {reportNumber:number,sku:product.sku,newQuantity:Number(value),requestId});
+    await stReviewRequest(type === "SC" ? "amendStockCountQuantity" : "amendStockTakeQuantity", {reportNumber:number,sku:product.sku,newQuantity:Number(value),requestId});
     await refreshSTCountReview();
   } catch (error) {
     window.showWSCMessage("Amendment Failed", String(error.message || error));
