@@ -4736,7 +4736,7 @@ if (responseText.trim().startsWith("<")) {
 
 if (startNewReportButton) {
   startNewReportButton.style.display =
-    result.stockTakes.length > 0 ? "none" : "block";
+    selectedReportType === "ST" && result.stockTakes.length === 0 ? "block" : "none";
 }
 if (reportInProgress) {
   reportInProgress.innerHTML = "";
@@ -5593,6 +5593,13 @@ function showReportsScreen() {
 
 function showReportOptions(type) {
   selectedReportType = type;
+  // Reset stale report-search indicators from a previous screen.
+  const reportGlobe = document.querySelector("#reportOptionsScreen .report-globe");
+  if (reportGlobe) {
+    reportGlobe.classList.remove("spinning");
+    reportGlobe.style.display = "none";
+  }
+  document.querySelector("#reportOptionsScreen .report-back-button")?.classList.remove("loading");
 const startNewSTButton =
   document.getElementById("startNewStockTakeFromReport");
 
@@ -5696,6 +5703,10 @@ const scReportNumber =
   if (selectedReportType === "ST" && searchBy === "number" &&
     !document.getElementById("stReportNumber").value.trim()) {
   window.showWSCMessage("Report Search", "Please enter a Stock Take number.");
+  stopGlobeLoading();
+  reportGlobe?.classList.remove("spinning");
+  if (reportGlobe) reportGlobe.style.display = "none";
+  reportBackButton?.classList.remove("loading");
   return;
 }
 
@@ -5703,6 +5714,10 @@ if (selectedReportType === "SC" &&
     searchBy === "number" &&
     !scNumberInput) {
   window.showWSCMessage("Report Search", "Please enter a Stock Count number.");
+  stopGlobeLoading();
+  reportGlobe?.classList.remove("spinning");
+  if (reportGlobe) reportGlobe.style.display = "none";
+  reportBackButton?.classList.remove("loading");
   return;
 }
 
@@ -5712,22 +5727,38 @@ const sku = document.getElementById("scSku").value.trim();
 if (searchBy === "date") {
   if (!dateFrom || !dateTo) {
     window.showWSCMessage("Report Search", "Please select both dates.");
-    return;
+    stopGlobeLoading();
+  reportGlobe?.classList.remove("spinning");
+  if (reportGlobe) reportGlobe.style.display = "none";
+  reportBackButton?.classList.remove("loading");
+  return;
   }
 }
 
   if (searchBy === "date" && dateFrom > dateTo) {
   window.showWSCMessage("Report Search", "Date From must not be later than Date To.");
+  stopGlobeLoading();
+  reportGlobe?.classList.remove("spinning");
+  if (reportGlobe) reportGlobe.style.display = "none";
+  reportBackButton?.classList.remove("loading");
   return;
 }
 
 if (searchBy === "staff" && !countedBy) {
   window.showWSCMessage("Report Search", "Please enter a staff name.");
+  stopGlobeLoading();
+  reportGlobe?.classList.remove("spinning");
+  if (reportGlobe) reportGlobe.style.display = "none";
+  reportBackButton?.classList.remove("loading");
   return;
 }
 
 if (searchBy === "sku" && !sku) {
   window.showWSCMessage("Report Search", "Please enter a SKU.");
+  stopGlobeLoading();
+  reportGlobe?.classList.remove("spinning");
+  if (reportGlobe) reportGlobe.style.display = "none";
+  reportBackButton?.classList.remove("loading");
   return;
 }
 
