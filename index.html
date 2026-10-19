@@ -2356,9 +2356,8 @@ async function confirmTradeShowReturns() {
   const originalPosition = document.getElementById("tradeShowReportOriginalPosition");
   const setupScreen = document.getElementById("tradeShowSetupScreen");
   if (inlineInSearch) {
-    if (!reportScreen.parentElement || reportScreen.parentElement.id !== "trReportSearchResults") {
-      document.getElementById("tradeShowSearchSection").insertAdjacentElement("afterend", reportScreen);
-    }
+    // Search-result View buttons place the shared detail panel inside the selected card.
+    // Leave its position unchanged here so the selected card owns the dropdown.
     setupScreen.style.display = "block";
   } else {
     originalPosition.insertAdjacentElement("afterend", reportScreen);
@@ -4332,6 +4331,15 @@ function showDeliverySetup() {
   loadOpenDeliveries();
 }  
   
+function wscResetTRReportSearchPanel() {
+  const panel = document.getElementById("tradeShowReportScreen");
+  const original = document.getElementById("tradeShowReportOriginalPosition");
+  if (panel) {
+    panel.style.display = "none";
+    if (original) original.insertAdjacentElement("afterend", panel);
+  }
+}
+
 function updateTRReportSearchFields() {
   const type = document.querySelector('input[name="trReportSearchType"]:checked').value;
   document.getElementById("trReportTextField").style.display = type === "date" ? "none" : "flex";
@@ -4341,8 +4349,8 @@ function updateTRReportSearchFields() {
   document.getElementById("trReportSearchValue").style.width = type === "name" ? "310px" : "190px";
   document.getElementById("trReportSearchValue").placeholder = type === "name" ? "Enter show name" : "000001";
   document.getElementById("trReportSearchMessage").textContent = "";
+  wscResetTRReportSearchPanel();
   document.getElementById("trReportSearchResults").replaceChildren();
-  document.getElementById("tradeShowReportScreen").style.display = "none";
 }
 
 async function searchTRReports() {
@@ -4354,8 +4362,8 @@ async function searchTRReports() {
   const message = document.getElementById("trReportSearchMessage");
   const results = document.getElementById("trReportSearchResults");
   const button = document.getElementById("trReportSearchButton");
+  wscResetTRReportSearchPanel();
   results.replaceChildren();
-  document.getElementById("tradeShowReportScreen").style.display = "none";
   if ((type !== "date" && !value) || (type === "date" && (!startDate || !endDate || startDate > endDate))) {
     message.textContent = "Enter a valid search before generating a report.";
     return;
@@ -4401,6 +4409,7 @@ async function searchTRReports() {
           other.setAttribute("aria-expanded", "false");
         });
         localStorage.setItem("activeTradeShow", show.reportNumber);
+        card.appendChild(reportScreen);
         showTradeShowReport(true);
         view.textContent = "Hide";
         view.setAttribute("aria-expanded", "true");
