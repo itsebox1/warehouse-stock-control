@@ -2344,7 +2344,7 @@ async function confirmTradeShowReturns() {
   const reportNumber = localStorage.getItem("activeTradeShow");
 
   if (!reportNumber) {
-    alert("No Trade Show selected.");
+    window.showWSCMessage("WSC", "No Trade Show selected.");
     return;
   }
 
@@ -2589,16 +2589,16 @@ document.getElementById("tradeShowEmailButton").onclick = async function () {
   const reportNumber = this.dataset.reportNumber;
 
   if (!reportNumber) {
-    alert("Please open a Trade Show report first.");
+    window.showWSCMessage("WSC", "Please open a Trade Show report first.");
     return;
   }
 
-  const recipient = prompt("Email report to:");
+  const recipient = await window.showWSCInput("Email Trade Show Report", "Email report to:");
 
   if (recipient === null) return;
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient.trim())) {
-    alert("Please enter a valid email address.");
+    window.showWSCMessage("WSC", "Please enter a valid email address.");
     return;
   }
 
@@ -2764,10 +2764,9 @@ function findManualSku() {
 }
 
 async function amendTradeShowProduct(product) {
-  const answer = prompt(
-    "Amend quantity for " + product.productName +
-    "\nCurrent quantity: " + product.quantityTaken +
-    "\nEnter the new TOTAL quantity (0 is allowed):",
+  const answer = await window.showWSCInput(
+    "Amend Trade Show Quantity",
+    "New total for " + product.productName + " (currently " + product.quantityTaken + "; zero allowed):",
     String(product.quantityTaken)
   );
 
@@ -2781,16 +2780,15 @@ async function amendTradeShowProduct(product) {
     !Number.isSafeInteger(newQuantity) ||
     newQuantity < 0
   ) {
-    alert("Please enter a valid whole number, including zero.");
+    window.showWSCMessage("WSC", "Please enter a valid whole number, including zero.");
     return;
   }
 
   if (newQuantity === Number(product.quantityTaken)) return;
 
-  const confirmed = confirm(
-    "Change " + product.productName +
-    " from " + product.quantityTaken +
-    " to " + newQuantity + "?"
+  const confirmed = await window.showWSCConfirm(
+    "Confirm Trade Show Amendment",
+    "Change " + product.productName + " from " + product.quantityTaken + " to " + newQuantity + "?"
   );
 
   if (!confirmed) return;
@@ -2824,7 +2822,7 @@ async function amendTradeShowProduct(product) {
       throw new Error(result.error || "Unable to amend quantity.");
     }
 
-    alert("Quantity amended successfully.");
+    window.showWSCMessage("WSC", "Quantity amended successfully.");
 
     const reviewSection = document.getElementById("tradeShowReviewSection");
     reviewSection.style.display = "none";
@@ -3130,7 +3128,7 @@ async function createTradeShow() {
   const endDate = document.getElementById("tradeShowEndDate").value;
 
   if (!showName || !startDate || !endDate || endDate < startDate) {
-    alert("Please enter a Trade Show name and valid dates.");
+    window.showWSCMessage("WSC", "Please enter a Trade Show name and valid dates.");
     return;
   }
 
@@ -3355,14 +3353,14 @@ async function refreshSTCountReview() {
 }
 async function amendSTCount(product, number, button) {
   if (stReviewActiveNumber() !== number) return;
-  const input = prompt("New counted quantity for " + product.productName + " (" + product.sku + "):", String(product.actualQty));
+  const input = await window.showWSCInput("Amend Stock Take Quantity", "New counted quantity for " + product.productName + " (" + product.sku + "):", String(product.actualQty));
   if (input === null) return;
   const value = input.trim();
   if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value))) {
     window.showWSCMessage("Invalid Quantity", "Enter a valid whole-number quantity, including zero."); return;
   }
   if (Number(value) === Number(product.actualQty)) return;
-  if (!confirm("Change " + product.sku + " from " + product.actualQty + " to " + value + "? This will be recorded in Stock Count History.")) return;
+  if (!(await window.showWSCConfirm("Confirm Stock Take Amendment", "Change " + product.sku + " from " + product.actualQty + " to " + value + "? This will be recorded in Stock Count History."))) return;
   button.disabled = true;
   const requestId = crypto.randomUUID();
   try {
@@ -4753,7 +4751,7 @@ item.innerHTML = `
   const stockTakePeriod = stockTake.stockTakePeriod;
 
   if (!stockTakePeriod) {
-    alert("This Stock Take does not have a Quarter assigned.");
+    window.showWSCMessage("WSC", "This Stock Take does not have a Quarter assigned.");
     return;
   }
       
@@ -5594,14 +5592,14 @@ const scReportNumber =
 
   if (selectedReportType === "ST" && searchBy === "number" &&
     !document.getElementById("stReportNumber").value.trim()) {
-  alert("Please enter a Stock Take number.");
+  window.showWSCMessage("Report Search", "Please enter a Stock Take number.");
   return;
 }
 
 if (selectedReportType === "SC" &&
     searchBy === "number" &&
     !scNumberInput) {
-  alert("Please enter a Stock Count number.");
+  window.showWSCMessage("Report Search", "Please enter a Stock Count number.");
   return;
 }
 
@@ -5610,23 +5608,23 @@ const sku = document.getElementById("scSku").value.trim();
 
 if (searchBy === "date") {
   if (!dateFrom || !dateTo) {
-    alert("Please select both dates.");
+    window.showWSCMessage("Report Search", "Please select both dates.");
     return;
   }
 }
 
   if (searchBy === "date" && dateFrom > dateTo) {
-  alert("Date From must not be later than Date To.");
+  window.showWSCMessage("Report Search", "Date From must not be later than Date To.");
   return;
 }
 
 if (searchBy === "staff" && !countedBy) {
-  alert("Please enter a staff name.");
+  window.showWSCMessage("Report Search", "Please enter a staff name.");
   return;
 }
 
 if (searchBy === "sku" && !sku) {
-  alert("Please enter a SKU.");
+  window.showWSCMessage("Report Search", "Please enter a SKU.");
   return;
 }
 
@@ -6043,7 +6041,7 @@ async function wscCancelInventoryReport() {
   if (wscPermissions?.admin !== true) { status.textContent = "Administrator permission required."; return; }
   if (!/^(ST|SC)-\d{6}$/.test(reportNumber)) { status.textContent = "Enter a valid ST or SC report number."; return; }
   if (reason.length < 8) { status.textContent = "Enter a cancellation reason of at least 8 characters."; return; }
-  if (!window.confirm("Cancel " + reportNumber + "? This will preserve the history, record an audit entry, and cannot be undone.\n\nReason: " + reason)) return;
+  if (!(await window.showWSCConfirm("Cancel " + reportNumber, "This will preserve the history, record an audit entry, and cannot be undone. Reason: " + reason))) return;
   button.disabled = true;
   button.textContent = "Cancelling…";
   try {
@@ -6173,13 +6171,14 @@ function wscRenderAdminQB(){
 }
 async function wscSaveSwitch(input,settingType,area,staffEmail){
   const enabled=input.checked;input.disabled=true;
+  if (settingType === "QB") document.querySelectorAll("#wscQBToggles input").forEach(el => el.disabled = true);
   const status=document.getElementById("wscAdminStatus");status.textContent="Saving…";
   try {
     wscAdminData=await wscAdminRequest("saveWSCAdminSettings",{settingType,area,enabled,...(staffEmail?{staffEmail}:{})});
     status.textContent="Saved";
     wscRenderAdminStaff();wscRenderAdminQB();
     await wscRefreshPermissions();
-  }catch(e){input.checked=!enabled;input.disabled=false;status.textContent="Not saved: "+e.message;}
+  }catch(e){input.checked=!enabled;input.disabled=false;status.textContent="Not saved: "+e.message; if(settingType === "QB") wscRenderAdminQB();}
 }
 
 </script>
@@ -6322,7 +6321,7 @@ pinInput.addEventListener("keydown", (event) => {
   }
 });
 
-  forgotPinButton.addEventListener("click", () => {
+  forgotPinButton.addEventListener("click", async () => {
   const currentEmail = auth.currentUser?.email?.toLowerCase();
 
   if (currentEmail !== WSC_OWNER_EMAIL.toLowerCase()) {
@@ -6330,8 +6329,8 @@ pinInput.addEventListener("keydown", (event) => {
     return;
   }
 
-  const confirmed = confirm(
-    "Owner verified. Reset the PIN on this device?"
+  const confirmed = await window.showWSCConfirm(
+    "Reset Device PIN", "Owner verified. Reset the PIN on this device?"
   );
 
   if (!confirmed) return;
@@ -6360,22 +6359,19 @@ pinInput.addEventListener("keydown", (event) => {
 }); 
 
   window.emailStockReport = async function emailStockReport(reportNumber) {
-  const email = prompt(
-    "Email PDF report " + reportNumber + " to:",
-    "tmerry@sensafe.com"
-  );
+  const email = await window.showWSCInput("Email PDF Report", "Email PDF report " + reportNumber + " to:", "tmerry@sensafe.com");
 
   if (email === null) return;
 
   const recipient = email.trim();
 
   if (!recipient) {
-    alert("Please enter an email address.");
+    window.showWSCMessage("WSC", "Please enter an email address.");
     return;
   }
 
   if (!auth.currentUser) {
-    alert("Please sign in before emailing a report.");
+    window.showWSCMessage("WSC", "Please sign in before emailing a report.");
     return;
   }
 
@@ -6482,9 +6478,7 @@ window.openFinalPdf = async function(reportNumber) {
 
 // DL - Email finished Delivery PDF
 window.emailDeliveryPdf = async function(reportNumber) {
-  const recipient = window.prompt(
-    "Enter the email address for " + reportNumber + ":"
-  );
+  const recipient = await window.showWSCInput("Email Delivery PDF", "Enter the email address for " + reportNumber + ":");
 
   if (recipient === null) return;
 
@@ -6691,6 +6685,31 @@ box.style.cssText = `
 document.body.appendChild(overlay);
 };
 
+
+// WSC-styled input dialog: resolves to entered text, or null on cancellation.
+window.showWSCInput = function(title, message, initialValue = "") {
+  return new Promise(resolve => {
+    const overlay = document.createElement("div");
+    overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:100001;padding:20px";
+    const box = document.createElement("div");
+    box.style.cssText = "background:#fff;border-radius:12px;padding:24px;max-width:480px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.3);color:#222";
+    const heading = document.createElement("h2"); heading.textContent = title; heading.style.marginTop = "0";
+    const description = document.createElement("p"); description.textContent = message;
+    const input = document.createElement("input"); input.type = "text"; input.value = initialValue;
+    input.style.cssText = "box-sizing:border-box;width:100%;padding:12px;border:1px solid #aaa;border-radius:6px;font-size:16px";
+    const actions = document.createElement("div"); actions.style.cssText = "display:flex;gap:10px;justify-content:flex-end;margin-top:24px";
+    const cancel = document.createElement("button"); cancel.textContent = "Cancel";
+    const ok = document.createElement("button"); ok.textContent = "OK";
+    for (const button of [cancel,ok]) button.style.cssText = "padding:10px 20px;border:0;border-radius:6px;color:white;font-weight:bold;cursor:pointer";
+    cancel.style.background = "#777"; ok.style.background = "#244b72";
+    const finish = value => { overlay.remove(); resolve(value); };
+    cancel.onclick = () => finish(null); ok.onclick = () => finish(input.value);
+    input.addEventListener("keydown", event => { if(event.key === "Enter") finish(input.value); if(event.key === "Escape") finish(null); });
+    actions.append(cancel,ok); box.append(heading,description,input,actions); overlay.append(box); document.body.append(overlay);
+    input.focus(); input.select();
+  });
+};
+
 window.showWSCConfirm = function(title, message) {
     return new Promise((resolve) => {
         const overlay = document.createElement("div");
@@ -6763,7 +6782,7 @@ startGlobeLoading();
     submissionReportGlobe.classList.remove("spinning");
     submissionReportGlobe.style.display = "none";
   }
-    alert("Please sign in before committing a report to QuickBooks.");
+    window.showWSCMessage("WSC", "Please sign in before committing a report to QuickBooks.");
     return;
   }
 
@@ -6773,7 +6792,7 @@ startGlobeLoading();
     submissionReportGlobe.classList.remove("spinning");
     submissionReportGlobe.style.display = "none";
   }
-    alert("Only Stock Take (ST) reports can be committed to QuickBooks.");
+    window.showWSCMessage("WSC", "Only Stock Take (ST) reports can be committed to QuickBooks.");
     return;
   }
 try {
