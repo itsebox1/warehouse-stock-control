@@ -2836,9 +2836,50 @@ async function amendTradeShowProduct(product) {
     window.showWSCMessage("WSC", "Amendment error: " + String(error.message || error));
   }
 }  
+// Single in-flight indicator shared by ST and SC preflight checks.
+// This is deliberately UI-only: Apps Script remains the session authority.
+let wscInventoryPreflightBusy = false;
+function wscBeginInventoryPreflight() {
+  if (wscInventoryPreflightBusy) return false;
+  wscInventoryPreflightBusy = true;
+  ["startStockTakeButton", "startNewStockTakeFromReport", "startStockCountButton", "startNewStockCountFromReport"].forEach(id => {
+    const button = document.getElementById(id);
+    if (button) { button.dataset.wscPreflightDisabled = button.disabled ? "yes" : "no"; button.disabled = true; }
+  });
+  const overlay = document.createElement("div");
+  overlay.id = "wscInventoryPreflightOverlay";
+  overlay.setAttribute("role", "status");
+  overlay.setAttribute("aria-live", "polite");
+  overlay.style.cssText = "position:fixed;inset:0;z-index:9998;background:rgba(255,255,255,.48);display:flex;align-items:center;justify-content:center;pointer-events:all;";
+  const panel = document.createElement("div");
+  panel.style.cssText = "display:flex;align-items:center;gap:14px;padding:18px 24px;border-radius:12px;background:white;box-shadow:0 5px 24px rgba(0,0,0,.2);color:#304B70;font-weight:600;";
+  const globe = document.createElement("img");
+  globe.src = "Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png";
+  globe.alt = "";
+  globe.className = "spinning";
+  globe.style.cssText = "width:54px;height:54px;object-fit:contain;animation:globeSpin 3s linear infinite;";
+  const label = document.createElement("span");
+  label.textContent = "Checking for active reports…";
+  panel.append(globe, label);
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+  return true;
+}
+function wscEndInventoryPreflight() {
+  document.getElementById("wscInventoryPreflightOverlay")?.remove();
+  ["startStockTakeButton", "startNewStockTakeFromReport", "startStockCountButton", "startNewStockCountFromReport"].forEach(id => {
+    const button = document.getElementById(id);
+    if (button && button.dataset.wscPreflightDisabled !== undefined) {
+      button.disabled = button.dataset.wscPreflightDisabled === "yes";
+      delete button.dataset.wscPreflightDisabled;
+    }
+  });
+  wscInventoryPreflightBusy = false;
+}
 // Check the server's ST/SC session register before opening a new report.
 // Existing backend locks remain the final authority on session creation.
 async function wscCheckNewInventoryAllowed() {
+  if (!wscBeginInventoryPreflight()) return false;
   try {
     const idToken = await window.getCurrentStaffToken();
     const response = await fetch("https://warehouse-stock-reports.tmerry.workers.dev", {
@@ -2859,6 +2900,8 @@ async function wscCheckNewInventoryAllowed() {
     window.showWSCMessage("Unable to Check Reports", String(error.message || error) +
       "\n\nNo new report has been started.");
     return false;
+  } finally {
+    wscEndInventoryPreflight();
   }
 }
 
