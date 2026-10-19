@@ -2836,7 +2836,34 @@ async function amendTradeShowProduct(product) {
     window.showWSCMessage("WSC", "Amendment error: " + String(error.message || error));
   }
 }  
-function selectStockTakeQuarter(clickedButton) {
+// Check the server's ST/SC session register before opening a new report.
+// Existing backend locks remain the final authority on session creation.
+async function wscCheckNewInventoryAllowed() {
+  try {
+    const idToken = await window.getCurrentStaffToken();
+    const response = await fetch("https://warehouse-stock-reports.tmerry.workers.dev", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({action: "getActiveInventorySession", idToken})
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success) throw new Error(result.error || "Unable to check current reports.");
+    if (result.active) {
+      window.showWSCMessage("Stock Report Already in Progress",
+        "Current report - " + result.reportNumber +
+        "\n\nCannot create a new report while another is in progress.");
+      return false;
+    }
+    return true;
+  } catch (error) {
+    window.showWSCMessage("Unable to Check Reports", String(error.message || error) +
+      "\n\nNo new report has been started.");
+    return false;
+  }
+}
+
+async function selectStockTakeQuarter(clickedButton) {
+  if (!(await wscCheckNewInventoryAllowed())) return;
   const overlay = document.createElement("div");
 
   overlay.style.cssText = `
@@ -2900,6 +2927,7 @@ function selectStockTakeQuarter(clickedButton) {
 }
   
   async function startStockTake(clickedButton, stockTakePeriod) {
+    if (!(await wscCheckNewInventoryAllowed())) return;
     document.querySelector(".report-back-button")?.classList.add("loading");
   const button =
   clickedButton || document.getElementById("startStockTakeButton");
@@ -2968,6 +2996,14 @@ console.log("BEFORE showCountingScreen =", localStorage.getItem("activeStockTake
 showCountingScreen();
 
   } catch (error) {
+   if (/BLOCKED:/.test(String(error.message || error))) {
+     window.showWSCMessage("Stock Report Already in Progress",
+       "Current report - " + (String(error.message || error).match(/(?:ST|SC)-\d{6}/) || ["Unknown"])[0] +
+       "\n\nCannot create a new report while another is in progress.");
+     status.textContent = "";
+     button.disabled = false;
+     return;
+   }
    status.textContent = "Checking newly created stock take...";
 
 try {
@@ -2993,6 +3029,7 @@ if (startLoading) {
 }
   
 async function startStockCount() {
+  if (!(await wscCheckNewInventoryAllowed())) return;
   const button =
     document.getElementById("startNewStockCountFromReport")?.offsetParent
       ? document.getElementById("startNewStockCountFromReport")
