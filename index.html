@@ -5939,8 +5939,8 @@ const isInProgress = !!inProgressStockTake;
     type="button"
     id="qb-${reportNumber}"
     onclick="event.preventDefault(); event.stopPropagation(); confirmQuickBooksCommit('${reportNumber}');"
-    ${committedToQB ? '' : 'disabled'}
-    style="width:auto; background:${committedToQB ? '#28a745' : '#777'}; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:${committedToQB ? 'pointer' : 'not-allowed'}; font-weight:bold;"
+    ${committedToQB ? 'disabled title="Already submitted to QuickBooks"' : 'disabled'}
+    style="width:auto; background:${committedToQB ? '#28a745' : '#777'}; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:not-allowed; font-weight:bold;"
   >${committedToQB ? 'Committed to QB' : 'QB Submissions Disabled'}</button>
   `}
 `}
@@ -6075,7 +6075,11 @@ function wscPaintPermissions(permissions) {
   });
   if (cog) cog.style.display = permissions?.admin === true ? "block" : "none";
   document.querySelectorAll('button[id^="qb-ST-"]').forEach(button => {
-    if (button.textContent.trim() === "Committed to QB") return;
+    if (button.textContent.trim() === "Committed to QB") {
+      button.disabled = true;
+      button.style.cursor = "not-allowed";
+      return;
+    }
     if (permissions?.quickBooks?.ST !== true) {
       button.disabled = true;
       button.textContent = "QB Submissions Disabled";
@@ -6815,6 +6819,9 @@ const button = document.getElementById("qb-" + reportNumber);
 if (button) {
   button.textContent = "Committed to QB";
   button.style.background = "#28a745";
+  button.disabled = true;
+  button.style.cursor = "not-allowed";
+  button.title = "Already submitted to QuickBooks";
   button.onclick = function () {
     window.showWSCMessage(
       "Already Submitted",
@@ -6896,6 +6903,9 @@ async function getQuickBooksCommitStatus(reportNumber) {
   if (status.submitted) {
     button.textContent = "Committed to QB";
     button.style.background = "#28a745";
+    button.disabled = true;
+    button.style.cursor = "not-allowed";
+    button.title = "Already submitted to QuickBooks";
     button.onclick = function() {
       window.showWSCMessage(
         "Already Submitted",
