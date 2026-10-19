@@ -6479,6 +6479,16 @@ if (user) {
 }
 
 } else {
+    // Signed out: reveal the email/password login immediately, without the splash.
+    if (itsSplashHideTimer !== null) {
+      clearTimeout(itsSplashHideTimer);
+      itsSplashHideTimer = null;
+    }
+    const loginSplash = document.getElementById("itsSplashScreen");
+    if (loginSplash) {
+      loginSplash.style.display = "none";
+      loginSplash.classList.remove("its-splash-exit");
+    }
     document.getElementById("pinLockScreen").style.display = "none";
     document.getElementById("welcomeScreen").style.display = "none";
     document.getElementById("stockApp").style.display = "none";
