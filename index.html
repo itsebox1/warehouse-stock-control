@@ -969,6 +969,10 @@ function validateTradeShowFields() {
  <div id="tradeShowReportOriginalPosition"></div>
  <div id="tradeShowReportScreen" style="display:none;">
 
+  <div id="tradeShowReportTopBar" style="display:flex; align-items:center; gap:12px;">
+    <button type="button" id="tradeShowReportHomeButton" onclick="showWelcomeScreen()" style="flex:1;">🏠 Home</button>
+    <img id="tradeShowReportGlobe" class="about-globe spinning" src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png" alt="Processing" style="display:none; width:48px; height:48px; object-fit:contain;" />
+  </div>
   <h2>🎪 TR — Trade Show Report</h2>
 
   <div id="tradeShowReportList"></div>
@@ -989,7 +993,7 @@ function validateTradeShowFields() {
   </button>
 
   <p id="tradeShowQBStatus" style="font-size:14px; margin-top:8px;">
-  Sandbox test: Only TR-000001 is authorised for QuickBooks submission.
+
 </p>
 
 </div>
@@ -2328,8 +2332,10 @@ async function confirmTradeShowReturns() {
   let trReportLoadingCount = 0;
   function setTRReportLoading(active) {
     trReportLoadingCount = Math.max(0, trReportLoadingCount + (active ? 1 : -1));
-    const globe = document.getElementById("tradeShowCreateGlobe");
-    const home = document.getElementById("tradeShowSetupHomeButton");
+    const reportScreen = document.getElementById("tradeShowReportScreen");
+    const onReport = reportScreen && reportScreen.style.display !== "none";
+    const globe = document.getElementById(onReport ? "tradeShowReportGlobe" : "tradeShowCreateGlobe");
+    const home = document.getElementById(onReport ? "tradeShowReportHomeButton" : "tradeShowSetupHomeButton");
     if (globe) globe.style.display = trReportLoadingCount ? "block" : "none";
     if (home) home.classList.toggle("loading", trReportLoadingCount > 0);
   }
@@ -2488,7 +2494,11 @@ table.appendChild(colgroup);
   } else {
     qbButton.textContent = "📤 Commit to QB";
     qbButton.style.background = "#c62828";
-    qbButton.disabled = reportNumber !== "TR-000001"; // Sandbox test: allow only TR-000001.
+    qbButton.disabled = wscPermissions?.quickBooks?.TR !== true;
+    if (qbButton.disabled) {
+      qbButton.textContent = "QB Submissions Disabled";
+      qbButton.style.background = "#777";
+    }
   }
 
 } catch (qbError) {
@@ -2510,11 +2520,6 @@ table.appendChild(colgroup);
 document.getElementById("tradeShowCommitQBButton").onclick = async function () {
   const reportNumber = this.dataset.reportNumber;
 
-  if (reportNumber && reportNumber !== "TR-000001") {
-    window.showWSCMessage("QuickBooks Submission", "Sandbox test is restricted to TR-000001.");
-    return;
-  }
-
   if (!reportNumber) {
     window.showWSCMessage(
       "QuickBooks Submission",
@@ -2523,8 +2528,13 @@ document.getElementById("tradeShowCommitQBButton").onclick = async function () {
     return;
   }
 
+  if (wscPermissions?.quickBooks?.TR !== true) {
+    window.showWSCMessage("QuickBooks Submission", "Trade Show QuickBooks submissions are disabled by the administrator.");
+    return;
+  }
   const button = this;
   button.disabled = true;
+  setTRReportLoading(true);
 
   try {
     const idToken = await window.getCurrentStaffToken();
@@ -2567,7 +2577,9 @@ document.getElementById("tradeShowCommitQBButton").onclick = async function () {
       String(error.message || error)
     );
   } finally {
-    button.disabled = false;
+    setTRReportLoading(false);
+    // Re-read the actual submission state. Never allow a blind retry.
+    await loadTradeShowReport(reportNumber);
   }
 };
   
@@ -2591,6 +2603,7 @@ document.getElementById("tradeShowEmailButton").onclick = async function () {
   const button = this;
   button.disabled = true;
   button.textContent = "Sending email...";
+  setTRReportLoading(true);
 
   try {
     const idToken = await window.getCurrentStaffToken();
@@ -2625,6 +2638,7 @@ document.getElementById("tradeShowEmailButton").onclick = async function () {
   } finally {
     button.disabled = false;
     button.textContent = "📧 Email Report";
+    setTRReportLoading(false);
   }
 };
   
@@ -6072,6 +6086,13 @@ function wscPaintPermissions(permissions) {
       button.style.cursor = "pointer";
     }
   });
+  const trButton = document.getElementById("tradeShowCommitQBButton");
+  if (trButton && trButton.textContent.trim() !== "✓ Committed to QB" && trButton.textContent.trim() !== "QB Submission Pending" && trButton.textContent.trim() !== "QB Status Unavailable") {
+    const allowed = permissions?.quickBooks?.TR === true;
+    trButton.disabled = !allowed;
+    trButton.textContent = allowed ? "📤 Commit to QB" : "QB Submissions Disabled";
+    trButton.style.background = allowed ? "#c62828" : "#777";
+  }
   const sections = {homeOpenSessions:["ST","SC"],homeTradeShowSection:["TR"],homeDeliverySection:["DL"]};
   Object.entries(sections).forEach(([id, allowed]) => {
     const el = document.getElementById(id);
