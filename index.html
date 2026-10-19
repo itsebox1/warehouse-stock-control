@@ -4736,7 +4736,7 @@ if (responseText.trim().startsWith("<")) {
 
 if (startNewReportButton) {
   startNewReportButton.style.display =
-    selectedReportType === "ST" && result.stockTakes.length === 0 ? "block" : "none";
+    typeof selectedReportType !== "undefined" && selectedReportType === "ST" && result.stockTakes.length === 0 ? "block" : "none";
 }
 if (reportInProgress) {
   reportInProgress.innerHTML = "";
