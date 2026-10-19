@@ -2363,6 +2363,8 @@ async function confirmTradeShowReturns() {
     setupScreen.style.display = "none";
   }
   reportScreen.style.display = "block";
+  // The search screen already has its own Home button. Keep this one only for standalone reports.
+  document.getElementById("tradeShowReportHomeButton").style.display = inlineInSearch ? "none" : "block";
 
   document.getElementById("tradeShowReportList").textContent =
     "Loading Trade Show report...";
