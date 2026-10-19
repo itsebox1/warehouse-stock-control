@@ -1292,7 +1292,7 @@ function findDeliveryInvoiceSku() {
   });
 
   if (!match) {
-    alert("SKU " + sku + " was not found on this invoice.");
+    window.showWSCMessage("WSC", "SKU " + sku + " was not found on this invoice.");
     return;
   }
 
@@ -1429,7 +1429,7 @@ async function saveDeliveryForReview() {
 
     if (!invoiceNumber || !invoiceDate ||
         invoiceNumber === "—" || invoiceDate === "—") {
-      alert("Invoice number and date are required.");
+      window.showWSCMessage("WSC", "Invoice number and date are required.");
       return;
     }
 
@@ -1456,7 +1456,7 @@ async function saveDeliveryForReview() {
     }));
 
     if (products.length === 0) {
-      alert("There are no products to save.");
+      window.showWSCMessage("WSC", "There are no products to save.");
       return;
     }
 
@@ -1473,7 +1473,7 @@ async function saveDeliveryForReview() {
     });
 
     if (invalidProduct) {
-      alert("Please check the quantities for SKU " + invalidProduct.sku);
+      window.showWSCMessage("WSC", "Please check the quantities for SKU " + invalidProduct.sku);
       return;
     }
 
@@ -1584,7 +1584,7 @@ async function saveDeliveryForReview() {
     return true;
    } catch (error) {
     console.error("Delivery save error:", error);
-    alert(error.message || "Unable to save Delivery.");
+    window.showWSCMessage("WSC", error.message || "Unable to save Delivery.");
     return false;
     
  } finally {
@@ -2356,7 +2356,9 @@ async function confirmTradeShowReturns() {
   const originalPosition = document.getElementById("tradeShowReportOriginalPosition");
   const setupScreen = document.getElementById("tradeShowSetupScreen");
   if (inlineInSearch) {
-    document.getElementById("tradeShowSearchSection").insertAdjacentElement("afterend", reportScreen);
+    if (!reportScreen.parentElement || reportScreen.parentElement.id !== "trReportSearchResults") {
+      document.getElementById("tradeShowSearchSection").insertAdjacentElement("afterend", reportScreen);
+    }
     setupScreen.style.display = "block";
   } else {
     originalPosition.insertAdjacentElement("afterend", reportScreen);
@@ -2636,7 +2638,7 @@ document.getElementById("tradeShowEmailButton").onclick = async function () {
 );
     
   } catch (error) {
-    alert("Email failed: " + String(error.message || error));
+    window.showWSCMessage("WSC", "Email failed: " + String(error.message || error));
   } finally {
     button.disabled = false;
     button.textContent = "📧 Email Report";
@@ -2830,7 +2832,7 @@ async function amendTradeShowProduct(product) {
     await showTradeShowReview();
 
   } catch (error) {
-    alert("Amendment error: " + String(error.message || error));
+    window.showWSCMessage("WSC", "Amendment error: " + String(error.message || error));
   }
 }  
 function selectStockTakeQuarter(clickedButton) {
@@ -3061,7 +3063,7 @@ async function startStockCount() {
       status.textContent = message;
       status.style.display = "block";
     } else {
-      alert(message);
+      window.showWSCMessage("WSC", message);
     }
 
   } finally {
@@ -3183,7 +3185,7 @@ document.getElementById("tradeShowCountingScreen").style.display = "block";
 
    updateTradeShowStage(endDate); 
   } catch (error) {
-    alert("Error: " + String(error.message || error));
+    window.showWSCMessage("WSC", "Error: " + String(error.message || error));
 
   } finally {
     if (createGlobe) createGlobe.style.display = "none";
@@ -4372,15 +4374,42 @@ async function searchTRReports() {
     const matches = data.tradeShows || [];
     message.textContent = matches.length ? matches.length + " Trade Show report(s) found. Select a report:" : "No completed Trade Show reports found.";
     matches.forEach(show => {
-      const item = document.createElement("button");
-      item.type = "button";
-      item.style.marginTop = "10px";
-      item.textContent = show.reportNumber + " – " + show.showName + " (" + formatTradeShowDates(show.startDate, show.endDate) + ")";
-      item.onclick = () => {
+      const card = document.createElement("div");
+      card.style.cssText = "border:1px solid #d5dce4;border-radius:9px;padding:14px;margin:12px 0;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.06)";
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap";
+      const title = document.createElement("strong");
+      title.style.cssText = "flex:1;min-width:180px;overflow-wrap:anywhere";
+      title.textContent = show.reportNumber + " — " + show.showName + " — " + formatTradeShowDates(show.startDate, show.endDate);
+      const view = document.createElement("button");
+      view.type = "button";
+      view.textContent = "View";
+      view.style.cssText = "width:auto;background:#244b72;color:white;border:0;border-radius:6px;padding:9px 18px;font-weight:bold;cursor:pointer";
+      view.setAttribute("aria-expanded", "false");
+      view.onclick = () => {
+        const reportScreen = document.getElementById("tradeShowReportScreen");
+        const isOpen = reportScreen.style.display !== "none" &&
+          document.getElementById("tradeShowEmailButton").dataset.reportNumber === show.reportNumber;
+        if (isOpen) {
+          reportScreen.style.display = "none";
+          view.textContent = "View";
+          view.setAttribute("aria-expanded", "false");
+          return;
+        }
+        results.querySelectorAll('button[aria-expanded="true"]').forEach(other => {
+          other.textContent = "View";
+          other.setAttribute("aria-expanded", "false");
+        });
         localStorage.setItem("activeTradeShow", show.reportNumber);
         showTradeShowReport(true);
+        view.textContent = "Hide";
+        view.setAttribute("aria-expanded", "true");
+        // Keep the shared report screen outside the search-results container.
+        // It must survive subsequent searches that clear the result cards.
       };
-      results.appendChild(item);
+      row.append(title, view);
+      card.appendChild(row);
+      results.appendChild(card);
     });
   } catch (error) {
     message.textContent = "Search failed: " + String(error.message || error);
@@ -4949,7 +4978,7 @@ if (reportOptions) {
 
     
   } catch (error) {
-    alert("Unable to finish stock take: " + error.message);
+    window.showWSCMessage("WSC", "Unable to finish stock take: " + error.message);
     finish.disabled = false;
     finish.textContent = "Finish";
 } finally {
@@ -6004,7 +6033,7 @@ if (selectedReportType === "SC") {
  } catch (error) {
   document.getElementById("reportLoading")?.remove();
 
-  alert("Report error: " + error.message);
+  window.showWSCMessage("WSC", "Report error: " + error.message);
 } finally {
   stopGlobeLoading();
 
