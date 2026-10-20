@@ -6443,7 +6443,17 @@ async function wscOpenAdmin() {
     if(!select.options.length){const option=document.createElement("option");option.textContent="No other active staff members";option.value="";select.appendChild(option);}
     const resetSelect=document.getElementById("wscResetStaffSelect");
     resetSelect.replaceChildren();
-    wscAdminData.staff.filter(s=>s.active).forEach(s=>{const option=document.createElement("option");option.value=s.email;option.textContent=s.name+" ("+s.email+")";resetSelect.appendChild(option);});
+    const resetStaff = [...wscAdminData.staff.filter(s=>s.active),
+      {email:"nmerry@sensafe.com",name:"Nicola (Administrator)",active:true},
+      {email:"tmerry@sensafe.com",name:"Terry (Administrator)",active:true}];
+    const resetEmails = new Set();
+    resetStaff.forEach(s=>{
+      const email=String(s.email||"").trim().toLowerCase();
+      if(!email||resetEmails.has(email))return;
+      resetEmails.add(email);
+      const option=document.createElement("option");option.value=email;
+      option.textContent=s.name+" ("+email+")";resetSelect.appendChild(option);
+    });
     document.getElementById("wscResetStaffButton").disabled=!resetSelect.options.length;
     document.getElementById("wscResetStaffStatus").textContent="";
     wscRenderAdminStaff();wscRenderAdminQB();
@@ -6457,7 +6467,7 @@ async function wscResetStaffPassword() {
   const status=document.getElementById("wscResetStaffStatus");
   const email=String(select.value||"").trim().toLowerCase();
   const member=wscAdminData?.staff?.find(s=>s.active&&s.email===email);
-  if (!member || !wscPermissions?.admin || !window.getCurrentStaffEmail?.()) {
+  if ((!member && !["nmerry@sensafe.com","tmerry@sensafe.com"].includes(email)) || !wscPermissions?.admin || !window.getCurrentStaffEmail?.()) {
     status.textContent="Administrator access and an active staff member are required.";
     return;
   }
