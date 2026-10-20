@@ -24,6 +24,12 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
 
   <style>
+/* Home dashboard collapsible session headings. Yellow means attention needed. */
+.wsc-home-dropdown { margin: 0 0 8px; border: 1px solid #d5dce6; border-radius: 9px; overflow: hidden; background: white; }
+.wsc-home-dropdown > summary { cursor: pointer; font-weight: 700; font-size: 18px; padding: 13px 15px; list-style-position: inside; }
+.wsc-home-dropdown.wsc-has-open > summary { background: #ffe28a; color: #253047; }
+.wsc-home-dropdown-content { padding: 4px 13px 13px; }
+
 /* WSC unified processing indicator: original corner loading globes are
    replaced visually by the centred white-card indicator. */
 #wscUnifiedLoading {
@@ -443,7 +449,7 @@ input[type="reset"]:disabled,
     
     <button id="wscAdminCog" type="button" onclick="wscOpenAdmin()" aria-label="Administrator settings" title="Administrator settings" style="display:none; position:fixed; right:16px; bottom:16px; z-index:1200; width:52px; height:52px; border-radius:50%; padding:0; font-size:25px; background:#164b84; color:white; box-shadow:0 2px 12px #0004;">⚙️</button>
     <div id="homeOpenSessions" style="margin-top:25px;">
-  <h3>Open Stock Sessions</h3>
+  <details class="wsc-home-dropdown" id="wscHomeStockDropdown"><summary>Open Stock Sessions</summary><div class="wsc-home-dropdown-content">
       <div id="homeSessionsLoading"
      style="display:none; text-align:center; padding:15px;">
   <img
@@ -457,22 +463,21 @@ input[type="reset"]:disabled,
   <div id="homeStockTakeSessions"></div>
 
   <div id="homeStockCountSessions"></div>
+</div></details>
 </div>
     <!-- TR - Open Trade Show Sessions -->
 <div id="homeTradeShowSection" style="margin-top:20px;">
-  <h3>Open Trade Shows</h3>
-  <div id="homeTradeShowSessions"></div>
+  <details class="wsc-home-dropdown" id="wscHomeTradeDropdown"><summary>Open Trade Shows</summary><div class="wsc-home-dropdown-content" id="homeTradeShowSessions"></div></details>
 </div>
 
     <!-- DL - Open Delivery Sessions -->
 <div id="homeDeliverySection" style="margin-top:20px;">
-  <h3>Open Deliveries</h3>
-  <div id="openDeliverySessions"></div>
+  <details class="wsc-home-dropdown" id="wscHomeDeliveryDropdown"><summary>Open Deliveries</summary><div class="wsc-home-dropdown-content" id="openDeliverySessions"></div></details>
 </div>
 
     <div id="updateStatus" style="display:none; text-align:left; margin-top:30px; margin-bottom:10px;" aria-live="polite"></div>
    
-   <p id="welcomeUser" style="text-align:left; margin-top:0px; margin-bottom:0;">
+   <p id="welcomeUser" style="text-align:left; margin-top:35px; margin-bottom:0; padding-bottom:65px; font-size:13px;">
     Checking sign-in...  
    </p>
    
@@ -4745,6 +4750,24 @@ async function hideITSSplash() {
   splash.classList.remove("its-splash-exit");
 }
   
+
+function wscUpdateHomeDropdownHighlights() {
+  const sections = [
+    ["wscHomeStockDropdown", ["homeStockTakeSessions", "homeStockCountSessions"], /\b(?:ST|SC)-\d+\b/i],
+    ["wscHomeTradeDropdown", ["homeTradeShowSessions"], /\bTR-\d+\b/i],
+    ["wscHomeDeliveryDropdown", ["openDeliverySessions"], /\bDL-\d+\b/i]
+  ];
+  sections.forEach(([dropdownId, listIds, pattern]) => {
+    const dropdown = document.getElementById(dropdownId);
+    if (!dropdown) return;
+    const hasOpen = listIds.some(id => {
+      const el = document.getElementById(id);
+      return el && pattern.test(el.textContent || "");
+    });
+    dropdown.classList.toggle("wsc-has-open", Boolean(hasOpen));
+  });
+}
+
  async function showWelcomeScreen() {
   void wscRefreshPermissions();
      // Prepare the home screen immediately, while keeping the splash visible
@@ -4787,6 +4810,7 @@ if (privacyGlobe) {
        loadTradeShowList(),
        loadOpenDeliveries()
      ]);
+     wscUpdateHomeDropdownHighlights();
    } catch (error) {
      console.error("Home dashboard error:", error);
      const targets = ["homeStockTakeSessions", "homeStockCountSessions", "homeTradeShowSessions", "openDeliverySessions"];
