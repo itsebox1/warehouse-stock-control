@@ -14,6 +14,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Warehouse Stock Control</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#163e6e">
+  <link rel="icon" type="image/png" sizes="192x192" href="wsc-icon-192.png">
+
   <link rel="apple-touch-icon" href="Warehouse%20Stock%20Control.png">
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
@@ -7506,6 +7510,15 @@ window.stopGlobeLoading = function() {
     document.addEventListener('DOMContentLoaded', initialise);
   else initialise();
 })();
+</script>
+<script>
+// PWA registration; deliberately does not cache index.html or app data.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js', {updateViaCache:'none'})
+      .catch(err => console.warn('WSC app installation worker:', err));
+  });
+}
 </script>
 </body>
 </html>
