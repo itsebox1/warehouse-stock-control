@@ -482,18 +482,21 @@ input[type="reset"]:disabled,
       <h2>⚙️ Administrator Settings</h2>
       <p id="wscAdminStatus" role="status">Loading settings…</p>
       <div id="wscAdminControls" style="display:none;">
-        <h3>Staff function access</h3>
+        <details class="wsc-admin-section"><summary>Staff function access</summary>
+        <div class="wsc-admin-section-body">
         <label for="wscStaffSelect">Select staff member</label>
         <select id="wscStaffSelect" onchange="wscRenderAdminStaff()" style="width:100%; padding:10px; margin:8px 0 14px;"></select>
         <div id="wscStaffToggles"></div>
         <p style="font-size:13px;">Administrators always retain access to all four functions.</p>
-        <hr>
-        <h3>QuickBooks — applies to everyone</h3>
+        </div></details>
+        <details class="wsc-admin-section"><summary>QuickBooks — applies to everyone</summary>
+        <div class="wsc-admin-section-body">
         <p style="font-size:13px;">Turning OFF prevents new submissions for all staff, including administrators. Only administrators can turn it back ON.</p>
         <div id="wscQBToggles"></div>
         <p style="opacity:.7;">DL – Delivery: QuickBooks not available</p>
-        <hr>
-        <h3>Cancel unresolved ST / SC report</h3>
+        </div></details>
+        <details class="wsc-admin-section"><summary>Cancel unresolved ST / SC report</summary>
+        <div class="wsc-admin-section-body">
         <p style="font-size:13px;">Administrator only. Cancelling preserves count history and records an audit entry. Reports already submitted to QuickBooks cannot be cancelled. This cannot be undone.</p>
         <label for="wscCancelReportNumber">Report number</label>
         <input id="wscCancelReportNumber" type="text" placeholder="ST-000004 or SC-000002" autocomplete="off" style="width:100%; box-sizing:border-box; padding:10px; margin:6px 0 12px;">
@@ -501,10 +504,26 @@ input[type="reset"]:disabled,
         <textarea id="wscCancelReason" rows="3" placeholder="Explain why this report is being cancelled" style="width:100%; box-sizing:border-box; padding:10px; margin:6px 0 12px;"></textarea>
         <button id="wscCancelButton" type="button" onclick="wscCancelInventoryReport()" style="width:auto; background:#9b3434; color:white; padding:10px 14px;">Cancel report</button>
         <p id="wscCancelStatus" role="status" aria-live="polite" style="font-size:13px;"></p>
+        </div></details>
+        <details class="wsc-admin-section"><summary>Staff Password Reset</summary>
+          <div class="wsc-admin-section-body">
+            <p style="font-size:13px;">Send a Firebase password-reset email to an active staff member who signs in using email and password.</p>
+            <label for="wscResetStaffSelect">Select staff email</label>
+            <select id="wscResetStaffSelect" style="width:100%;padding:10px;margin:8px 0 14px;"></select>
+            <button id="wscResetStaffButton" type="button" onclick="wscResetStaffPassword()" style="width:auto;padding:10px 14px;">Send password reset email</button>
+            <p id="wscResetStaffStatus" role="status" aria-live="polite" style="font-size:13px;"></p>
+          </div>
+        </details>
       </div>
     </section>
   </div>
 
+  <style>
+    .wsc-admin-section {border:1px solid #d8e0e9;border-radius:9px;margin:12px 0;overflow:hidden;background:#fff;}
+    .wsc-admin-section > summary {cursor:pointer;font-weight:700;padding:14px 12px;background:#f2f6fb;}
+    .wsc-admin-section[open] > summary {border-bottom:1px solid #d8e0e9;}
+    .wsc-admin-section-body {padding:12px;}
+  </style>
   <!-- DL - Delivery Setup Screen -->
 <div id="deliverySetupScreen" style="display:none;">
 
@@ -6422,10 +6441,36 @@ async function wscOpenAdmin() {
     select.replaceChildren();
     wscAdminData.staff.filter(s=>s.active).forEach(s=>{const option=document.createElement("option");option.value=s.email;option.textContent=s.name+" ("+s.email+")";select.appendChild(option);});
     if(!select.options.length){const option=document.createElement("option");option.textContent="No other active staff members";option.value="";select.appendChild(option);}
+    const resetSelect=document.getElementById("wscResetStaffSelect");
+    resetSelect.replaceChildren();
+    wscAdminData.staff.filter(s=>s.active).forEach(s=>{const option=document.createElement("option");option.value=s.email;option.textContent=s.name+" ("+s.email+")";resetSelect.appendChild(option);});
+    document.getElementById("wscResetStaffButton").disabled=!resetSelect.options.length;
+    document.getElementById("wscResetStaffStatus").textContent="";
     wscRenderAdminStaff();wscRenderAdminQB();
     document.getElementById("wscAdminControls").style.display="block";
     status.textContent="Settings shared across devices";
   }catch(e){status.textContent=e.message;}
+}
+async function wscResetStaffPassword() {
+  const select=document.getElementById("wscResetStaffSelect");
+  const button=document.getElementById("wscResetStaffButton");
+  const status=document.getElementById("wscResetStaffStatus");
+  const email=String(select.value||"").trim().toLowerCase();
+  const member=wscAdminData?.staff?.find(s=>s.active&&s.email===email);
+  if (!member || !wscPermissions?.admin || !window.getCurrentStaffEmail?.()) {
+    status.textContent="Administrator access and an active staff member are required.";
+    return;
+  }
+  if (!confirm("Send a Firebase password-reset email to " + email + "?")) return;
+  button.disabled=true;
+  status.textContent="Requesting password reset email…";
+  try {
+    if (typeof window.wscSendFirebaseReset !== "function") throw new Error("Firebase is not ready. Please try again.");
+    await window.wscSendFirebaseReset(email);
+    status.textContent="Password-reset request submitted for " + email + ". If the email/password account exists, Firebase will send instructions.";
+  } catch(e) {
+    status.textContent="Unable to request password reset: " + (e?.message||String(e));
+  } finally {button.disabled=false;}
 }
 function wscSwitchRow(label,enabled,onChange,disabled=false){
   const row=document.createElement("label");row.style.cssText="display:flex;justify-content:space-between;align-items:center;padding:12px 4px;border-bottom:1px solid #ddd;gap:15px;cursor:pointer";
@@ -6459,7 +6504,7 @@ async function wscSaveSwitch(input,settingType,area,staffEmail){
 <script type="module">
   // Import the functions you need from the SDKs you need
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 // TODO: Add SDKs for Firebase products that you want to use
   // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -6477,6 +6522,8 @@ async function wscSaveSwitch(input,settingType,area,staffEmail){
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   
+  window.wscSendFirebaseReset = email => sendPasswordResetEmail(auth, email);
+
   const WSC_OWNER_EMAIL = "tmerry@sensafe.com";
   
     window.getCurrentStaffEmail = function() {
