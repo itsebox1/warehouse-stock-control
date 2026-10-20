@@ -470,9 +470,7 @@ input[type="reset"]:disabled,
   <div id="openDeliverySessions"></div>
 </div>
 
-    <div id="updateStatus" style="text-align:left; margin-top:30px; margin-bottom:10px;">
-  Checking for updates...
-    </div>
+    <div id="updateStatus" style="display:none; text-align:left; margin-top:30px; margin-bottom:10px;" aria-live="polite"></div>
    
    <p id="welcomeUser" style="text-align:left; margin-top:0px; margin-bottom:0;">
     Checking sign-in...  
@@ -7384,6 +7382,16 @@ async function getQuickBooksCommitStatusForST(reportNumber) {
 // WSC deployment version. Update version.txt LAST, after any backend deployments.
 const WSC_VERSION = "1.0.2";
 
+function isNewerWSCVersion(remote, current) {
+  const r = remote.split(".").map(Number);
+  const c = current.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    if (r[i] > c[i]) return true;
+    if (r[i] < c[i]) return false;
+  }
+  return false;
+}
+
 async function checkForWSCUpdate() {
   const status = document.getElementById("updateStatus");
   if (!status) return;
@@ -7396,19 +7404,24 @@ async function checkForWSCUpdate() {
     if (!/^\d+\.\d+\.\d+$/.test(latestVersion)) {
       throw new Error("Invalid version format");
     }
-    if (latestVersion === WSC_VERSION) {
-      status.textContent = "✓ Up to date (v" + WSC_VERSION + ")";
+    // Only alert for a genuinely newer deployment, never an older version marker.
+    if (!isNewerWSCVersion(latestVersion, WSC_VERSION)) {
+      status.replaceChildren();
+      status.style.display = "none";
       return;
     }
-    status.textContent = "Update available (v" + latestVersion + ") ";
+    status.replaceChildren();
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = "Update";
+    button.textContent = "🔄 Update Available (v" + latestVersion + ")";
     button.addEventListener("click", () => window.updateWSC(latestVersion));
     status.appendChild(button);
+    status.style.display = "block";
   } catch (error) {
     console.log("WSC update check failed:", error);
-    status.textContent = "Unable to check for updates";
+    // Do not display a misleading update prompt when the version check fails.
+    status.replaceChildren();
+    status.style.display = "none";
   }
 }
 
