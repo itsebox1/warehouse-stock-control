@@ -7381,42 +7381,51 @@ async function getQuickBooksCommitStatusForST(reportNumber) {
   return await getQuickBooksCommitStatus(reportNumber);
 }
   
-// WSC version / update checker
-const WSC_VERSION = "1.0.1";
+// WSC deployment version. Update version.txt LAST, after any backend deployments.
+const WSC_VERSION = "1.0.2";
 
 async function checkForWSCUpdate() {
   const status = document.getElementById("updateStatus");
   if (!status) return;
-
   try {
-    const response = await fetch("version.txt?nocache=" + Date.now(), {
+    const response = await fetch("./version.txt?nocache=" + Date.now(), {
       cache: "no-store"
     });
-
-    if (!response.ok) {
-      throw new Error("Version check failed");
-    }
-
+    if (!response.ok) throw new Error("Version check failed");
     const latestVersion = (await response.text()).trim();
-
-    if (latestVersion === WSC_VERSION) {
-      status.innerHTML = "✓ Up to date";
-    } else {
-      status.innerHTML =
-        'Update available &nbsp; <button type="button" onclick="updateWSC()">Update</button>';
+    if (!/^\d+\.\d+\.\d+$/.test(latestVersion)) {
+      throw new Error("Invalid version format");
     }
+    if (latestVersion === WSC_VERSION) {
+      status.textContent = "✓ Up to date (v" + WSC_VERSION + ")";
+      return;
+    }
+    status.textContent = "Update available (v" + latestVersion + ") ";
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "Update";
+    button.addEventListener("click", () => window.updateWSC(latestVersion));
+    status.appendChild(button);
   } catch (error) {
     console.log("WSC update check failed:", error);
-    status.innerHTML = "Unable to check for updates";
+    status.textContent = "Unable to check for updates";
   }
 }
 
-window.updateWSC = function() {
+window.updateWSC = function(latestVersion) {
   showITSSplash();
-  window.location.reload(true);
-}
+  // A new URL forces a fresh document in Safari and installed PWAs.
+  // Existing session/authentication is retained; stock data is not cleared.
+  const url = new URL(window.location.href);
+  url.searchParams.set("wsc_version", latestVersion || Date.now().toString());
+  window.location.replace(url.toString());
+};
 
 checkForWSCUpdate();
+// Recheck when staff return to the app after a deployment.
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) checkForWSCUpdate();
+});
 
 // Trade Show counting uses its own globe, not the Stock screen's globe.
 window.startTradeShowCountingLoading = function() {
