@@ -35,6 +35,21 @@
 .wsc-module-detail { padding:8px 12px 12px; border:1px solid #d6dce5; border-top:0; border-radius:0 0 12px 12px; background:white; color:#172b4d; }
 .wsc-module-detail[hidden], .wsc-module-arrow[hidden] { display:none !important; }
 .wsc-module-count { font-size:12px; padding:0 0 10px; text-align:center; }
+/* Home navigation buttons must fill their available row, even during loading.
+   The former 75px globe allowance is no longer required. */
+#stockApp > .stock-home-button,
+#reportOptionsScreen > .report-back-button,
+#tradeShowSetupHomeButton,
+#tradeShowCountingHomeButton,
+#tradeShowReportHomeButton,
+#deliverySetupScreen > button:first-child,
+#reportsScreen > button:first-child,
+#reportDisplayScreen > button:first-child {
+  width: 100% !important;
+  box-sizing: border-box;
+  max-width: 100%;
+}
+#tradeShowReportHomeButton { min-width: 0; }
 /* WSC unified processing indicator: original corner loading globes are
    replaced visually by the centred white-card indicator. */
 #wscUnifiedLoading {
@@ -86,16 +101,16 @@
 }    
 
 .stock-home-button.loading {
-    width: calc(100% - 75px);
+    width: 100%;
 }
 
 .report-back-button.loading {
-    width: calc(100% - 75px);
+    width: 100%;
 }
 
 #tradeShowSetupHomeButton.loading,
 #tradeShowCountingHomeButton.loading {
-    width: calc(100% - 75px);
+    width: 100%;
 }
 
 #quarterlyStockTakeAlert {
