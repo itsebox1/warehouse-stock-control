@@ -6428,9 +6428,26 @@ async function wscCancelInventoryReport() {
     status.textContent = reportNumber + " cancelled. Audit entry saved.";
     document.getElementById("wscCancelReportNumber").value = "";
     document.getElementById("wscCancelReason").value = "";
-    // Refresh the home session lists after a successful cancellation.
-    if (typeof loadStockTakeList === "function") loadStockTakeList().catch(console.warn);
-    if (typeof loadStockCountList === "function") loadStockCountList().catch(console.warn);
+    // Refresh the dashboard status from the server after a successful cancellation.
+    // The yellow Home module buttons are driven by wscUpdateHomeModules(), not
+    // by the individual session list rendering functions alone.
+    try {
+      wscHomeDashboardLists = null; // Discard any pre-cancellation snapshot.
+      wscHomeDashboardLists = await fetchHomeDashboard();
+      await Promise.allSettled([
+        loadStockTakeList(),
+        loadStockCountList(),
+        loadTradeShowList(),
+        loadOpenDeliveries()
+      ]);
+      wscUpdateHomeModules();
+      try { await wscLoadOutstandingQB(); } catch (qbError) { console.warn("QB dashboard:", qbError); }
+    } catch (refreshError) {
+      console.warn("Dashboard refresh after cancellation:", refreshError);
+      status.textContent += " Refresh Home to update the session buttons.";
+    } finally {
+      wscHomeDashboardLists = null;
+    }
   } catch (error) {
     status.textContent = "Unable to cancel: " + error.message;
   } finally {
