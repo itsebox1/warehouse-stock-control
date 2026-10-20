@@ -3398,12 +3398,42 @@ function stReviewReset() {
   const next = document.getElementById("nextProductButton");
   if (next) next.style.display = "none";
 }
+// Shared activity overlay for Stock Take / Stock Count review requests.
+let wscStockReviewBusy = false;
+function wscStockReviewLoading(label) {
+  if (wscStockReviewBusy) return false;
+  wscStockReviewBusy = true;
+  const overlay = document.createElement("div");
+  overlay.id = "wscStockReviewLoadingOverlay";
+  overlay.setAttribute("role", "status");
+  overlay.setAttribute("aria-live", "polite");
+  overlay.style.cssText = "position:fixed;inset:0;z-index:9998;background:rgba(255,255,255,.48);display:flex;align-items:center;justify-content:center;pointer-events:all;";
+  const panel = document.createElement("div");
+  panel.style.cssText = "display:flex;align-items:center;gap:14px;padding:18px 24px;border-radius:12px;background:white;box-shadow:0 5px 24px rgba(0,0,0,.2);color:#304B70;font-weight:600;";
+  const globe = document.createElement("img");
+  globe.src = "Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png";
+  globe.alt = "";
+  globe.className = "spinning";
+  globe.style.cssText = "width:54px;height:54px;object-fit:contain;animation:globeSpin 3s linear infinite;";
+  const text = document.createElement("span");
+  text.textContent = label;
+  panel.append(globe, text);
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+  return true;
+}
+function wscStockReviewLoadingEnd() {
+  document.getElementById("wscStockReviewLoadingOverlay")?.remove();
+  wscStockReviewBusy = false;
+}
 async function toggleSTCountReview() {
   const panel = document.getElementById("stCountReviewPanel");
   if (!panel) return;
   if (panel.style.display !== "none") { panel.style.display = "none"; return; }
+  if (!wscStockReviewLoading("Loading counted products…")) return;
   panel.style.display = "block";
-  await refreshSTCountReview();
+  try { await refreshSTCountReview(); }
+  finally { wscStockReviewLoadingEnd(); }
 }
 async function refreshSTCountReview() {
   const number = stReviewActiveNumber();
@@ -3450,6 +3480,7 @@ async function amendSTCount(product, number, button) {
   if (Number(value) === Number(product.actualQty)) return;
   if (!(await window.showWSCConfirm("Confirm Stock " + (type === "SC" ? "Count" : "Take") + " Amendment", "Change " + product.sku + " from " + product.actualQty + " to " + value + "? This will be recorded in Stock Count History."))) return;
   if (stReviewActiveNumber() !== number || stReviewType() !== type) return;
+  if (!wscStockReviewLoading("Saving amended quantity…")) return;
   button.disabled = true;
   const requestId = crypto.randomUUID();
   try {
@@ -3458,6 +3489,8 @@ async function amendSTCount(product, number, button) {
   } catch (error) {
     window.showWSCMessage("Amendment Failed", String(error.message || error));
     button.disabled = false;
+  } finally {
+    wscStockReviewLoadingEnd();
   }
 }
 
@@ -6479,16 +6512,6 @@ if (user) {
 }
 
 } else {
-    // Signed out: reveal the email/password login immediately, without the splash.
-    if (itsSplashHideTimer !== null) {
-      clearTimeout(itsSplashHideTimer);
-      itsSplashHideTimer = null;
-    }
-    const loginSplash = document.getElementById("itsSplashScreen");
-    if (loginSplash) {
-      loginSplash.style.display = "none";
-      loginSplash.classList.remove("its-splash-exit");
-    }
     document.getElementById("pinLockScreen").style.display = "none";
     document.getElementById("welcomeScreen").style.display = "none";
     document.getElementById("stockApp").style.display = "none";
