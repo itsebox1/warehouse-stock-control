@@ -20,6 +20,26 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
 
   <style>
+/* WSC unified processing indicator: original corner loading globes are
+   replaced visually by the centred white-card indicator. */
+#wscUnifiedLoading {
+  position: fixed; inset: 0; z-index: 9000;
+  background: rgba(255,255,255,.48);
+  display: none; align-items: center; justify-content: center;
+  pointer-events: all;
+}
+#wscUnifiedLoading .wsc-loading-card {
+  background: #fff; border-radius: 14px; padding: 23px 35px;
+  box-shadow: 0 5px 25px rgba(0,0,0,.17);
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  font: 600 16px Arial,sans-serif; color: #203247;
+}
+#wscUnifiedLoading img { width: 56px; height: 56px; object-fit: contain;
+  animation: globeSpin 3s linear infinite; }
+/* Keep original elements operational for the existing JS, but invisible. */
+.about-globe.spinning:not(#homePrivacyGlobe),
+#tradeShowReportGlobe { visibility: hidden !important; }
+
     body {
       font-family: Arial, sans-serif;
       margin: 24px;
@@ -7379,6 +7399,56 @@ window.stopGlobeLoading = function() {
 };
 
   
+</script>
+
+<!-- Unified WSC processing indicator: observes existing loader state without
+     changing any stock-counting, reporting or QuickBooks request handlers. -->
+<script>
+(function () {
+  function initialise() {
+    if (document.getElementById('wscUnifiedLoading')) return;
+    const overlay = document.createElement('div');
+    overlay.id = 'wscUnifiedLoading';
+    overlay.setAttribute('role','status');
+    overlay.setAttribute('aria-label','Processing request');
+    overlay.innerHTML = '<div class="wsc-loading-card"><img src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png" alt=""><span>Processing, please wait...</span></div>';
+    document.body.appendChild(overlay);
+    const selectors = [
+      '.stock-globe', '.report-globe', '#tradeShowCreateGlobe',
+      '#tradeShowCountingGlobe', '#tradeShowReportGlobe'
+    ];
+    function active(el) {
+      if (!el || !el.isConnected) return false;
+      if (el.style.display === 'none') return false;
+      if (el.id !== 'tradeShowReportGlobe' && !el.classList.contains('spinning')) return false;
+      for (let node=el; node && node!==document.body; node=node.parentElement) {
+        if (getComputedStyle(node).display === 'none') return false;
+      }
+      return true;
+    }
+    let scheduled = false;
+    function update() {
+      scheduled = false;
+      const busy = selectors.some(sel => [...document.querySelectorAll(sel)].some(active));
+      // Existing full-screen white-card overlays already handle their own display.
+      const existing = document.getElementById('wscInventoryPreflightOverlay');
+      overlay.style.display = busy && !existing ? 'flex' : 'none';
+    }
+    function scheduleUpdate() {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(update);
+    }
+    new MutationObserver(scheduleUpdate).observe(document.body, {
+      subtree:true, attributes:true, childList:true,
+      attributeFilter:['style','class','hidden']
+    });
+    update();
+  }
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', initialise);
+  else initialise();
+})();
 </script>
 </body>
 </html>
