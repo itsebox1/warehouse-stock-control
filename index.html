@@ -1084,6 +1084,17 @@ function validateTradeShowFields() {
 
   <h2 id="reportOptionsTitle"></h2>
 
+  <!-- SC uses the same Start New / Find Report layout as Trade Show. -->
+  <section id="scStartNewSection" style="display:none; margin:25px 0 28px;">
+    <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
+    <button type="button" id="toggleNewStockCountButton" aria-expanded="false" onclick="toggleNewStockCount()">➕ Start New Stock Count</button>
+    <div id="newStockCountFields" style="display:none; margin-top:15px;">
+      <button id="startNewStockCountFromReport" onclick="startStockCount()" style="margin-top:12px; display:none;">➕ Create New Stock Count</button>
+    </div>
+    <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
+    <h3>Find Stock Count</h3>
+  </section>
+
   <div id="scSearchOptions" style="display:none; margin-bottom:20px;">
 
   <p><strong>Search Stock Count by:</strong></p>
@@ -1235,13 +1246,7 @@ function validateTradeShowFields() {
   ➕ Start New Stock Take
 </button>
 
-<button
-  id="startNewStockCountFromReport"
-  onclick="startStockCount()"
-  style="margin-top:12px; display:none;"
->
- ➕ Start New Stock Count
-</button>
+
   
 <div
   id="startStockTakeLoading"
@@ -5840,8 +5845,22 @@ function showReportsScreen() {
     searchBy === "date" ? "block" : "none";
 }
 
+function toggleNewStockCount() {
+  const fields = document.getElementById("newStockCountFields");
+  const toggle = document.getElementById("toggleNewStockCountButton");
+  if (!fields || !toggle) return;
+  const opening = fields.style.display === "none";
+  fields.style.display = opening ? "block" : "none";
+  toggle.setAttribute("aria-expanded", String(opening));
+}
+
 function showReportOptions(type) {
   selectedReportType = type;
+  const scStartSection = document.getElementById("scStartNewSection");
+  if (scStartSection) scStartSection.style.display = type === "SC" ? "block" : "none";
+  const scNewFields = document.getElementById("newStockCountFields");
+  if (scNewFields) scNewFields.style.display = "none";
+  document.getElementById("toggleNewStockCountButton")?.setAttribute("aria-expanded", "false");
   // Reset stale report-search indicators from a previous screen.
   const reportGlobe = document.querySelector("#reportOptionsScreen .report-globe");
   if (reportGlobe) {
