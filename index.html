@@ -1849,6 +1849,17 @@ async function lookupProduct(sku) {
             style="width:100%;padding:12px;font-size:18px;margin-top:10px;box-sizing:border-box;"
           >
 
+          <label for="countNotesInput" style="display:block;margin-top:15px;">
+            <strong>Notes (optional):</strong>
+          </label>
+          <textarea
+            id="countNotesInput"
+            rows="3"
+            maxlength="2000"
+            placeholder="Add any notes about this product count"
+            style="width:100%;padding:12px;font-size:16px;margin-top:8px;box-sizing:border-box;resize:vertical;"
+          ></textarea>
+
           <button
             id="saveCountButton"
             type="button"
@@ -3343,6 +3354,7 @@ document.getElementById("tradeShowCountingScreen").style.display = "block";
   const message = document.getElementById("saveMessage");
 
   const quantity = input.value.trim();
+  const notes = (document.getElementById("countNotesInput")?.value || "").trim();
 
   if (
     quantity === "" ||
@@ -3355,6 +3367,7 @@ document.getElementById("tradeShowCountingScreen").style.display = "block";
 
   const requestId = window.pendingCountRequest?.sku === product.sku &&
   window.pendingCountRequest?.quantity === Number(quantity) &&
+  window.pendingCountRequest?.notes === notes &&
   window.pendingCountRequest?.reportNumber === (
     document.querySelector('input[name="countType"]:checked').value === "SC"
       ? localStorage.getItem("activeStockCount")
@@ -3367,6 +3380,7 @@ window.pendingCountRequest = {
   id: requestId,
   sku: product.sku,
   quantity: Number(quantity),
+  notes: notes,
   reportNumber: document.querySelector('input[name="countType"]:checked').value === "SC"
     ? localStorage.getItem("activeStockCount")
     : localStorage.getItem("activeStockTake")
@@ -3387,6 +3401,7 @@ window.pendingCountRequest = {
         action: "saveCount",
         sku: product.sku,
         quantity: Number(quantity),
+        notes: notes,
         requestId: requestId,
         idToken: idToken,
         countType: document.querySelector('input[name="countType"]:checked').value,
