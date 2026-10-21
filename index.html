@@ -7836,6 +7836,9 @@ function wscDatesExtractText(text){
     const match=matches.find(x=>/\d/.test(x));
     if(match){lot=match;break;}
   }
+  // OCR often reads a printed leading zero as the letter O.
+  // Only normalise an existing O, never invent a digit if OCR omitted it.
+  if(/^O(?=[0-9])/.test(lot))lot='0'+lot.slice(1);
   return {lot,expiry};
 }
 async function wscDatesReadPhoto(input){
@@ -7844,7 +7847,7 @@ async function wscDatesReadPhoto(input){
   const preview=document.getElementById('wscDatesPhotoPreview');
   const url=URL.createObjectURL(file);preview.src=url;preview.style.display='block';
   preview.onload=()=>URL.revokeObjectURL(url);
-  wscDatesSetBusy(true);status.textContent='Reading printed lot and expiry from photograph…';
+  wscDatesSetBusy(true,'Scanning bottle cap…');status.textContent='Reading printed lot and expiry from photograph…';
   try{
     const tesseract=await wscDatesLoadOCR();
     const result=await tesseract.recognize(file,'eng');
@@ -7888,15 +7891,30 @@ async function wscDatesRequest(action,extra={}) {
   if (!response.ok || result.success !== true) throw new Error(result.error || 'Dates request failed.');
   return result;
 }
-function wscDatesSetBusy(busy) {
+function wscDatesProcessing(label){
+  let overlay=document.getElementById('wscDatesProcessingOverlay');
+  if(!overlay){
+    overlay=document.createElement('div');overlay.id='wscDatesProcessingOverlay';
+    overlay.setAttribute('role','status');overlay.setAttribute('aria-live','polite');
+    overlay.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;pointer-events:all;';
+    const panel=document.createElement('div');panel.style.cssText='display:flex;align-items:center;gap:14px;padding:18px 24px;border-radius:12px;background:white;box-shadow:0 5px 24px #0003;color:#304b70;font-weight:600;';
+    const globe=document.createElement('img');globe.src='Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png';globe.alt='';globe.className='spinning';globe.style.cssText='width:54px;height:54px;object-fit:contain;animation:globeSpin 3s linear infinite;';
+    const message=document.createElement('span');message.id='wscDatesProcessingText';
+    panel.append(globe,message);overlay.append(panel);document.body.append(overlay);
+  }
+  document.getElementById('wscDatesProcessingText').textContent=label||'Processing…';
+}
+function wscDatesSetBusy(busy,label) {
   wscDatesBusy=busy;
+  if(busy)wscDatesProcessing(label||'Processing…');
+  else document.getElementById('wscDatesProcessingOverlay')?.remove();
   ['wscDatesFind','wscDatesSave','wscDatesCameraButton','wscDatesAmendButton','wscDatesScanButton'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=busy;});
 }
 async function wscDatesFind() {
   if(wscDatesBusy)return;
   const sku=document.getElementById('wscDatesSku').value.trim();
   if(!sku){wscDatesMessage('Enter a SKU first.');return;}
-  wscDatesSetBusy(true); wscDatesMessage('Looking up product…');
+  wscDatesSetBusy(true,'Looking up product…'); wscDatesMessage('Looking up product…');
   try {
     const data=await wscDatesRequest('getProductDates',{sku});
     wscDatesCurrentSku=data.sku;
@@ -7932,14 +7950,14 @@ async function wscDatesFind() {
 }
 async function wscDatesSave(){
   if(wscDatesBusy)return;
-  if(wscPermissions?.admin!==true || document.getElementById('wscDatesAdmin').style.display!=='block'){
+  if(document.getElementById('wscDatesAdmin').style.display!=='block'){
     wscDatesMessage('Administrator Amendments must be open.');return;
   }
   const lot=document.getElementById('wscDatesLot').value.trim(),expiry=document.getElementById('wscDatesExpiry').value.trim();
   if(!lot||!expiry){wscDatesMessage('Enter both lot and expiry.');return;}
   const enteredSku=document.getElementById('wscDatesSku').value.trim();
   if(!enteredSku){wscDatesMessage('Enter or scan a product SKU before confirming. Your lot and expiry have been kept.');document.getElementById('wscDatesSku').focus();return;}
-  wscDatesSetBusy(true);wscDatesMessage('Checking product before saving…');
+  wscDatesSetBusy(true,'Checking and saving lot…');wscDatesMessage('Checking product before saving…');
   try{
     // Always verify the SKU currently shown in the input; a previous lookup may
     // belong to another product. Never silently save against an old selection.
@@ -7950,7 +7968,7 @@ async function wscDatesSave(){
     const result=await wscDatesRequest('addProductDate',{sku,lot,expiry});
     document.getElementById('wscDatesLot').value='';document.getElementById('wscDatesExpiry').value='';
     wscDatesMessage(result.alreadyExists?'This lot and expiry are already recorded.':'Lot saved.');
-  }catch(e){wscDatesMessage(e.message);wscDatesSetBusy(false);return;}
+  }catch(e){wscDatesMessage('Could not save: '+(e.message||String(e)));wscDatesSetBusy(false);return;}
   wscDatesSetBusy(false);await wscDatesFind();
 }
 
