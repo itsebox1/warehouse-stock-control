@@ -424,7 +424,7 @@ input[type="reset"]:disabled,
 
 </div>
   
-  <div id="welcomeScreen" style="display:none;">
+  <div id="welcomeScreen" style="display:none; min-height:calc(100dvh - 48px); flex-direction:column; box-sizing:border-box;">
 
   <a href="https://sites.google.com/view/warehouse-stock-control/home" target="_blank">
   <img src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
@@ -459,14 +459,14 @@ input[type="reset"]:disabled,
     <button class="wsc-module-main" data-wsc-area="SC" onclick="wscModuleMainClick('SC')">📋 SC – Stock Count</button>
     <button class="wsc-module-arrow" type="button" aria-label="Expand open Stock Counts" onclick="wscToggleModule('SC')" hidden>⌄</button>
   </div><div class="wsc-module-count" hidden></div><div class="wsc-module-detail" hidden><div id="homeStockCountSessions"></div></div></div>
-  <div class="wsc-module" data-module="TR"><div class="wsc-module-header">
-    <button class="wsc-module-main" data-wsc-area="TR" type="button" onclick="wscModuleMainClick('TR')">🎪 TR – Trade Show</button>
-    <button class="wsc-module-arrow" type="button" aria-label="Expand open Trade Shows" onclick="wscToggleModule('TR')" hidden>⌄</button>
-  </div><div class="wsc-module-count" hidden></div><div class="wsc-module-detail" hidden><div id="homeTradeShowSessions"></div></div></div>
   <div class="wsc-module" data-module="DL"><div class="wsc-module-header">
     <button class="wsc-module-main" data-wsc-area="DL" type="button" onclick="wscModuleMainClick('DL')">🚚 DL – Delivery</button>
     <button class="wsc-module-arrow" type="button" aria-label="Expand open Deliveries" onclick="wscToggleModule('DL')" hidden>⌄</button>
   </div><div class="wsc-module-count" hidden></div><div class="wsc-module-detail" hidden><div id="openDeliverySessions"></div></div></div>
+  <div class="wsc-module" data-module="TR"><div class="wsc-module-header">
+    <button class="wsc-module-main" data-wsc-area="TR" type="button" onclick="wscModuleMainClick('TR')">🎪 TR – Trade Show</button>
+    <button class="wsc-module-arrow" type="button" aria-label="Expand open Trade Shows" onclick="wscToggleModule('TR')" hidden>⌄</button>
+  </div><div class="wsc-module-count" hidden></div><div class="wsc-module-detail" hidden><div id="homeTradeShowSessions"></div></div></div>
   <div class="wsc-module" data-module="QB" id="wscQbModule" hidden><div class="wsc-module-header wsc-attention">
     <button class="wsc-module-main" type="button" onclick="wscToggleModule('QB')">📋 Outstanding QB Commitments</button>
     <button class="wsc-module-arrow" type="button" onclick="wscToggleModule('QB')">⌄</button>
@@ -476,7 +476,7 @@ input[type="reset"]:disabled,
 
     <div id="updateStatus" style="display:none; text-align:left; margin-top:30px; margin-bottom:10px;" aria-live="polite"></div>
    
-   <p id="welcomeUser" style="text-align:left; margin-top:35px; margin-bottom:0; padding-bottom:65px; font-size:13px;">
+   <p id="welcomeUser" style="text-align:left; margin-top:auto; margin-bottom:0; padding-top:35px; padding-bottom:12px; font-size:13px;">
     Checking sign-in...  
    </p>
    
@@ -4847,7 +4847,7 @@ async function wscLoadOutstandingQB() {
          hideITSSplash();
        }, remaining);
      }
-  document.getElementById("welcomeScreen").style.display = "block";
+  document.getElementById("welcomeScreen").style.display = "flex";
      document.getElementById("deliverySetupScreen").style.display = "none";
    document.getElementById("deliveryReviewScreen").style.display = "none";
   updateQuarterlyStockTakeAlert();
