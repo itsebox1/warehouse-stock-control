@@ -504,8 +504,17 @@ input[type="reset"]:disabled,
         <details class="wsc-admin-section"><summary>Cancel unresolved ST / SC report</summary>
         <div class="wsc-admin-section-body">
         <p style="font-size:13px;">Administrator only. Cancelling preserves count history and records an audit entry. Reports already submitted to QuickBooks cannot be cancelled. This cannot be undone.</p>
-        <label for="wscCancelReportNumber">Report number</label>
-        <input id="wscCancelReportNumber" type="text" placeholder="ST-000004 or SC-000002" autocomplete="off" style="width:100%; box-sizing:border-box; padding:10px; margin:6px 0 12px;">
+        <div id="wscCancelReportType" role="radiogroup" aria-label="Report type" style="margin:10px 0 14px;">
+          <div style="font-weight:600; margin-bottom:8px;">Select report type</div>
+          <label style="display:block; margin:8px 0; cursor:pointer;"><input type="radio" name="wscCancelType" value="ST" checked> 📦 ST – Stock Take</label>
+          <label style="display:block; margin:8px 0; cursor:pointer;"><input type="radio" name="wscCancelType" value="SC"> 📋 SC – Stock Count</label>
+          <label style="display:block; margin:8px 0; cursor:pointer;"><input type="radio" name="wscCancelType" value="DL"> 🚚 DL – Delivery</label>
+          <label style="display:block; margin:8px 0; cursor:pointer;"><input type="radio" name="wscCancelType" value="TR"> 🎪 TR – Trade Show</label>
+        </div>
+        <label for="wscCancelReportNumber">Report number (six digits)</label>
+        <input id="wscCancelReportNumber" type="text" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="000001" autocomplete="off" style="width:100%; box-sizing:border-box; padding:10px; margin:6px 0 5px;" oninput="this.value=this.value.replace(/\D/g,'').slice(0,6); wscUpdateCancelReportPreview();">
+        <div id="wscCancelReportPreview" style="font-size:13px; opacity:.8; margin:0 0 12px;">Selected report: ST-______</div>
+        <p style="font-size:12px; opacity:.75; margin:0 0 12px;">Cancellation is currently available for ST and SC. DL and TR require backend support before cancellation can be enabled.</p>
         <label for="wscCancelReason">Reason for cancellation (minimum 8 characters)</label>
         <textarea id="wscCancelReason" rows="3" placeholder="Explain why this report is being cancelled" style="width:100%; box-sizing:border-box; padding:10px; margin:6px 0 12px;"></textarea>
         <button id="wscCancelButton" type="button" onclick="wscCancelInventoryReport()" style="width:auto; background:#9b3434; color:white; padding:10px 14px;">Cancel report</button>
@@ -6435,14 +6444,26 @@ async function wscAdminRequest(action, extra={}) {
   if (!response.ok || !result.success) throw new Error(result.error || "Unable to retrieve administrator settings.");
   return result;
 }
+function wscUpdateCancelReportPreview() {
+  const type = document.querySelector('input[name="wscCancelType"]:checked')?.value || "ST";
+  const digits = document.getElementById("wscCancelReportNumber")?.value || "";
+  const preview = document.getElementById("wscCancelReportPreview");
+  if (preview) preview.textContent = "Selected report: " + type + "-" + (digits || "______");
+}
+document.querySelectorAll('input[name="wscCancelType"]').forEach(function(radio) {
+  radio.addEventListener("change", wscUpdateCancelReportPreview);
+});
 async function wscCancelInventoryReport() {
   const status = document.getElementById("wscCancelStatus");
   const button = document.getElementById("wscCancelButton");
-  const reportNumber = document.getElementById("wscCancelReportNumber").value.trim().toUpperCase();
+  const type = document.querySelector('input[name="wscCancelType"]:checked')?.value || "ST";
+  const digits = document.getElementById("wscCancelReportNumber").value.trim();
+  const reportNumber = type + "-" + digits;
   const reason = document.getElementById("wscCancelReason").value.trim();
   status.textContent = "";
   if (wscPermissions?.admin !== true) { status.textContent = "Administrator permission required."; return; }
-  if (!/^(ST|SC)-\d{6}$/.test(reportNumber)) { status.textContent = "Enter a valid ST or SC report number."; return; }
+  if (!/^\d{6}$/.test(digits)) { status.textContent = "Enter exactly six digits for the report number."; return; }
+  if (type === "DL" || type === "TR") { status.textContent = type + " cancellation is not yet supported by the server. No report has been changed."; return; }
   if (reason.length < 8) { status.textContent = "Enter a cancellation reason of at least 8 characters."; return; }
   if (!(await window.showWSCConfirm("Cancel " + reportNumber, "This will preserve the history, record an audit entry, and cannot be undone. Reason: " + reason))) return;
   button.disabled = true;
@@ -6452,6 +6473,7 @@ async function wscCancelInventoryReport() {
     if (!result.success) throw new Error(result.error || "Cancellation failed.");
     status.textContent = reportNumber + " cancelled. Audit entry saved.";
     document.getElementById("wscCancelReportNumber").value = "";
+    wscUpdateCancelReportPreview();
     document.getElementById("wscCancelReason").value = "";
     // Refresh the dashboard status from the server after a successful cancellation.
     // The yellow Home module buttons are driven by wscUpdateHomeModules(), not
