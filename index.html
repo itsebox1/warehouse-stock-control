@@ -537,7 +537,28 @@ input[type="reset"]:disabled,
     🏠 Home
   </button>
 
-  <h2>🚚 DL - Delivery</h2>
+  <h2 style="text-align:center;">🚚 DL - Delivery</h2>
+
+<hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
+  <h3>Start New Delivery</h3>
+  <label for="deliveryInvoiceFile">
+  Upload Supplier Invoice:
+</label>
+
+<input
+  type="file"
+  id="deliveryInvoiceFile"
+  accept=".pdf,image/jpeg,image/png,image/heic,image/heif"
+  style="display:block; margin:15px 0;"
+>
+
+<p id="deliveryInvoiceMessage"></p>
+ 
+ <button type="button" id="startNewDeliveryButton" onclick="startNewDelivery()">
+  ➕ Start New Delivery
+</button>
+
+<hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
 
 <h3>Find Delivery</h3>
 
@@ -570,24 +591,6 @@ input[type="reset"]:disabled,
 
 <div id="deliverySearchResults" style="margin-top:15px;"></div>
 
-<hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
-  <h3>Start New Delivery</h3>
-  <label for="deliveryInvoiceFile">
-  Upload Supplier Invoice:
-</label>
-
-<input
-  type="file"
-  id="deliveryInvoiceFile"
-  accept=".pdf,image/jpeg,image/png,image/heic,image/heif"
-  style="display:block; margin:15px 0;"
->
-
-<p id="deliveryInvoiceMessage"></p>
- 
- <button type="button" id="startNewDeliveryButton" onclick="startNewDelivery()">
-  ➕ Start New Delivery
-</button>
 </div>
   <!-- DL - Delivery Review Screen -->
 <div id="deliveryReviewScreen" style="display:none;">
