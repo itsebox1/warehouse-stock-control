@@ -1084,6 +1084,14 @@ function validateTradeShowFields() {
 
   <h2 id="reportOptionsTitle"></h2>
 
+  <!-- ST layout: creation action above report search, preserving its original handler and ID. -->
+  <section id="stStartNewSection" style="display:none; margin:25px 0 28px;">
+    <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
+    <button id="startNewStockTakeFromReport" onclick="selectStockTakeQuarter(this)" style="margin-top:12px; display:none;">➕ Create New Stock Take</button>
+    <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
+    <h3>Find Stock Take</h3>
+  </section>
+
   <!-- SC uses the same Start New / Find Report layout as Trade Show. -->
   <section id="scStartNewSection" style="display:none; margin:25px 0 28px;">
     <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
@@ -1235,13 +1243,6 @@ function validateTradeShowFields() {
   </button>
 
   <div id="reportInProgressStockTakes" style="margin-bottom:15px;"></div>
-  <button
-  id="startNewStockTakeFromReport"
-  onclick="selectStockTakeQuarter(this)"
-  style="margin-top:12px; display:none;"
->
-  ➕ Start New Stock Take
-</button>
 
 
   
@@ -5853,6 +5854,8 @@ function toggleNewStockCount() {
 
 function showReportOptions(type) {
   selectedReportType = type;
+  const stStartSection = document.getElementById("stStartNewSection");
+  if (stStartSection) stStartSection.style.display = type === "ST" ? "block" : "none";
   const scStartSection = document.getElementById("scStartNewSection");
   if (scStartSection) scStartSection.style.display = type === "SC" ? "block" : "none";
   const scNewFields = document.getElementById("newStockCountFields");
@@ -5898,9 +5901,9 @@ changeSCSearch();
   document.getElementById("stSearchChoice").style.display = type === "ST" ? "block" : "none";
   document.getElementById("reportOptionsTitle").textContent =
     type === "ST"
-      ? "ST — Stock Take Report"
+      ? "ST — Stock Take"
       : "SC — Stock Count";
-  document.getElementById("reportOptionsTitle").style.textAlign = type === "SC" ? "center" : "";
+  document.getElementById("reportOptionsTitle").style.textAlign = "center";
 
   document.getElementById("reportResults")?.remove();
   
