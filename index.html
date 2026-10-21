@@ -467,6 +467,7 @@ input[type="reset"]:disabled,
     <button class="wsc-module-main" data-wsc-area="TR" type="button" onclick="wscModuleMainClick('TR')">🎪 TR – Trade Show</button>
     <button class="wsc-module-arrow" type="button" aria-label="Expand open Trade Shows" onclick="wscToggleModule('TR')" hidden>⌄</button>
   </div><div class="wsc-module-count" hidden></div><div class="wsc-module-detail" hidden><div id="homeTradeShowSessions"></div></div></div>
+  <button id="wscDatesHomeButton" type="button" onclick="wscOpenDates()" style="width:100%; margin:8px 0; background:#294766; color:white;">📅 Dates & Lots</button>
   <div class="wsc-module" data-module="QB" id="wscQbModule" hidden><div class="wsc-module-header wsc-attention">
     <button class="wsc-module-main" type="button" onclick="wscToggleModule('QB')">📋 Outstanding QB Commitments</button>
     <button class="wsc-module-arrow" type="button" onclick="wscToggleModule('QB')">⌄</button>
@@ -482,6 +483,24 @@ input[type="reset"]:disabled,
    
 </div>
 
+  <section id="wscDatesScreen" style="display:none; max-width:650px; margin:0 auto;">
+    <button type="button" onclick="wscDatesHome()" style="width:100%;">🏠 Home</button>
+    <h2>📅 Dates & Lots</h2>
+    <label for="wscDatesSku">Product SKU</label>
+    <input id="wscDatesSku" type="text" placeholder="Enter SKU" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;margin:8px 0;">
+    <button id="wscDatesFind" type="button" onclick="wscDatesFind()" style="width:100%;">Find Product</button>
+    <p id="wscDatesMessage" role="status" aria-live="polite"></p>
+    <div id="wscDatesResults"></div>
+    <section id="wscDatesAdmin" style="display:none; border:1px solid #d6dce5;border-radius:12px;padding:15px;margin-top:16px;background:white;">
+      <h3>Add Dates (administrator)</h3>
+      <label for="wscDatesLot">Lot number</label>
+      <input id="wscDatesLot" type="text" placeholder="e.g. 0127603-KK" style="width:100%;box-sizing:border-box;padding:10px;margin:6px 0 12px;">
+      <label for="wscDatesExpiry">Expiry (as printed)</label>
+      <input id="wscDatesExpiry" type="text" placeholder="e.g. 02-2028" style="width:100%;box-sizing:border-box;padding:10px;margin:6px 0 12px;">
+      <button id="wscDatesSave" type="button" onclick="wscDatesSave()" style="width:100%;">Save Lot & Expiry</button>
+      <p style="font-size:12px;">Photograph reading will be added in the next stage. For now, enter the printed details manually.</p>
+    </section>
+  </section>
   <div id="wscAdminPanel" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:2500; overflow-y:auto; padding:20px; box-sizing:border-box;">
     <section role="dialog" aria-modal="true" aria-label="Administrator settings" style="max-width:500px; margin:30px auto; background:white; color:#172b4d; border-radius:14px; padding:22px; box-shadow:0 8px 32px #0004;">
       <button type="button" onclick="wscCloseAdmin()" style="float:right; width:auto; padding:7px 13px;">✕ Close</button>
@@ -4860,6 +4879,7 @@ async function wscLoadOutstandingQB() {
 }
 
  async function showWelcomeScreen() {
+  const datesScreen=document.getElementById('wscDatesScreen'); if(datesScreen) datesScreen.style.display='none';
   void wscRefreshPermissions();
      // Prepare the home screen immediately, while keeping the splash visible
      // for three seconds. Loading continues behind the splash.
@@ -7716,6 +7736,89 @@ window.stopGlobeLoading = function() {
 })();
 </script>
 <script>
+// Dates & Lots front end. Existing ST/SC/TR/DL handlers are unchanged.
+let wscDatesCurrentSku = '';
+let wscDatesBusy = false;
+function wscDatesMessage(text) {document.getElementById('wscDatesMessage').textContent = text || '';}
+function wscDatesHome() {
+  document.getElementById('wscDatesScreen').style.display='none';
+  showWelcomeScreen();
+}
+function wscOpenDates() {
+  document.querySelectorAll('body > div,body > section').forEach(el=>{
+    if (el.id === 'welcomeScreen') el.style.display='none';
+  });
+  document.getElementById('welcomeScreen').style.display='none';
+  const screen = document.getElementById('wscDatesScreen');
+  screen.style.display='block';
+  document.getElementById('wscDatesAdmin').style.display='none';
+  document.getElementById('wscDatesResults').replaceChildren();
+  wscDatesCurrentSku=''; wscDatesMessage('');
+  document.getElementById('wscDatesSku').focus();
+}
+async function wscDatesRequest(action,extra={}) {
+  const idToken = await window.getCurrentStaffToken();
+  const response = await fetch('https://warehouse-stock-reports.tmerry.workers.dev',{
+    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,idToken,...extra})
+  });
+  const result = await response.json();
+  if (!response.ok || result.success !== true) throw new Error(result.error || 'Dates request failed.');
+  return result;
+}
+function wscDatesSetBusy(busy) {
+  wscDatesBusy=busy;
+  ['wscDatesFind','wscDatesSave'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=busy;});
+}
+async function wscDatesFind() {
+  if(wscDatesBusy)return;
+  const sku=document.getElementById('wscDatesSku').value.trim();
+  if(!sku){wscDatesMessage('Enter a SKU first.');return;}
+  wscDatesSetBusy(true); wscDatesMessage('Looking up product…');
+  try {
+    const data=await wscDatesRequest('getProductDates',{sku});
+    wscDatesCurrentSku=data.sku;
+    const admin=wscPermissions?.admin === true;
+    document.getElementById('wscDatesAdmin').style.display=admin?'block':'none';
+    const container=document.getElementById('wscDatesResults');container.replaceChildren();
+    const heading=document.createElement('h3');heading.textContent=data.sku+' — '+data.name;container.append(heading);
+    if(!data.lots.length){const p=document.createElement('p');p.textContent='No lots recorded for this SKU.';container.append(p);}
+    data.lots.forEach(item=>{
+      const line=document.createElement('div');line.style.cssText='background:white;border:1px solid #d6dce5;border-radius:10px;padding:12px;margin:8px 0;';
+      const details=document.createElement('div');details.textContent='Lot: '+item.lot+' | Expiry: '+item.expiry;line.append(details);
+      if(admin){
+        const del=document.createElement('button');del.type='button';del.textContent='Delete this lot';del.style.cssText='width:auto;margin-top:8px;background:#a32929;';
+        del.onclick=async()=>{
+          if(wscDatesBusy)return;
+          if(!confirm('Permanently delete lot '+item.lot+' (expiry '+item.expiry+')? Only do this when no stock remains for this lot.'))return;
+          wscDatesSetBusy(true);del.disabled=true;wscDatesMessage('Deleting lot…');
+          try{await wscDatesRequest('deleteProductDate',{sku:data.sku,row:item.row,lot:item.lot,expiry:item.expiry});wscDatesMessage('Lot deleted.');}
+          catch(e){wscDatesMessage(e.message);wscDatesSetBusy(false);del.disabled=false;return;}
+          wscDatesSetBusy(false);await wscDatesFind();
+        };
+        line.append(del);
+      }
+      container.append(line);
+    });
+    wscDatesMessage(data.lots.length+' lot(s) recorded.');
+  } catch(e) {
+    wscDatesCurrentSku='';document.getElementById('wscDatesResults').replaceChildren();
+    document.getElementById('wscDatesAdmin').style.display='none';wscDatesMessage(e.message);
+  } finally {wscDatesSetBusy(false);}
+}
+async function wscDatesSave(){
+  if(wscDatesBusy)return;
+  if(!wscDatesCurrentSku){wscDatesMessage('Find a product first.');return;}
+  const lot=document.getElementById('wscDatesLot').value.trim(),expiry=document.getElementById('wscDatesExpiry').value.trim();
+  if(!lot||!expiry){wscDatesMessage('Enter both lot and expiry.');return;}
+  wscDatesSetBusy(true);wscDatesMessage('Saving lot…');
+  try{
+    const result=await wscDatesRequest('addProductDate',{sku:wscDatesCurrentSku,lot,expiry});
+    document.getElementById('wscDatesLot').value='';document.getElementById('wscDatesExpiry').value='';
+    wscDatesMessage(result.alreadyExists?'This lot and expiry are already recorded.':'Lot saved.');
+  }catch(e){wscDatesMessage(e.message);wscDatesSetBusy(false);return;}
+  wscDatesSetBusy(false);await wscDatesFind();
+}
+
 // PWA registration; deliberately does not cache index.html or app data.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
