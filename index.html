@@ -467,7 +467,7 @@ input[type="reset"]:disabled,
     <button class="wsc-module-main" data-wsc-area="TR" type="button" onclick="wscModuleMainClick('TR')">🎪 TR – Trade Show</button>
     <button class="wsc-module-arrow" type="button" aria-label="Expand open Trade Shows" onclick="wscToggleModule('TR')" hidden>⌄</button>
   </div><div class="wsc-module-count" hidden></div><div class="wsc-module-detail" hidden><div id="homeTradeShowSessions"></div></div></div>
-  <button id="wscDatesHomeButton" data-wsc-area="DATES" type="button" onclick="wscOpenDates()" style="width:100%; margin:30px 0 8px; background:#294766; color:white;">📅 Dates & Lots</button>
+  <button id="wscDatesHomeButton" data-wsc-area="DATES" type="button" onclick="wscOpenDates()" style="width:100%; margin:30px 0 8px; background:#294766; color:white;">📅 Check Dates</button>
   <div class="wsc-module" data-module="QB" id="wscQbModule" hidden><div class="wsc-module-header wsc-attention">
     <button class="wsc-module-main" type="button" onclick="wscToggleModule('QB')">📋 Outstanding QB Commitments</button>
     <button class="wsc-module-arrow" type="button" onclick="wscToggleModule('QB')">⌄</button>
@@ -485,7 +485,7 @@ input[type="reset"]:disabled,
 
   <section id="wscDatesScreen" style="display:none; max-width:650px; margin:0 auto;">
     <button type="button" onclick="wscDatesHome()" style="width:100%;">🏠 Home</button>
-    <h2>📅 Dates & Lots</h2>
+    <h2>📅 Check Dates</h2>
     <label for="wscDatesSku">Product SKU</label>
     <input id="wscDatesSku" type="text" placeholder="Enter SKU" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;margin:8px 0;">
     <button id="wscDatesFind" type="button" onclick="wscDatesFind()" style="width:100%;">Find Product</button>
@@ -506,7 +506,7 @@ input[type="reset"]:disabled,
       <input id="wscDatesLot" type="text" placeholder="e.g. 0127603-KK" style="width:100%;box-sizing:border-box;padding:10px;margin:6px 0 12px;">
       <label for="wscDatesExpiry">Expiry (as printed)</label>
       <input id="wscDatesExpiry" type="text" placeholder="e.g. 02-2028" style="width:100%;box-sizing:border-box;padding:10px;margin:6px 0 12px;">
-      <button id="wscDatesSave" type="button" onclick="wscDatesSave()" style="width:100%;">Confirm & Save Lot & Expiry</button>
+      <button id="wscDatesSave" type="button" onclick="wscDatesSave()" style="width:100%;">Confirm</button>
     </section>
   </section>
   <div id="wscAdminPanel" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:2500; overflow-y:auto; padding:20px; box-sizing:border-box;">
@@ -527,7 +527,7 @@ input[type="reset"]:disabled,
         <p style="font-size:13px;">Turning OFF prevents new submissions for all staff, including administrators. Only administrators can turn it back ON.</p>
         <div id="wscQBToggles"></div>
         <p style="opacity:.7;">🚚 DL – Delivery: QuickBooks not available</p>
-        <p style="opacity:.7;">📅 Dates & Lots: QuickBooks not available</p>
+        <p style="opacity:.7;">📅 Check Dates: QuickBooks not available</p>
         </div></details>
         <details class="wsc-admin-section"><summary>Cancel unresolved ST / SC / DL / TR report</summary>
         <div class="wsc-admin-section-body">
@@ -6480,7 +6480,7 @@ if (selectedReportType === "SC") {
 const WSC_ADMIN_URL = "https://warehouse-stock-reports.tmerry.workers.dev";
 let wscAdminData = null;
 let wscPermissions = null;
-const wscLabels = {ST:"📦 ST – Stock Take",SC:"📋 SC – Stock Count",TR:"🎪 TR – Trade Show",DL:"🚚 DL – Delivery",DATES:"📅 Dates & Lots"};
+const wscLabels = {ST:"📦 ST – Stock Take",SC:"📋 SC – Stock Count",TR:"🎪 TR – Trade Show",DL:"🚚 DL – Delivery",DATES:"📅 Check Dates"};
 async function wscAdminRequest(action, extra={}) {
   const idToken = await window.getCurrentStaffToken();
   const response = await fetch(WSC_ADMIN_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,idToken,...extra})});
@@ -7746,7 +7746,7 @@ window.stopGlobeLoading = function() {
 })();
 </script>
 <script>
-// Dates & Lots front end. Existing ST/SC/TR/DL handlers are unchanged.
+// Check Dates front end. Existing ST/SC/TR/DL handlers are unchanged.
 let wscDatesScanner = null;
 let wscDatesScannerStarting = false;
 function wscDatesRefreshAdminButton(){
@@ -7932,12 +7932,22 @@ async function wscDatesFind() {
 }
 async function wscDatesSave(){
   if(wscDatesBusy)return;
-  if(!wscDatesCurrentSku || document.getElementById('wscDatesAdmin').style.display!=='block'){wscDatesMessage('Open administrator Amendments for a product first.');return;}
+  if(wscPermissions?.admin!==true || document.getElementById('wscDatesAdmin').style.display!=='block'){
+    wscDatesMessage('Administrator Amendments must be open.');return;
+  }
   const lot=document.getElementById('wscDatesLot').value.trim(),expiry=document.getElementById('wscDatesExpiry').value.trim();
   if(!lot||!expiry){wscDatesMessage('Enter both lot and expiry.');return;}
-  wscDatesSetBusy(true);wscDatesMessage('Saving lot…');
+  const enteredSku=document.getElementById('wscDatesSku').value.trim();
+  if(!enteredSku){wscDatesMessage('Enter or scan a product SKU before confirming. Your lot and expiry have been kept.');document.getElementById('wscDatesSku').focus();return;}
+  wscDatesSetBusy(true);wscDatesMessage('Checking product before saving…');
   try{
-    const result=await wscDatesRequest('addProductDate',{sku:wscDatesCurrentSku,lot,expiry});
+    // Always verify the SKU currently shown in the input; a previous lookup may
+    // belong to another product. Never silently save against an old selection.
+    const verified=await wscDatesRequest('getProductDates',{sku:enteredSku});
+    if(verified.canAmend!==true)throw new Error('Administrator permission required.');
+    const sku=verified.sku;
+    if(!sku)throw new Error('Product not found. Check the SKU.');
+    const result=await wscDatesRequest('addProductDate',{sku,lot,expiry});
     document.getElementById('wscDatesLot').value='';document.getElementById('wscDatesExpiry').value='';
     wscDatesMessage(result.alreadyExists?'This lot and expiry are already recorded.':'Lot saved.');
   }catch(e){wscDatesMessage(e.message);wscDatesSetBusy(false);return;}
