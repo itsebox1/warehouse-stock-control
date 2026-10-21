@@ -14,62 +14,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Warehouse Stock Control</title>
-  <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#163e6e">
-  <link rel="icon" type="image/png" sizes="192x192" href="wsc-icon-192.png">
-
   <link rel="apple-touch-icon" href="Warehouse%20Stock%20Control.png">
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
 
   <style>
-/* Home module accordions: yellow only when a session needs attention. */
-.wsc-module { margin:8px 0; }
-.wsc-module-header { display:flex; align-items:stretch; background:#294766; border-radius:12px; overflow:hidden; }
-.wsc-module-header.wsc-attention { background:#f7d35a; color:#141414; }
-.wsc-module-header > button { margin:0 !important; border-radius:0 !important; background:transparent !important; color:inherit !important; box-shadow:none !important; }
-.wsc-module-header:not(.wsc-attention) { color:white; }
-.wsc-module-main { flex:1; min-width:0; }
-.wsc-module-arrow { flex:0 0 48px; width:48px !important; font-size:20px; }
-.wsc-module-detail { padding:8px 12px 12px; border:1px solid #d6dce5; border-top:0; border-radius:0 0 12px 12px; background:white; color:#172b4d; }
-.wsc-module-detail[hidden], .wsc-module-arrow[hidden] { display:none !important; }
-.wsc-module-count { font-size:12px; padding:0 0 10px; text-align:center; }
-/* Home navigation buttons must fill their available row, even during loading.
-   The former 75px globe allowance is no longer required. */
-#stockApp > .stock-home-button,
-#reportOptionsScreen > .report-back-button,
-#tradeShowSetupHomeButton,
-#tradeShowCountingHomeButton,
-#tradeShowReportHomeButton,
-#deliverySetupScreen > button:first-child,
-#reportsScreen > button:first-child,
-#reportDisplayScreen > button:first-child {
-  width: 100% !important;
-  box-sizing: border-box;
-  max-width: 100%;
-}
-#tradeShowReportHomeButton { min-width: 0; }
-/* WSC unified processing indicator: original corner loading globes are
-   replaced visually by the centred white-card indicator. */
-#wscUnifiedLoading {
-  position: fixed; inset: 0; z-index: 9000;
-  background: rgba(255,255,255,.48);
-  display: none; align-items: center; justify-content: center;
-  pointer-events: all;
-}
-#wscUnifiedLoading .wsc-loading-card {
-  background: #fff; border-radius: 14px; padding: 23px 35px;
-  box-shadow: 0 5px 25px rgba(0,0,0,.17);
-  display: flex; flex-direction: column; align-items: center; gap: 10px;
-  font: 600 16px Arial,sans-serif; color: #203247;
-}
-#wscUnifiedLoading img { width: 56px; height: 56px; object-fit: contain;
-  animation: globeSpin 3s linear infinite; }
-/* Keep original elements operational for the existing JS, but invisible. */
-.about-globe.spinning:not(#homePrivacyGlobe),
-#tradeShowReportGlobe { visibility: hidden !important; }
-
     body {
       font-family: Arial, sans-serif;
       margin: 24px;
@@ -101,16 +51,16 @@
 }    
 
 .stock-home-button.loading {
-    width: 100%;
+    width: calc(100% - 75px);
 }
 
 .report-back-button.loading {
-    width: 100%;
+    width: calc(100% - 75px);
 }
 
 #tradeShowSetupHomeButton.loading,
 #tradeShowCountingHomeButton.loading {
-    width: 100%;
+    width: calc(100% - 75px);
 }
 
 #quarterlyStockTakeAlert {
@@ -424,7 +374,7 @@ input[type="reset"]:disabled,
 
 </div>
   
-  <div id="welcomeScreen" style="display:none; min-height:calc(100dvh - 48px); flex-direction:column; box-sizing:border-box;">
+  <div id="welcomeScreen" style="display:none;">
 
   <a href="https://sites.google.com/view/warehouse-stock-control/home" target="_blank">
   <img src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
@@ -451,32 +401,56 @@ input[type="reset"]:disabled,
 </div>
 
 
-  <div class="wsc-module" data-module="ST"><div class="wsc-module-header">
-    <button class="wsc-module-main" data-wsc-area="ST" onclick="wscModuleMainClick('ST')">📦 ST – Stock Take</button>
-    <button class="wsc-module-arrow" type="button" aria-label="Expand open Stock Takes" onclick="wscToggleModule('ST')" hidden>⌄</button>
-  </div><div class="wsc-module-count" hidden></div><div class="wsc-module-detail" hidden><div id="homeStockTakeSessions"></div></div></div>
-  <div class="wsc-module" data-module="SC"><div class="wsc-module-header">
-    <button class="wsc-module-main" data-wsc-area="SC" onclick="wscModuleMainClick('SC')">📋 SC – Stock Count</button>
-    <button class="wsc-module-arrow" type="button" aria-label="Expand open Stock Counts" onclick="wscToggleModule('SC')" hidden>⌄</button>
-  </div><div class="wsc-module-count" hidden></div><div class="wsc-module-detail" hidden><div id="homeStockCountSessions"></div></div></div>
-  <div class="wsc-module" data-module="DL"><div class="wsc-module-header">
-    <button class="wsc-module-main" data-wsc-area="DL" type="button" onclick="wscModuleMainClick('DL')">🚚 DL – Delivery</button>
-    <button class="wsc-module-arrow" type="button" aria-label="Expand open Deliveries" onclick="wscToggleModule('DL')" hidden>⌄</button>
-  </div><div class="wsc-module-count" hidden></div><div class="wsc-module-detail" hidden><div id="openDeliverySessions"></div></div></div>
-  <div class="wsc-module" data-module="TR"><div class="wsc-module-header">
-    <button class="wsc-module-main" data-wsc-area="TR" type="button" onclick="wscModuleMainClick('TR')">🎪 TR – Trade Show</button>
-    <button class="wsc-module-arrow" type="button" aria-label="Expand open Trade Shows" onclick="wscToggleModule('TR')" hidden>⌄</button>
-  </div><div class="wsc-module-count" hidden></div><div class="wsc-module-detail" hidden><div id="homeTradeShowSessions"></div></div></div>
-  <div class="wsc-module" data-module="QB" id="wscQbModule" hidden><div class="wsc-module-header wsc-attention">
-    <button class="wsc-module-main" type="button" onclick="wscToggleModule('QB')">📋 Outstanding QB Commitments</button>
-    <button class="wsc-module-arrow" type="button" onclick="wscToggleModule('QB')">⌄</button>
-  </div><div class="wsc-module-count"></div><div class="wsc-module-detail" hidden id="wscOutstandingQBList"></div></div>
-  <button id="wscAdminCog" type="button" onclick="wscOpenAdmin()" aria-label="Administrator settings" title="Administrator settings" style="display:none; position:fixed; right:16px; bottom:16px; z-index:1200; width:52px; height:52px; border-radius:50%; padding:0; font-size:25px; background:#164b84; color:white; box-shadow:0 2px 12px #0004;">⚙️</button>
-  <div id="homeSessionsLoading" style="display:none; text-align:center; padding:15px;">Loading outstanding reports...</div>
+  <button data-wsc-area="ST" onclick="showReportOptions('ST')">
+    📦 ST - Stock Take
+  </button>
 
-    <div id="updateStatus" style="display:none; text-align:left; margin-top:30px; margin-bottom:10px;" aria-live="polite"></div>
+  <button data-wsc-area="SC" onclick="showReportOptions('SC')">
+    📋 SC - Stock Count
+  </button>
+
+    <button data-wsc-area="TR" type="button" onclick="showTradeShowSetup()">
+    🎪 TR - Trade Show
+  </button>
+
+<button data-wsc-area="DL" type="button" onclick="showDeliverySetup()">
+  🚚 DL - Delivery
+</button>
+    
+    <button id="wscAdminCog" type="button" onclick="wscOpenAdmin()" aria-label="Administrator settings" title="Administrator settings" style="display:none; position:fixed; right:16px; bottom:16px; z-index:1200; width:52px; height:52px; border-radius:50%; padding:0; font-size:25px; background:#164b84; color:white; box-shadow:0 2px 12px #0004;">⚙️</button>
+    <div id="homeOpenSessions" style="margin-top:25px;">
+  <h3>Open Stock Sessions</h3>
+      <div id="homeSessionsLoading"
+     style="display:none; text-align:center; padding:15px;">
+  <img
+    src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
+    class="about-globe spinning"
+    alt="Loading"
+    style="position:static; display:block; margin:0 auto 10px;">
+  <div>Loading outstanding reports...</div>
+</div>
+
+  <div id="homeStockTakeSessions"></div>
+
+  <div id="homeStockCountSessions"></div>
+</div>
+    <!-- TR - Open Trade Show Sessions -->
+<div id="homeTradeShowSection" style="margin-top:20px;">
+  <h3>Open Trade Shows</h3>
+  <div id="homeTradeShowSessions"></div>
+</div>
+
+    <!-- DL - Open Delivery Sessions -->
+<div id="homeDeliverySection" style="margin-top:20px;">
+  <h3>Open Deliveries</h3>
+  <div id="openDeliverySessions"></div>
+</div>
+
+    <div id="updateStatus" style="text-align:left; margin-top:30px; margin-bottom:10px;">
+  Checking for updates...
+    </div>
    
-   <p id="welcomeUser" style="text-align:left; margin-top:auto; margin-bottom:0; padding-top:35px; padding-bottom:12px; font-size:13px;">
+   <p id="welcomeUser" style="text-align:left; margin-top:0px; margin-bottom:0;">
     Checking sign-in...  
    </p>
    
@@ -488,48 +462,36 @@ input[type="reset"]:disabled,
       <h2>⚙️ Administrator Settings</h2>
       <p id="wscAdminStatus" role="status">Loading settings…</p>
       <div id="wscAdminControls" style="display:none;">
-        <details class="wsc-admin-section"><summary>Staff function access</summary>
-        <div class="wsc-admin-section-body">
+        <h3>Staff function access</h3>
         <label for="wscStaffSelect">Select staff member</label>
         <select id="wscStaffSelect" onchange="wscRenderAdminStaff()" style="width:100%; padding:10px; margin:8px 0 14px;"></select>
         <div id="wscStaffToggles"></div>
         <p style="font-size:13px;">Administrators always retain access to all four functions.</p>
-        </div></details>
-        <details class="wsc-admin-section"><summary>QuickBooks — applies to everyone</summary>
-        <div class="wsc-admin-section-body">
+        <hr>
+        <h3>QuickBooks — applies to everyone</h3>
         <p style="font-size:13px;">Turning OFF prevents new submissions for all staff, including administrators. Only administrators can turn it back ON.</p>
         <div id="wscQBToggles"></div>
         <p style="opacity:.7;">DL – Delivery: QuickBooks not available</p>
-        </div></details>
-        <details class="wsc-admin-section"><summary>Cancel unresolved ST / SC report</summary>
-        <div class="wsc-admin-section-body">
-        <p style="font-size:13px;">Administrator only. Cancelling preserves count history and records an audit entry. Reports already submitted to QuickBooks cannot be cancelled. This cannot be undone.</p>
-        <label for="wscCancelReportNumber">Report number</label>
-        <input id="wscCancelReportNumber" type="text" placeholder="ST-000004 or SC-000002" autocomplete="off" style="width:100%; box-sizing:border-box; padding:10px; margin:6px 0 12px;">
+        <hr>
+        <h3>Cancel unresolved report</h3>
+        <p style="font-size:13px;">Administrator only. Cancelling preserves history and records an audit entry. QuickBooks-submitted reports and finished deliveries cannot be cancelled. This cannot be undone.</p>
+        <label>Report type</label>
+        <div role="radiogroup" aria-label="Report type" style="display:grid; grid-template-columns:1fr 1fr; gap:9px; margin:9px 0 14px; font-size:14px;">
+          <label><input type="radio" name="wscCancelType" value="ST" checked> ST – Stock Take</label>
+          <label><input type="radio" name="wscCancelType" value="SC"> SC – Stock Count</label>
+          <label><input type="radio" name="wscCancelType" value="TR"> TR – Trade Show</label>
+          <label><input type="radio" name="wscCancelType" value="DL"> DL – Delivery</label>
+        </div>
+        <label for="wscCancelReportNumber">Report number (six digits)</label>
+        <input id="wscCancelReportNumber" type="text" inputmode="numeric" maxlength="6" placeholder="e.g. 000004" autocomplete="off" style="width:100%; box-sizing:border-box; padding:10px; margin:6px 0 12px;">
         <label for="wscCancelReason">Reason for cancellation (minimum 8 characters)</label>
         <textarea id="wscCancelReason" rows="3" placeholder="Explain why this report is being cancelled" style="width:100%; box-sizing:border-box; padding:10px; margin:6px 0 12px;"></textarea>
         <button id="wscCancelButton" type="button" onclick="wscCancelInventoryReport()" style="width:auto; background:#9b3434; color:white; padding:10px 14px;">Cancel report</button>
         <p id="wscCancelStatus" role="status" aria-live="polite" style="font-size:13px;"></p>
-        </div></details>
-        <details class="wsc-admin-section"><summary>Staff Password Reset</summary>
-          <div class="wsc-admin-section-body">
-            <p style="font-size:13px;">Send a Firebase password-reset email to an active staff member who signs in using email and password.</p>
-            <label for="wscResetStaffSelect">Select staff email</label>
-            <select id="wscResetStaffSelect" style="width:100%;padding:10px;margin:8px 0 14px;"></select>
-            <button id="wscResetStaffButton" type="button" onclick="wscResetStaffPassword()" style="width:auto;padding:10px 14px;">Send password reset email</button>
-            <p id="wscResetStaffStatus" role="status" aria-live="polite" style="font-size:13px;"></p>
-          </div>
-        </details>
       </div>
     </section>
   </div>
 
-  <style>
-    .wsc-admin-section {border:1px solid #d8e0e9;border-radius:9px;margin:12px 0;overflow:hidden;background:#fff;}
-    .wsc-admin-section > summary {cursor:pointer;font-weight:700;padding:14px 12px;background:#f2f6fb;}
-    .wsc-admin-section[open] > summary {border-bottom:1px solid #d8e0e9;}
-    .wsc-admin-section-body {padding:12px;}
-  </style>
   <!-- DL - Delivery Setup Screen -->
 <div id="deliverySetupScreen" style="display:none;">
 
@@ -537,28 +499,7 @@ input[type="reset"]:disabled,
     🏠 Home
   </button>
 
-  <h2 style="text-align:center;">🚚 DL - Delivery</h2>
-
-<hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
-  <h3>Start New Delivery</h3>
-  <label for="deliveryInvoiceFile">
-  Upload Supplier Invoice:
-</label>
-
-<input
-  type="file"
-  id="deliveryInvoiceFile"
-  accept=".pdf,image/jpeg,image/png,image/heic,image/heif"
-  style="display:block; margin:15px 0;"
->
-
-<p id="deliveryInvoiceMessage"></p>
- 
- <button type="button" id="startNewDeliveryButton" onclick="startNewDelivery()">
-  ➕ Start New Delivery
-</button>
-
-<hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
+  <h2>🚚 DL - Delivery</h2>
 
 <h3>Find Delivery</h3>
 
@@ -591,6 +532,24 @@ input[type="reset"]:disabled,
 
 <div id="deliverySearchResults" style="margin-top:15px;"></div>
 
+<hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
+  <h3>Start New Delivery</h3>
+  <label for="deliveryInvoiceFile">
+  Upload Supplier Invoice:
+</label>
+
+<input
+  type="file"
+  id="deliveryInvoiceFile"
+  accept=".pdf,image/jpeg,image/png,image/heic,image/heif"
+  style="display:block; margin:15px 0;"
+>
+
+<p id="deliveryInvoiceMessage"></p>
+ 
+ <button type="button" id="startNewDeliveryButton" onclick="startNewDelivery()">
+  ➕ Start New Delivery
+</button>
 </div>
   <!-- DL - Delivery Review Screen -->
 <div id="deliveryReviewScreen" style="display:none;">
@@ -721,10 +680,29 @@ onclick="addDeliveryExtraProduct()">
     🏠 Home
   </button>
 
-  <h2 style="text-align:center;">🎪 TR - Trade Show</h2>
+  <h2>🎪 TR - Trade Show</h2>
 
+<section id="tradeShowSearchSection" style="margin-bottom:28px;">
+  <h3>TR – Trade Show Report</h3>
+  <p>Search by:</p>
+  <label style="display:block;margin:10px 0;"><input type="radio" name="trReportSearchType" value="number" checked onchange="updateTRReportSearchFields()"> Trade Show Number</label>
+  <label style="display:block;margin:10px 0;"><input type="radio" name="trReportSearchType" value="date" onchange="updateTRReportSearchFields()"> Date Range</label>
+  <label style="display:block;margin:10px 0;"><input type="radio" name="trReportSearchType" value="name" onchange="updateTRReportSearchFields()"> Name of Show</label>
+  <div id="trReportTextField" style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:14px 0;">
+    <label id="trReportSearchLabel" for="trReportSearchValue" style="margin:0;">Trade Show Number:</label>
+    <strong id="trReportSearchPrefix">TR-</strong>
+    <input id="trReportSearchValue" type="text" placeholder="000001" style="width:190px;max-width:100%;box-sizing:border-box;padding:6px 9px;margin:0;">
+  </div>
+  <div id="trReportDateFields" style="display:none;margin:14px 0;">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0;"><label for="trReportStartDate" style="margin:0;">Date From:</label><input id="trReportStartDate" type="date" style="width:175px;max-width:100%;box-sizing:border-box;padding:6px 9px;margin:0;"></div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0;"><label for="trReportEndDate" style="margin:0;">Date To:</label><input id="trReportEndDate" type="date" style="width:175px;max-width:100%;box-sizing:border-box;padding:6px 9px;margin:0;"></div>
+  </div>
+  <button type="button" id="trReportSearchButton" onclick="searchTRReports()" style="margin-top:14px;">📄 Generate Report</button>
+  <div id="trReportSearchMessage" role="status" style="margin-top:12px;"></div>
+  <div id="trReportSearchResults"></div>
+</section>
 <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
-  <button type="button" id="toggleNewTradeShowButton" aria-expanded="false" onclick="toggleNewTradeShow()">➕ Start New Trade Show</button>
+  <button type="button" id="toggleNewTradeShowButton" aria-expanded="false" onclick="toggleNewTradeShow()">➕ New Trade Show</button>
   <div id="newTradeShowFields" style="display:none; margin-top:15px;">
 
   <label for="tradeShowName">Trade Show Name:</label>
@@ -778,30 +756,9 @@ function validateTradeShowFields() {
   onclick="createTradeShow()"
   disabled
 >
-  ➕ Create New Trade Show
+  ➕ Create Trade Show
 </button>
   </div> <!-- /newTradeShowFields -->
-
-<hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
-<section id="tradeShowSearchSection" style="margin-bottom:28px;">
-  <h3>Find Trade Show</h3>
-  <p><strong>Search Trade Show by:</strong></p>
-  <label style="display:block;margin:10px 0;"><input type="radio" name="trReportSearchType" value="number" checked onchange="updateTRReportSearchFields()"> Trade Show Number</label>
-  <label style="display:block;margin:10px 0;"><input type="radio" name="trReportSearchType" value="date" onchange="updateTRReportSearchFields()"> Date Range</label>
-  <label style="display:block;margin:10px 0;"><input type="radio" name="trReportSearchType" value="name" onchange="updateTRReportSearchFields()"> Name of Show</label>
-  <div id="trReportTextField" style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:14px 0;">
-    <label id="trReportSearchLabel" for="trReportSearchValue" style="margin:0;">Trade Show Number:</label>
-    <strong id="trReportSearchPrefix">TR-</strong>
-    <input id="trReportSearchValue" type="text" placeholder="000001" style="width:190px;max-width:100%;box-sizing:border-box;padding:6px 9px;margin:0;">
-  </div>
-  <div id="trReportDateFields" style="display:none;margin:14px 0;">
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0;"><label for="trReportStartDate" style="margin:0;">Date From:</label><input id="trReportStartDate" type="date" style="width:175px;max-width:100%;box-sizing:border-box;padding:6px 9px;margin:0;"></div>
-    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0;"><label for="trReportEndDate" style="margin:0;">Date To:</label><input id="trReportEndDate" type="date" style="width:175px;max-width:100%;box-sizing:border-box;padding:6px 9px;margin:0;"></div>
-  </div>
-  <button type="button" id="trReportSearchButton" onclick="searchTRReports()" style="margin-top:14px;">🔍 Find Trade Show</button>
-  <div id="trReportSearchMessage" role="status" style="margin-top:12px;"></div>
-  <div id="trReportSearchResults"></div>
-</section>
 
 </div>
 <div id="stockApp" style="display:none;">
@@ -1084,22 +1041,6 @@ function validateTradeShowFields() {
 
   <h2 id="reportOptionsTitle"></h2>
 
-  <!-- ST layout: creation action above report search, preserving its original handler and ID. -->
-  <section id="stStartNewSection" style="display:none; margin:25px 0 28px;">
-    <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
-    <button id="startNewStockTakeFromReport" onclick="selectStockTakeQuarter(this)" style="margin-top:12px; display:none;">➕ Create New Stock Take</button>
-    <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
-    <h3>Find Stock Take</h3>
-  </section>
-
-  <!-- SC uses the same Start New / Find Report layout as Trade Show. -->
-  <section id="scStartNewSection" style="display:none; margin:25px 0 28px;">
-    <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
-    <button id="startNewStockCountFromReport" onclick="startStockCount()" style="margin-top:12px; display:none;">➕ Create New Stock Count</button>
-    <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
-    <h3>Find Stock Count</h3>
-  </section>
-
   <div id="scSearchOptions" style="display:none; margin-bottom:20px;">
 
   <p><strong>Search Stock Count by:</strong></p>
@@ -1243,8 +1184,21 @@ function validateTradeShowFields() {
   </button>
 
   <div id="reportInProgressStockTakes" style="margin-bottom:15px;"></div>
+  <button
+  id="startNewStockTakeFromReport"
+  onclick="selectStockTakeQuarter(this)"
+  style="margin-top:12px; display:none;"
+>
+  ➕ Start New Stock Take
+</button>
 
-
+<button
+  id="startNewStockCountFromReport"
+  onclick="startStockCount()"
+  style="margin-top:12px; display:none;"
+>
+ ➕ Start New Stock Count
+</button>
   
 <div
   id="startStockTakeLoading"
@@ -4757,84 +4711,6 @@ async function hideITSSplash() {
   splash.classList.remove("its-splash-exit");
 }
   
-
-function wscModuleMainClick(area) {
-  const module = document.querySelector('.wsc-module[data-module="' + area + '"]');
-  if (module?.querySelector('.wsc-module-header')?.classList.contains('wsc-attention')) {
-    wscToggleModule(area);
-    return;
-  }
-  if (area === 'ST' || area === 'SC') showReportOptions(area);
-  else if (area === 'TR') showTradeShowSetup();
-  else if (area === 'DL') showDeliverySetup();
-}
-function wscToggleModule(area) {
-  const module = document.querySelector('.wsc-module[data-module="' + area + '"]');
-  if (!module) return;
-  const detail = module.querySelector('.wsc-module-detail');
-  if (!detail) return;
-  detail.hidden = !detail.hidden;
-  const arrow = module.querySelector('.wsc-module-arrow');
-  if (arrow) arrow.textContent = detail.hidden ? '⌄' : '⌃';
-}
-function wscUpdateHomeModules() {
-  const lists = wscHomeDashboardLists || {};
-  const counts = {
-    ST: lists.listStockTakes?.stockTakes?.length || 0,
-    SC: lists.listStockCounts?.stockCounts?.length || 0,
-    TR: lists.listTradeShows?.tradeShows?.length || 0,
-    DL: lists.listOpenDeliverySessions?.deliveries?.length || 0
-  };
-  Object.entries(counts).forEach(([area, count]) => {
-    const module = document.querySelector('.wsc-module[data-module="' + area + '"]');
-    if (!module) return;
-    module.querySelector('.wsc-module-header').classList.toggle('wsc-attention', count > 0);
-    const arrow = module.querySelector('.wsc-module-arrow');
-    const detail = module.querySelector('.wsc-module-detail');
-    const counter = module.querySelector('.wsc-module-count');
-    arrow.hidden = count === 0;
-    counter.hidden = count === 0;
-    counter.textContent = count + ' open ' + ({ST:'stock take',SC:'stock count',TR:'trade show',DL:'delivery'}[area]) + (count === 1 ? '' : 's');
-    if (count === 0) detail.hidden = true;
-  });
-}
-async function wscLoadOutstandingQB() {
-  const module = document.getElementById('wscQbModule');
-  const list = document.getElementById('wscOutstandingQBList');
-  if (!module || !list) return;
-  module.hidden = true;
-  const idToken = await window.getCurrentStaffToken();
-  const response = await fetch('https://warehouse-stock-reports.tmerry.workers.dev', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({action:'getHomeQBCommitments',idToken})
-  });
-  const result = await response.json();
-  if (!response.ok || !result.success) throw new Error(result.error || 'Unable to check QB commitments.');
-  const reports = result.reports || [];
-  if (!reports.length) return;
-  module.hidden = false;
-  module.querySelector('.wsc-module-count').textContent = reports.length + ' report' + (reports.length === 1 ? '' : 's') + ' awaiting commitment';
-  list.replaceChildren();
-  reports.forEach(report => {
-    const item = document.createElement('div');
-    item.style.cssText = 'padding:12px;margin:8px 0;border:1px solid #ccc;border-radius:8px';
-    const title = document.createElement('strong');
-    title.textContent = report.reportNumber + ' — ' + ({ST:'Stock Take',SC:'Stock Count',TR:'Trade Show'}[report.type] || report.type);
-    const button = document.createElement('button');
-    button.type = 'button'; button.textContent = 'Go to Report';
-    button.onclick = () => {
-      if (report.type === 'TR') {
-        localStorage.setItem('activeTradeShow', report.reportNumber);
-        showTradeShowReport();
-      } else {
-        showReportOptions(report.type);
-        // Existing report search remains the route to a closed ST/SC report.
-      }
-    };
-    item.append(title,button); list.appendChild(item);
-  });
-}
-
  async function showWelcomeScreen() {
   void wscRefreshPermissions();
      // Prepare the home screen immediately, while keeping the splash visible
@@ -4847,7 +4723,7 @@ async function wscLoadOutstandingQB() {
          hideITSSplash();
        }, remaining);
      }
-  document.getElementById("welcomeScreen").style.display = "flex";
+  document.getElementById("welcomeScreen").style.display = "block";
      document.getElementById("deliverySetupScreen").style.display = "none";
    document.getElementById("deliveryReviewScreen").style.display = "none";
   updateQuarterlyStockTakeAlert();
@@ -4877,8 +4753,6 @@ if (privacyGlobe) {
        loadTradeShowList(),
        loadOpenDeliveries()
      ]);
-     wscUpdateHomeModules();
-     try { await wscLoadOutstandingQB(); } catch (qbError) { console.warn("QB dashboard:", qbError); }
    } catch (error) {
      console.error("Home dashboard error:", error);
      const targets = ["homeStockTakeSessions", "homeStockCountSessions", "homeTradeShowSessions", "openDeliverySessions"];
@@ -5843,24 +5717,8 @@ function showReportsScreen() {
     searchBy === "date" ? "block" : "none";
 }
 
-function toggleNewStockCount() {
-  const fields = document.getElementById("newStockCountFields");
-  const toggle = document.getElementById("toggleNewStockCountButton");
-  if (!fields || !toggle) return;
-  const opening = fields.style.display === "none";
-  fields.style.display = opening ? "block" : "none";
-  toggle.setAttribute("aria-expanded", String(opening));
-}
-
 function showReportOptions(type) {
   selectedReportType = type;
-  const stStartSection = document.getElementById("stStartNewSection");
-  if (stStartSection) stStartSection.style.display = type === "ST" ? "block" : "none";
-  const scStartSection = document.getElementById("scStartNewSection");
-  if (scStartSection) scStartSection.style.display = type === "SC" ? "block" : "none";
-  const scNewFields = document.getElementById("newStockCountFields");
-  if (scNewFields) scNewFields.style.display = "none";
-  document.getElementById("toggleNewStockCountButton")?.setAttribute("aria-expanded", "false");
   // Reset stale report-search indicators from a previous screen.
   const reportGlobe = document.querySelector("#reportOptionsScreen .report-globe");
   if (reportGlobe) {
@@ -5901,9 +5759,8 @@ changeSCSearch();
   document.getElementById("stSearchChoice").style.display = type === "ST" ? "block" : "none";
   document.getElementById("reportOptionsTitle").textContent =
     type === "ST"
-      ? "📦 ST — Stock Take"
-      : "📋 SC — Stock Count";
-  document.getElementById("reportOptionsTitle").style.textAlign = "center";
+      ? "ST — Stock Take Report"
+      : "SC — Stock Count Report";
 
   document.getElementById("reportResults")?.remove();
   
@@ -6438,11 +6295,14 @@ async function wscAdminRequest(action, extra={}) {
 async function wscCancelInventoryReport() {
   const status = document.getElementById("wscCancelStatus");
   const button = document.getElementById("wscCancelButton");
-  const reportNumber = document.getElementById("wscCancelReportNumber").value.trim().toUpperCase();
+  const type = document.querySelector('input[name="wscCancelType"]:checked')?.value || "ST";
+  const enteredNumber = document.getElementById("wscCancelReportNumber").value.trim().toUpperCase();
+  const reportNumber = /^(ST|SC|TR|DL)-\d{6}$/.test(enteredNumber)
+    ? enteredNumber : type + "-" + enteredNumber;
   const reason = document.getElementById("wscCancelReason").value.trim();
   status.textContent = "";
   if (wscPermissions?.admin !== true) { status.textContent = "Administrator permission required."; return; }
-  if (!/^(ST|SC)-\d{6}$/.test(reportNumber)) { status.textContent = "Enter a valid ST or SC report number."; return; }
+  if (!new RegExp("^" + type + "-\\d{6}$").test(reportNumber)) { status.textContent = "Enter a six-digit " + type + " report number."; return; }
   if (reason.length < 8) { status.textContent = "Enter a cancellation reason of at least 8 characters."; return; }
   if (!(await window.showWSCConfirm("Cancel " + reportNumber, "This will preserve the history, record an audit entry, and cannot be undone. Reason: " + reason))) return;
   button.disabled = true;
@@ -6453,26 +6313,11 @@ async function wscCancelInventoryReport() {
     status.textContent = reportNumber + " cancelled. Audit entry saved.";
     document.getElementById("wscCancelReportNumber").value = "";
     document.getElementById("wscCancelReason").value = "";
-    // Refresh the dashboard status from the server after a successful cancellation.
-    // The yellow Home module buttons are driven by wscUpdateHomeModules(), not
-    // by the individual session list rendering functions alone.
-    try {
-      wscHomeDashboardLists = null; // Discard any pre-cancellation snapshot.
-      wscHomeDashboardLists = await fetchHomeDashboard();
-      await Promise.allSettled([
-        loadStockTakeList(),
-        loadStockCountList(),
-        loadTradeShowList(),
-        loadOpenDeliveries()
-      ]);
-      wscUpdateHomeModules();
-      try { await wscLoadOutstandingQB(); } catch (qbError) { console.warn("QB dashboard:", qbError); }
-    } catch (refreshError) {
-      console.warn("Dashboard refresh after cancellation:", refreshError);
-      status.textContent += " Refresh Home to update the session buttons.";
-    } finally {
-      wscHomeDashboardLists = null;
-    }
+    // Refresh the home session lists after a successful cancellation.
+    if (typeof loadStockTakeList === "function") loadStockTakeList().catch(console.warn);
+    if (typeof loadStockCountList === "function") loadStockCountList().catch(console.warn);
+    if (typeof loadTradeShowList === "function") loadTradeShowList().catch(console.warn);
+    if (typeof loadOpenDeliveries === "function") loadOpenDeliveries().catch(console.warn);
   } catch (error) {
     status.textContent = "Unable to cancel: " + error.message;
   } finally {
@@ -6510,10 +6355,6 @@ function wscPaintPermissions(permissions) {
       button.style.cursor = "pointer";
     }
   });
-  document.querySelectorAll('.wsc-module[data-module]').forEach(module => {
-    const area = module.dataset.module;
-    if (area !== 'QB') module.style.display = areas[area] === true ? '' : 'none';
-  });
   const trButton = document.getElementById("tradeShowCommitQBButton");
   if (trButton && trButton.textContent.trim() !== "✓ Committed to QB" && trButton.textContent.trim() !== "QB Submission Pending" && trButton.textContent.trim() !== "QB Status Unavailable") {
     const allowed = permissions?.quickBooks?.TR === true;
@@ -6521,7 +6362,11 @@ function wscPaintPermissions(permissions) {
     trButton.textContent = allowed ? "📤 Commit to QB" : "QB Submissions Disabled";
     trButton.style.background = allowed ? "#c62828" : "#777";
   }
-
+  const sections = {homeOpenSessions:["ST","SC"],homeTradeShowSection:["TR"],homeDeliverySection:["DL"]};
+  Object.entries(sections).forEach(([id, allowed]) => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = allowed.some(area => areas[area] === true) ? "" : "none";
+  });
 }
 async function wscRefreshPermissions() {
   const email = String(window.getCurrentStaffEmail?.() || "").trim().toLowerCase();
@@ -6569,46 +6414,10 @@ async function wscOpenAdmin() {
     select.replaceChildren();
     wscAdminData.staff.filter(s=>s.active).forEach(s=>{const option=document.createElement("option");option.value=s.email;option.textContent=s.name+" ("+s.email+")";select.appendChild(option);});
     if(!select.options.length){const option=document.createElement("option");option.textContent="No other active staff members";option.value="";select.appendChild(option);}
-    const resetSelect=document.getElementById("wscResetStaffSelect");
-    resetSelect.replaceChildren();
-    const resetStaff = [...wscAdminData.staff.filter(s=>s.active),
-      {email:"nmerry@sensafe.com",name:"Nicola (Administrator)",active:true},
-      {email:"tmerry@sensafe.com",name:"Terry (Administrator)",active:true}];
-    const resetEmails = new Set();
-    resetStaff.forEach(s=>{
-      const email=String(s.email||"").trim().toLowerCase();
-      if(!email||resetEmails.has(email))return;
-      resetEmails.add(email);
-      const option=document.createElement("option");option.value=email;
-      option.textContent=s.name+" ("+email+")";resetSelect.appendChild(option);
-    });
-    document.getElementById("wscResetStaffButton").disabled=!resetSelect.options.length;
-    document.getElementById("wscResetStaffStatus").textContent="";
     wscRenderAdminStaff();wscRenderAdminQB();
     document.getElementById("wscAdminControls").style.display="block";
     status.textContent="Settings shared across devices";
   }catch(e){status.textContent=e.message;}
-}
-async function wscResetStaffPassword() {
-  const select=document.getElementById("wscResetStaffSelect");
-  const button=document.getElementById("wscResetStaffButton");
-  const status=document.getElementById("wscResetStaffStatus");
-  const email=String(select.value||"").trim().toLowerCase();
-  const member=wscAdminData?.staff?.find(s=>s.active&&s.email===email);
-  if ((!member && !["nmerry@sensafe.com","tmerry@sensafe.com"].includes(email)) || !wscPermissions?.admin || !window.getCurrentStaffEmail?.()) {
-    status.textContent="Administrator access and an active staff member are required.";
-    return;
-  }
-  if (!confirm("Send a Firebase password-reset email to " + email + "?")) return;
-  button.disabled=true;
-  status.textContent="Requesting password reset email…";
-  try {
-    if (typeof window.wscSendFirebaseReset !== "function") throw new Error("Firebase is not ready. Please try again.");
-    await window.wscSendFirebaseReset(email);
-    status.textContent="Password-reset request submitted for " + email + ". If the email/password account exists, Firebase will send instructions.";
-  } catch(e) {
-    status.textContent="Unable to request password reset: " + (e?.message||String(e));
-  } finally {button.disabled=false;}
 }
 function wscSwitchRow(label,enabled,onChange,disabled=false){
   const row=document.createElement("label");row.style.cssText="display:flex;justify-content:space-between;align-items:center;padding:12px 4px;border-bottom:1px solid #ddd;gap:15px;cursor:pointer";
@@ -6642,7 +6451,7 @@ async function wscSaveSwitch(input,settingType,area,staffEmail){
 <script type="module">
   // Import the functions you need from the SDKs you need
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 // TODO: Add SDKs for Firebase products that you want to use
   // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -6660,8 +6469,6 @@ async function wscSaveSwitch(input,settingType,area,staffEmail){
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   
-  window.wscSendFirebaseReset = email => sendPasswordResetEmail(auth, email);
-
   const WSC_OWNER_EMAIL = "tmerry@sensafe.com";
   
     window.getCurrentStaffEmail = function() {
@@ -6722,8 +6529,6 @@ if (user) {
     document.getElementById("stockApp").style.display = "none";
     document.getElementById("reportsScreen").style.display = "none";
     document.getElementById("reportOptionsScreen").style.display = "none";
-    // Reveal the sign-in screen when this device is not signed in.
-    hideITSSplash();
     }
   });   
 
@@ -7505,66 +7310,42 @@ async function getQuickBooksCommitStatusForST(reportNumber) {
   return await getQuickBooksCommitStatus(reportNumber);
 }
   
-// WSC deployment version. Update version.txt LAST, after any backend deployments.
-const WSC_VERSION = "1.0.3";
-
-function isNewerWSCVersion(remote, current) {
-  const r = remote.split(".").map(Number);
-  const c = current.split(".").map(Number);
-  for (let i = 0; i < 3; i++) {
-    if (r[i] > c[i]) return true;
-    if (r[i] < c[i]) return false;
-  }
-  return false;
-}
+// WSC version / update checker
+const WSC_VERSION = "1.0.1";
 
 async function checkForWSCUpdate() {
   const status = document.getElementById("updateStatus");
   if (!status) return;
+
   try {
-    const response = await fetch("./version.txt?nocache=" + Date.now(), {
+    const response = await fetch("version.txt?nocache=" + Date.now(), {
       cache: "no-store"
     });
-    if (!response.ok) throw new Error("Version check failed");
+
+    if (!response.ok) {
+      throw new Error("Version check failed");
+    }
+
     const latestVersion = (await response.text()).trim();
-    if (!/^\d+\.\d+\.\d+$/.test(latestVersion)) {
-      throw new Error("Invalid version format");
+
+    if (latestVersion === WSC_VERSION) {
+      status.innerHTML = "✓ Up to date";
+    } else {
+      status.innerHTML =
+        'Update available &nbsp; <button type="button" onclick="updateWSC()">Update</button>';
     }
-    // Only alert for a genuinely newer deployment, never an older version marker.
-    if (!isNewerWSCVersion(latestVersion, WSC_VERSION)) {
-      status.replaceChildren();
-      status.style.display = "none";
-      return;
-    }
-    status.replaceChildren();
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = "🔄 Update Available (v" + latestVersion + ")";
-    button.addEventListener("click", () => window.updateWSC(latestVersion));
-    status.appendChild(button);
-    status.style.display = "block";
   } catch (error) {
     console.log("WSC update check failed:", error);
-    // Do not display a misleading update prompt when the version check fails.
-    status.replaceChildren();
-    status.style.display = "none";
+    status.innerHTML = "Unable to check for updates";
   }
 }
 
-window.updateWSC = function(latestVersion) {
+window.updateWSC = function() {
   showITSSplash();
-  // A new URL forces a fresh document in Safari and installed PWAs.
-  // Existing session/authentication is retained; stock data is not cleared.
-  const url = new URL(window.location.href);
-  url.searchParams.set("wsc_version", latestVersion || Date.now().toString());
-  window.location.replace(url.toString());
-};
+  window.location.reload(true);
+}
 
 checkForWSCUpdate();
-// Recheck when staff return to the app after a deployment.
-document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) checkForWSCUpdate();
-});
 
 // Trade Show counting uses its own globe, not the Stock screen's globe.
 window.startTradeShowCountingLoading = function() {
@@ -7610,65 +7391,6 @@ window.stopGlobeLoading = function() {
 };
 
   
-</script>
-
-<!-- Unified WSC processing indicator: observes existing loader state without
-     changing any stock-counting, reporting or QuickBooks request handlers. -->
-<script>
-(function () {
-  function initialise() {
-    if (document.getElementById('wscUnifiedLoading')) return;
-    const overlay = document.createElement('div');
-    overlay.id = 'wscUnifiedLoading';
-    overlay.setAttribute('role','status');
-    overlay.setAttribute('aria-label','Processing request');
-    overlay.innerHTML = '<div class="wsc-loading-card"><img src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png" alt=""><span>Processing, please wait...</span></div>';
-    document.body.appendChild(overlay);
-    const selectors = [
-      '.stock-globe', '.report-globe', '#tradeShowCreateGlobe',
-      '#tradeShowCountingGlobe', '#tradeShowReportGlobe'
-    ];
-    function active(el) {
-      if (!el || !el.isConnected) return false;
-      if (el.style.display === 'none') return false;
-      if (el.id !== 'tradeShowReportGlobe' && !el.classList.contains('spinning')) return false;
-      for (let node=el; node && node!==document.body; node=node.parentElement) {
-        if (getComputedStyle(node).display === 'none') return false;
-      }
-      return true;
-    }
-    let scheduled = false;
-    function update() {
-      scheduled = false;
-      const busy = selectors.some(sel => [...document.querySelectorAll(sel)].some(active));
-      // Existing full-screen white-card overlays already handle their own display.
-      const existing = document.getElementById('wscInventoryPreflightOverlay');
-      overlay.style.display = busy && !existing ? 'flex' : 'none';
-    }
-    function scheduleUpdate() {
-      if (scheduled) return;
-      scheduled = true;
-      requestAnimationFrame(update);
-    }
-    new MutationObserver(scheduleUpdate).observe(document.body, {
-      subtree:true, attributes:true, childList:true,
-      attributeFilter:['style','class','hidden']
-    });
-    update();
-  }
-  if (document.readyState === 'loading')
-    document.addEventListener('DOMContentLoaded', initialise);
-  else initialise();
-})();
-</script>
-<script>
-// PWA registration; deliberately does not cache index.html or app data.
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js', {updateViaCache:'none'})
-      .catch(err => console.warn('WSC app installation worker:', err));
-  });
-}
 </script>
 </body>
 </html>
