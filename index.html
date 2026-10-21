@@ -501,7 +501,7 @@ input[type="reset"]:disabled,
         <div id="wscQBToggles"></div>
         <p style="opacity:.7;">DL – Delivery: QuickBooks not available</p>
         </div></details>
-        <details class="wsc-admin-section"><summary>Cancel unresolved ST / SC report</summary>
+        <details class="wsc-admin-section"><summary>Cancel unresolved ST / SC / DL / TR report</summary>
         <div class="wsc-admin-section-body">
         <p style="font-size:13px;">Administrator only. Cancelling preserves count history and records an audit entry. Reports already submitted to QuickBooks cannot be cancelled. This cannot be undone.</p>
         <div id="wscCancelReportType" role="radiogroup" aria-label="Report type" style="margin:10px 0 14px;">
@@ -514,7 +514,7 @@ input[type="reset"]:disabled,
         <label for="wscCancelReportNumber">Report number (six digits)</label>
         <input id="wscCancelReportNumber" type="text" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="000001" autocomplete="off" style="width:100%; box-sizing:border-box; padding:10px; margin:6px 0 5px;" oninput="this.value=this.value.replace(/\D/g,'').slice(0,6); wscUpdateCancelReportPreview();">
         <div id="wscCancelReportPreview" style="font-size:13px; opacity:.8; margin:0 0 12px;">Selected report: ST-______</div>
-        <p style="font-size:12px; opacity:.75; margin:0 0 12px;">Cancellation is currently available for ST and SC. DL and TR require backend support before cancellation can be enabled.</p>
+        <p style="font-size:12px; opacity:.75; margin:0 0 12px;">Only reports still In Progress can be cancelled. Closed, cancelled and QuickBooks-submitted reports are protected.</p>
         <label for="wscCancelReason">Reason for cancellation (minimum 8 characters)</label>
         <textarea id="wscCancelReason" rows="3" placeholder="Explain why this report is being cancelled" style="width:100%; box-sizing:border-box; padding:10px; margin:6px 0 12px;"></textarea>
         <button id="wscCancelButton" type="button" onclick="wscCancelInventoryReport()" style="width:auto; background:#9b3434; color:white; padding:10px 14px;">Cancel report</button>
@@ -6463,8 +6463,24 @@ async function wscCancelInventoryReport() {
   status.textContent = "";
   if (wscPermissions?.admin !== true) { status.textContent = "Administrator permission required."; return; }
   if (!/^\d{6}$/.test(digits)) { status.textContent = "Enter exactly six digits for the report number."; return; }
-  if (type === "DL" || type === "TR") { status.textContent = type + " cancellation is not yet supported by the server. No report has been changed."; return; }
   if (reason.length < 8) { status.textContent = "Enter a cancellation reason of at least 8 characters."; return; }
+  // Read the authoritative session status before asking for confirmation.
+  // The server checks again under lock when cancellation is submitted.
+  try {
+    button.disabled = true;
+    button.textContent = "Checking…";
+    const check = await wscAdminRequest("getInventoryCancellationStatus", {reportNumber});
+    if (check.state !== "open") {
+      window.showWSCMessage("Warehouse Stock Control", check.message || (reportNumber + " cannot be cancelled."));
+      return;
+    }
+  } catch (error) {
+    window.showWSCMessage("Warehouse Stock Control", "Unable to check " + reportNumber + ": " + error.message);
+    return;
+  } finally {
+    button.disabled = false;
+    button.textContent = "Cancel report";
+  }
   if (!(await window.showWSCConfirm("Cancel " + reportNumber, "This will preserve the history, record an audit entry, and cannot be undone. Reason: " + reason))) return;
   button.disabled = true;
   button.textContent = "Cancelling…";
@@ -6497,6 +6513,7 @@ async function wscCancelInventoryReport() {
     }
   } catch (error) {
     status.textContent = "Unable to cancel: " + error.message;
+    window.showWSCMessage("Warehouse Stock Control", error.message || "Unable to cancel report.");
   } finally {
     button.disabled = false;
     button.textContent = "Cancel report";
