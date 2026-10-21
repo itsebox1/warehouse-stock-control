@@ -1087,10 +1087,7 @@ function validateTradeShowFields() {
   <!-- SC uses the same Start New / Find Report layout as Trade Show. -->
   <section id="scStartNewSection" style="display:none; margin:25px 0 28px;">
     <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
-    <button type="button" id="toggleNewStockCountButton" aria-expanded="false" onclick="toggleNewStockCount()">➕ Start New Stock Count</button>
-    <div id="newStockCountFields" style="display:none; margin-top:15px;">
-      <button id="startNewStockCountFromReport" onclick="startStockCount()" style="margin-top:12px; display:none;">➕ Create New Stock Count</button>
-    </div>
+    <button id="startNewStockCountFromReport" onclick="startStockCount()" style="margin-top:12px; display:none;">➕ Create New Stock Count</button>
     <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
     <h3>Find Stock Count</h3>
   </section>
@@ -5902,7 +5899,8 @@ changeSCSearch();
   document.getElementById("reportOptionsTitle").textContent =
     type === "ST"
       ? "ST — Stock Take Report"
-      : "SC — Stock Count Report";
+      : "SC — Stock Count";
+  document.getElementById("reportOptionsTitle").style.textAlign = type === "SC" ? "center" : "";
 
   document.getElementById("reportResults")?.remove();
   
