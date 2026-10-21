@@ -7842,19 +7842,46 @@ function wscDatesExtractText(text){
   return {lot,expiry};
 }
 async function wscDatesReadPhoto(input){
-  const file=input.files?.[0]; if(!file)return;
+  const file=input.files?.[0];if(!file)return;
   const status=document.getElementById('wscDatesPhotoStatus');
   const preview=document.getElementById('wscDatesPhotoPreview');
   const url=URL.createObjectURL(file);preview.src=url;preview.style.display='block';
   preview.onload=()=>URL.revokeObjectURL(url);
-  wscDatesSetBusy(true,'Scanning bottle cap…');status.textContent='Reading printed lot and expiry from photograph…';
+  wscDatesSetBusy(true,'Reading bottle cap…');
+  status.textContent='Reading printed lot and expiry from photograph…';
   try{
     const tesseract=await wscDatesLoadOCR();
-    const result=await tesseract.recognize(file,'eng');
-    const found=wscDatesExtractText(result?.data?.text);
+    const options={};
+    // Dot-matrix cap labels often need a second, high-contrast reading.
+    const first=await tesseract.recognize(file,'eng',options);
+    let found=wscDatesExtractText(first?.data?.text);
+    if(!found.lot||!found.expiry){
+      status.textContent='Checking faint printed characters…';
+      try{
+        const bitmap=await createImageBitmap(file);
+        const scale=Math.min(3,2200/Math.max(bitmap.width,bitmap.height));
+        const canvas=document.createElement('canvas');
+        canvas.width=Math.round(bitmap.width*scale);canvas.height=Math.round(bitmap.height*scale);
+        const ctx=canvas.getContext('2d',{willReadFrequently:true});
+        ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+        if(bitmap.close)bitmap.close();
+        const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);
+        for(let i=0;i<pixels.data.length;i+=4){
+          const v=.299*pixels.data[i]+.587*pixels.data[i+1]+.114*pixels.data[i+2];
+          const adjusted=v<155?0:v>205?255:(v-155)*255/50;
+          pixels.data[i]=pixels.data[i+1]=pixels.data[i+2]=adjusted;
+        }
+        ctx.putImageData(pixels,0,0);
+        const second=await tesseract.recognize(canvas,'eng');
+        const other=wscDatesExtractText(second?.data?.text);
+        found={lot:found.lot||other.lot,expiry:found.expiry||other.expiry};
+      }catch(preprocessError){console.warn('Enhanced cap OCR unavailable',preprocessError);}
+    }
     if(found.lot)document.getElementById('wscDatesLot').value=found.lot;
     if(found.expiry)document.getElementById('wscDatesExpiry').value=found.expiry;
-    status.textContent=found.lot&&found.expiry?'Details detected. Please check both fields and correct anything before saving.':'Only some details could be read. Please type or correct the missing details before saving.';
+    status.textContent=found.lot&&found.expiry?'Details detected. Check both fields against the bottle before confirming.':
+      found.lot||found.expiry?'One detail was detected. Please enter the missing detail and check both before confirming.':
+      'Could not reliably read the printed details. Please enter the lot and expiry manually, or retake a closer, well-lit photograph.';
   }catch(e){status.textContent='Photo reading failed: '+e.message+'. You can still type both fields manually.';}
   finally{wscDatesSetBusy(false);input.value='';}
 }
