@@ -467,7 +467,7 @@ input[type="reset"]:disabled,
     <button class="wsc-module-main" data-wsc-area="TR" type="button" onclick="wscModuleMainClick('TR')">🎪 TR – Trade Show</button>
     <button class="wsc-module-arrow" type="button" aria-label="Expand open Trade Shows" onclick="wscToggleModule('TR')" hidden>⌄</button>
   </div><div class="wsc-module-count" hidden></div><div class="wsc-module-detail" hidden><div id="homeTradeShowSessions"></div></div></div>
-  <button id="wscDatesHomeButton" type="button" onclick="wscOpenDates()" style="width:100%; margin:8px 0; background:#294766; color:white;">📅 Dates & Lots</button>
+  <button id="wscDatesHomeButton" type="button" onclick="wscOpenDates()" style="width:100%; margin:30px 0 8px; background:#294766; color:white;">📅 Dates & Lots</button>
   <div class="wsc-module" data-module="QB" id="wscQbModule" hidden><div class="wsc-module-header wsc-attention">
     <button class="wsc-module-main" type="button" onclick="wscToggleModule('QB')">📋 Outstanding QB Commitments</button>
     <button class="wsc-module-arrow" type="button" onclick="wscToggleModule('QB')">⌄</button>
@@ -491,14 +491,19 @@ input[type="reset"]:disabled,
     <button id="wscDatesFind" type="button" onclick="wscDatesFind()" style="width:100%;">Find Product</button>
     <p id="wscDatesMessage" role="status" aria-live="polite"></p>
     <div id="wscDatesResults"></div>
+    <button id="wscDatesAmendButton" type="button" onclick="wscDatesToggleAmendments()" style="display:none;width:100%;margin-top:20px;background:#294766;color:white;">✏️ Amendments (Admin)</button>
     <section id="wscDatesAdmin" style="display:none; border:1px solid #d6dce5;border-radius:12px;padding:15px;margin-top:16px;background:white;">
       <h3>Add Dates (administrator)</h3>
+      <button id="wscDatesCameraButton" type="button" onclick="document.getElementById('wscDatesCameraInput').click()" style="width:100%;margin:10px 0;background:#294766;color:white;">📷 Photograph Bottle Cap</button>
+      <input id="wscDatesCameraInput" type="file" accept="image/*" capture="environment" onchange="wscDatesReadPhoto(this)" style="display:none;">
+      <img id="wscDatesPhotoPreview" alt="Bottle cap photo awaiting verification" style="display:none;max-width:100%;max-height:260px;object-fit:contain;border-radius:10px;margin:8px 0;">
+      <p id="wscDatesPhotoStatus" role="status" aria-live="polite" style="font-size:13px;"></p>
+      <p style="font-size:13px;">Check and correct both fields before confirming. Nothing from the photograph is saved automatically.</p>
       <label for="wscDatesLot">Lot number</label>
       <input id="wscDatesLot" type="text" placeholder="e.g. 0127603-KK" style="width:100%;box-sizing:border-box;padding:10px;margin:6px 0 12px;">
       <label for="wscDatesExpiry">Expiry (as printed)</label>
       <input id="wscDatesExpiry" type="text" placeholder="e.g. 02-2028" style="width:100%;box-sizing:border-box;padding:10px;margin:6px 0 12px;">
-      <button id="wscDatesSave" type="button" onclick="wscDatesSave()" style="width:100%;">Save Lot & Expiry</button>
-      <p style="font-size:12px;">Photograph reading will be added in the next stage. For now, enter the printed details manually.</p>
+      <button id="wscDatesSave" type="button" onclick="wscDatesSave()" style="width:100%;">Confirm & Save Lot & Expiry</button>
     </section>
   </section>
   <div id="wscAdminPanel" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:2500; overflow-y:auto; padding:20px; box-sizing:border-box;">
@@ -519,6 +524,11 @@ input[type="reset"]:disabled,
         <p style="font-size:13px;">Turning OFF prevents new submissions for all staff, including administrators. Only administrators can turn it back ON.</p>
         <div id="wscQBToggles"></div>
         <p style="opacity:.7;">DL – Delivery: QuickBooks not available</p>
+        </div></details>
+        <details class="wsc-admin-section"><summary>Dates & Lots — administrator amendments</summary>
+        <div class="wsc-admin-section-body">
+        <p style="font-size:13px;">Allow administrators to add or delete lots. Staff can always look up recorded lots.</p>
+        <div id="wscDatesAmendToggle"></div>
         </div></details>
         <details class="wsc-admin-section"><summary>Cancel unresolved ST / SC / DL / TR report</summary>
         <div class="wsc-admin-section-body">
@@ -6658,7 +6668,7 @@ async function wscOpenAdmin() {
     });
     document.getElementById("wscResetStaffButton").disabled=!resetSelect.options.length;
     document.getElementById("wscResetStaffStatus").textContent="";
-    wscRenderAdminStaff();wscRenderAdminQB();
+    wscRenderAdminStaff();wscRenderAdminQB();wscRenderAdminDates();
     document.getElementById("wscAdminControls").style.display="block";
     status.textContent="Settings shared across devices";
   }catch(e){status.textContent=e.message;}
@@ -6699,6 +6709,12 @@ function wscRenderAdminQB(){
   const box=document.getElementById("wscQBToggles");box.replaceChildren();
   ["ST","SC","TR"].forEach(area=>box.appendChild(wscSwitchRow(wscLabels[area],wscAdminData.quickBooks[area],input=>wscSaveSwitch(input,"QB",area))));
 }
+function wscRenderAdminDates(){
+  const box=document.getElementById('wscDatesAmendToggle');
+  if(!box || !wscAdminData)return;
+  box.replaceChildren();
+  box.appendChild(wscSwitchRow('Enable Amendments (Admin)',wscAdminData.datesAmendmentsEnabled !== false,input=>wscSaveSwitch(input,'DATES','AMENDMENTS')));
+}
 async function wscSaveSwitch(input,settingType,area,staffEmail){
   const enabled=input.checked;input.disabled=true;
   if (settingType === "QB") document.querySelectorAll("#wscQBToggles input").forEach(el => el.disabled = true);
@@ -6706,7 +6722,7 @@ async function wscSaveSwitch(input,settingType,area,staffEmail){
   try {
     wscAdminData=await wscAdminRequest("saveWSCAdminSettings",{settingType,area,enabled,...(staffEmail?{staffEmail}:{})});
     status.textContent="Saved";
-    wscRenderAdminStaff();wscRenderAdminQB();
+    wscRenderAdminStaff();wscRenderAdminQB();wscRenderAdminDates();
     await wscRefreshPermissions();
   }catch(e){input.checked=!enabled;input.disabled=false;status.textContent="Not saved: "+e.message; if(settingType === "QB") wscRenderAdminQB();}
 }
@@ -7737,6 +7753,64 @@ window.stopGlobeLoading = function() {
 </script>
 <script>
 // Dates & Lots front end. Existing ST/SC/TR/DL handlers are unchanged.
+function wscDatesToggleAmendments(){
+  if(wscDatesBusy || document.getElementById('wscDatesAmendButton').style.display==='none')return;
+  const panel=document.getElementById('wscDatesAdmin');
+  const opening=panel.style.display!=='block';
+  panel.style.display=opening?'block':'none';
+  document.getElementById('wscDatesAmendButton').textContent=opening?'✕ Close Amendments':'✏️ Amendments (Admin)';
+  // Refresh to show or hide delete controls without changing the selected product.
+  wscDatesRenderDeleteButtons(opening);
+}
+function wscDatesRenderDeleteButtons(show){
+  document.querySelectorAll('#wscDatesResults .wsc-dates-delete').forEach(b=>b.style.display=show?'inline-block':'none');
+}
+let wscDatesOcrScriptPromise;
+function wscDatesLoadOCR(){
+  if(window.Tesseract?.recognize)return Promise.resolve(window.Tesseract);
+  if(!wscDatesOcrScriptPromise)wscDatesOcrScriptPromise=new Promise((resolve,reject)=>{
+    const script=document.createElement('script');
+    script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+    script.onload=()=>window.Tesseract?.recognize?resolve(window.Tesseract):reject(new Error('Text reader unavailable'));
+    script.onerror=()=>reject(new Error('Unable to load photo text reader. Check your internet connection.'));
+    document.head.appendChild(script);
+  }).catch(e=>{wscDatesOcrScriptPromise=null;throw e;});
+  return wscDatesOcrScriptPromise;
+}
+function wscDatesExtractText(text){
+  const raw=String(text||'').toUpperCase();
+  const lines=raw.split(/[\r\n]+/).map(x=>x.trim()).filter(Boolean);
+  const expMatch=raw.match(/(?:EXP|EXF|EX[P]?)[\s:.-]*([01]?\d)[\s\/-]+(20\d{2}|\d{2})/i)
+    || raw.match(/\b([01]?\d)[\s\/-]+(20\d{2})\b/);
+  let expiry='';
+  if(expMatch){const month=Number(expMatch[1]);if(month>=1&&month<=12){const year=expMatch[2].length===2?'20'+expMatch[2]:expMatch[2];expiry=String(month).padStart(2,'0')+'-'+year;}}
+  const candidateLines=lines.filter(x=>!/EXP|EXF/.test(x));
+  let lot='';
+  for(const line of candidateLines){
+    const matches=line.match(/[A-Z0-9]{5,}(?:[-][A-Z0-9]{1,8})?/g)||[];
+    const match=matches.find(x=>/\d/.test(x));
+    if(match){lot=match;break;}
+  }
+  return {lot,expiry};
+}
+async function wscDatesReadPhoto(input){
+  const file=input.files?.[0]; if(!file)return;
+  const status=document.getElementById('wscDatesPhotoStatus');
+  const preview=document.getElementById('wscDatesPhotoPreview');
+  const url=URL.createObjectURL(file);preview.src=url;preview.style.display='block';
+  preview.onload=()=>URL.revokeObjectURL(url);
+  wscDatesSetBusy(true);status.textContent='Reading printed lot and expiry from photograph…';
+  try{
+    const tesseract=await wscDatesLoadOCR();
+    const result=await tesseract.recognize(file,'eng');
+    const found=wscDatesExtractText(result?.data?.text);
+    if(found.lot)document.getElementById('wscDatesLot').value=found.lot;
+    if(found.expiry)document.getElementById('wscDatesExpiry').value=found.expiry;
+    status.textContent=found.lot&&found.expiry?'Details detected. Please check both fields and correct anything before saving.':'Only some details could be read. Please type or correct the missing details before saving.';
+  }catch(e){status.textContent='Photo reading failed: '+e.message+'. You can still type both fields manually.';}
+  finally{wscDatesSetBusy(false);input.value='';}
+}
+
 let wscDatesCurrentSku = '';
 let wscDatesBusy = false;
 function wscDatesMessage(text) {document.getElementById('wscDatesMessage').textContent = text || '';}
@@ -7752,6 +7826,7 @@ function wscOpenDates() {
   const screen = document.getElementById('wscDatesScreen');
   screen.style.display='block';
   document.getElementById('wscDatesAdmin').style.display='none';
+  document.getElementById('wscDatesAmendButton').style.display='none';
   document.getElementById('wscDatesResults').replaceChildren();
   wscDatesCurrentSku=''; wscDatesMessage('');
   document.getElementById('wscDatesSku').focus();
@@ -7767,7 +7842,7 @@ async function wscDatesRequest(action,extra={}) {
 }
 function wscDatesSetBusy(busy) {
   wscDatesBusy=busy;
-  ['wscDatesFind','wscDatesSave'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=busy;});
+  ['wscDatesFind','wscDatesSave','wscDatesCameraButton','wscDatesAmendButton'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=busy;});
 }
 async function wscDatesFind() {
   if(wscDatesBusy)return;
@@ -7777,8 +7852,9 @@ async function wscDatesFind() {
   try {
     const data=await wscDatesRequest('getProductDates',{sku});
     wscDatesCurrentSku=data.sku;
-    const admin=wscPermissions?.admin === true;
-    document.getElementById('wscDatesAdmin').style.display=admin?'block':'none';
+    const admin=data.canAmend === true && wscPermissions?.admin === true;
+    document.getElementById('wscDatesAmendButton').style.display=admin?'block':'none';
+    if(!admin) document.getElementById('wscDatesAdmin').style.display='none';
     const container=document.getElementById('wscDatesResults');container.replaceChildren();
     const heading=document.createElement('h3');heading.textContent=data.sku+' — '+data.name;container.append(heading);
     if(!data.lots.length){const p=document.createElement('p');p.textContent='No lots recorded for this SKU.';container.append(p);}
@@ -7786,7 +7862,7 @@ async function wscDatesFind() {
       const line=document.createElement('div');line.style.cssText='background:white;border:1px solid #d6dce5;border-radius:10px;padding:12px;margin:8px 0;';
       const details=document.createElement('div');details.textContent='Lot: '+item.lot+' | Expiry: '+item.expiry;line.append(details);
       if(admin){
-        const del=document.createElement('button');del.type='button';del.textContent='Delete this lot';del.style.cssText='width:auto;margin-top:8px;background:#a32929;';
+        const del=document.createElement('button');del.type='button';del.className='wsc-dates-delete';del.textContent='Delete this lot';del.style.cssText='width:auto;margin-top:8px;background:#a32929;display:none;';
         del.onclick=async()=>{
           if(wscDatesBusy)return;
           if(!confirm('Permanently delete lot '+item.lot+' (expiry '+item.expiry+')? Only do this when no stock remains for this lot.'))return;
@@ -7799,15 +7875,16 @@ async function wscDatesFind() {
       }
       container.append(line);
     });
+    wscDatesRenderDeleteButtons(document.getElementById('wscDatesAdmin').style.display==='block');
     wscDatesMessage(data.lots.length+' lot(s) recorded.');
   } catch(e) {
     wscDatesCurrentSku='';document.getElementById('wscDatesResults').replaceChildren();
-    document.getElementById('wscDatesAdmin').style.display='none';wscDatesMessage(e.message);
+    document.getElementById('wscDatesAdmin').style.display='none';document.getElementById('wscDatesAmendButton').style.display='none';wscDatesMessage(e.message);
   } finally {wscDatesSetBusy(false);}
 }
 async function wscDatesSave(){
   if(wscDatesBusy)return;
-  if(!wscDatesCurrentSku){wscDatesMessage('Find a product first.');return;}
+  if(!wscDatesCurrentSku || document.getElementById('wscDatesAdmin').style.display!=='block'){wscDatesMessage('Open administrator Amendments for a product first.');return;}
   const lot=document.getElementById('wscDatesLot').value.trim(),expiry=document.getElementById('wscDatesExpiry').value.trim();
   if(!lot||!expiry){wscDatesMessage('Enter both lot and expiry.');return;}
   wscDatesSetBusy(true);wscDatesMessage('Saving lot…');
