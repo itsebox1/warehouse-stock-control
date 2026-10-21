@@ -489,9 +489,12 @@ input[type="reset"]:disabled,
     <label for="wscDatesSku">Product SKU</label>
     <input id="wscDatesSku" type="text" placeholder="Enter SKU" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;margin:8px 0;">
     <button id="wscDatesFind" type="button" onclick="wscDatesFind()" style="width:100%;">Find Product</button>
+    <button id="wscDatesScanButton" type="button" onclick="wscDatesStartScanner()" style="width:100%;margin-top:10px;">📷 Scan QR Code</button>
+    <div id="wscDatesQrReader" style="display:none;width:100%;max-width:420px;margin:12px auto;"></div>
+    <button id="wscDatesStopScanButton" type="button" onclick="wscDatesStopScanner()" style="display:none;width:100%;">Stop Scanning</button>
+    <button id="wscDatesAmendButton" type="button" onclick="wscDatesToggleAmendments()" style="display:none;width:100%;margin-top:20px;background:#294766;color:white;">✏️ Amendments (Admin)</button>
     <p id="wscDatesMessage" role="status" aria-live="polite"></p>
     <div id="wscDatesResults"></div>
-    <button id="wscDatesAmendButton" type="button" onclick="wscDatesToggleAmendments()" style="display:none;width:100%;margin-top:20px;background:#294766;color:white;">✏️ Amendments (Admin)</button>
     <section id="wscDatesAdmin" style="display:none; border:1px solid #d6dce5;border-radius:12px;padding:15px;margin-top:16px;background:white;">
       <h3>Add Dates (administrator)</h3>
       <button id="wscDatesCameraButton" type="button" onclick="document.getElementById('wscDatesCameraInput').click()" style="width:100%;margin:10px 0;background:#294766;color:white;">📷 Photograph Bottle Cap</button>
@@ -6626,6 +6629,7 @@ async function wscRefreshPermissions() {
       if (wscPermissionEmail !== email) return;
       wscPermissions = permissions;
       wscPaintPermissions(permissions);
+      if (typeof wscDatesRefreshAdminButton === 'function') wscDatesRefreshAdminButton();
     } catch (error) {
       console.error("Permissions unavailable:", error);
       // Fail closed if the fresh server check fails.
@@ -7743,8 +7747,59 @@ window.stopGlobeLoading = function() {
 </script>
 <script>
 // Dates & Lots front end. Existing ST/SC/TR/DL handlers are unchanged.
+let wscDatesScanner = null;
+let wscDatesScannerStarting = false;
+function wscDatesRefreshAdminButton(){
+  const button=document.getElementById('wscDatesAmendButton');
+  if(!button)return;
+  const admin=wscPermissions?.admin===true;
+  button.style.display=admin?'block':'none';
+  if(!admin){
+    document.getElementById('wscDatesAdmin').style.display='none';
+    wscDatesRenderDeleteButtons(false);
+  }
+}
+async function wscDatesStopScanner(){
+  const scanner=wscDatesScanner;
+  wscDatesScanner=null;
+  document.getElementById('wscDatesQrReader').style.display='none';
+  document.getElementById('wscDatesStopScanButton').style.display='none';
+  document.getElementById('wscDatesScanButton').disabled=false;
+  if(scanner){
+    try {if(scanner.isScanning)await scanner.stop();}catch(e){console.warn('Dates QR stop:',e);}
+    try {await scanner.clear();}catch(e){}
+  }
+}
+async function wscDatesStartScanner(){
+  if(wscDatesBusy || wscDatesScanner || wscDatesScannerStarting)return;
+  wscDatesScannerStarting=true;
+  const button=document.getElementById('wscDatesScanButton');
+  button.disabled=true;
+  const reader=document.getElementById('wscDatesQrReader');
+  reader.style.display='block';
+  document.getElementById('wscDatesStopScanButton').style.display='block';
+  wscDatesMessage('Opening camera…');
+  try{
+    if(typeof Html5Qrcode!=='function')throw new Error('QR scanner is not available.');
+    const scanner=new Html5Qrcode('wscDatesQrReader');
+    wscDatesScanner=scanner;
+    let found=false;
+    await scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:220,height:220}},async decoded=>{
+      if(found || wscDatesBusy)return;
+      found=true;
+      await wscDatesStopScanner();
+      document.getElementById('wscDatesSku').value=String(decoded).trim();
+      await wscDatesFind();
+    },()=>{});
+    if(wscDatesScanner===scanner)wscDatesMessage('Point the camera at a product QR code.');
+    else {try{if(scanner.isScanning)await scanner.stop();await scanner.clear();}catch(e){}}
+  }catch(e){
+    await wscDatesStopScanner();
+    wscDatesMessage('Scanner error: '+(e.message||e));
+  }finally{wscDatesScannerStarting=false;}
+}
 function wscDatesToggleAmendments(){
-  if(wscDatesBusy || document.getElementById('wscDatesAmendButton').style.display==='none')return;
+  if(wscDatesBusy || wscPermissions?.admin!==true || document.getElementById('wscDatesAmendButton').style.display==='none')return;
   const panel=document.getElementById('wscDatesAdmin');
   const opening=panel.style.display!=='block';
   panel.style.display=opening?'block':'none';
@@ -7805,6 +7860,7 @@ let wscDatesCurrentSku = '';
 let wscDatesBusy = false;
 function wscDatesMessage(text) {document.getElementById('wscDatesMessage').textContent = text || '';}
 function wscDatesHome() {
+  wscDatesStopScanner();
   document.getElementById('wscDatesScreen').style.display='none';
   showWelcomeScreen();
 }
@@ -7816,7 +7872,9 @@ function wscOpenDates() {
   const screen = document.getElementById('wscDatesScreen');
   screen.style.display='block';
   document.getElementById('wscDatesAdmin').style.display='none';
-  document.getElementById('wscDatesAmendButton').style.display='none';
+  wscDatesStopScanner();
+  wscDatesRefreshAdminButton();
+  document.getElementById('wscDatesAmendButton').textContent='✏️ Amendments (Admin)';
   document.getElementById('wscDatesResults').replaceChildren();
   wscDatesCurrentSku=''; wscDatesMessage('');
   document.getElementById('wscDatesSku').focus();
@@ -7832,7 +7890,7 @@ async function wscDatesRequest(action,extra={}) {
 }
 function wscDatesSetBusy(busy) {
   wscDatesBusy=busy;
-  ['wscDatesFind','wscDatesSave','wscDatesCameraButton','wscDatesAmendButton'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=busy;});
+  ['wscDatesFind','wscDatesSave','wscDatesCameraButton','wscDatesAmendButton','wscDatesScanButton'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=busy;});
 }
 async function wscDatesFind() {
   if(wscDatesBusy)return;
@@ -7843,7 +7901,7 @@ async function wscDatesFind() {
     const data=await wscDatesRequest('getProductDates',{sku});
     wscDatesCurrentSku=data.sku;
     const admin=data.canAmend === true && wscPermissions?.admin === true;
-    document.getElementById('wscDatesAmendButton').style.display=admin?'block':'none';
+    wscDatesRefreshAdminButton();
     if(!admin) document.getElementById('wscDatesAdmin').style.display='none';
     const container=document.getElementById('wscDatesResults');container.replaceChildren();
     const heading=document.createElement('h3');heading.textContent=data.sku+' — '+data.name;container.append(heading);
@@ -7869,7 +7927,7 @@ async function wscDatesFind() {
     wscDatesMessage(data.lots.length+' lot(s) recorded.');
   } catch(e) {
     wscDatesCurrentSku='';document.getElementById('wscDatesResults').replaceChildren();
-    document.getElementById('wscDatesAdmin').style.display='none';document.getElementById('wscDatesAmendButton').style.display='none';wscDatesMessage(e.message);
+    document.getElementById('wscDatesAdmin').style.display='none';wscDatesRefreshAdminButton();wscDatesMessage(e.message);
   } finally {wscDatesSetBusy(false);}
 }
 async function wscDatesSave(){
