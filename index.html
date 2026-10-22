@@ -502,10 +502,13 @@ input[type="reset"]:disabled,
     <label for="wscDatesAmendSku">Product SKU</label>
     <input id="wscDatesAmendSku" type="text" placeholder="Enter SKU" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;margin:8px 0;">
     <button id="wscDatesAmendFind" type="button" onclick="wscDatesFind(true)" style="width:100%;">Find Product</button>
+    <button id="wscDatesAmendScanButton" type="button" onclick="wscDatesStartScanner(true)" style="width:100%;margin-top:10px;">📷 Scan SKU</button>
+    <div id="wscDatesAmendQrReader" style="display:none;width:100%;max-width:420px;margin:12px auto;"></div>
+    <button id="wscDatesAmendStopScanButton" type="button" onclick="wscDatesStopScanner()" style="display:none;width:100%;">Stop Scanning</button>
     <p id="wscDatesAmendMessage" role="status" aria-live="polite"></p>
     <div id="wscDatesAmendResults"></div>
     <section id="wscDatesAdmin" style="display:block; border:1px solid #d6dce5;border-radius:12px;padding:15px;margin-top:16px;background:white;">
-      <h3>Add Dates (administrator)</h3>
+      <h3 id="wscDatesAddHeading">Add Dates</h3>
       <button id="wscDatesCameraButton" type="button" onclick="document.getElementById('wscDatesCameraInput').click()" style="width:100%;margin:10px 0;background:#294766;color:white;">📷 Scan Bottle Cap</button>
       <input id="wscDatesCameraInput" type="file" accept="image/*" capture="environment" onchange="wscDatesReadPhoto(this)" style="display:none;">
       <img id="wscDatesPhotoPreview" alt="Bottle cap photo awaiting verification" style="display:none;max-width:100%;max-height:260px;object-fit:contain;border-radius:10px;margin:8px 0;">
@@ -7771,34 +7774,35 @@ function wscDatesRefreshAdminButton(){
 async function wscDatesStopScanner(){
   const scanner=wscDatesScanner;
   wscDatesScanner=null;
-  document.getElementById('wscDatesQrReader').style.display='none';
-  document.getElementById('wscDatesStopScanButton').style.display='none';
+  ['wscDatesQrReader','wscDatesAmendQrReader','wscDatesStopScanButton','wscDatesAmendStopScanButton'].forEach(id=>document.getElementById(id).style.display='none');
   document.getElementById('wscDatesScanButton').disabled=false;
+  document.getElementById('wscDatesAmendScanButton').disabled=false;
   if(scanner){
     try {if(scanner.isScanning)await scanner.stop();}catch(e){console.warn('Dates QR stop:',e);}
     try {await scanner.clear();}catch(e){}
   }
 }
-async function wscDatesStartScanner(){
+async function wscDatesStartScanner(amend){
+  const isAmend=amend===true;
   if(wscDatesBusy || wscDatesScanner || wscDatesScannerStarting)return;
   wscDatesScannerStarting=true;
-  const button=document.getElementById('wscDatesScanButton');
+  const button=document.getElementById(isAmend?'wscDatesAmendScanButton':'wscDatesScanButton');
   button.disabled=true;
-  const reader=document.getElementById('wscDatesQrReader');
+  const reader=document.getElementById(isAmend?'wscDatesAmendQrReader':'wscDatesQrReader');
   reader.style.display='block';
-  document.getElementById('wscDatesStopScanButton').style.display='block';
+  document.getElementById(isAmend?'wscDatesAmendStopScanButton':'wscDatesStopScanButton').style.display='block';
   wscDatesMessage('Opening camera…');
   try{
     if(typeof Html5Qrcode!=='function')throw new Error('QR scanner is not available.');
-    const scanner=new Html5Qrcode('wscDatesQrReader');
+    const scanner=new Html5Qrcode(isAmend?'wscDatesAmendQrReader':'wscDatesQrReader');
     wscDatesScanner=scanner;
     let found=false;
     await scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:220,height:220}},async decoded=>{
       if(found || wscDatesBusy)return;
       found=true;
       await wscDatesStopScanner();
-      document.getElementById('wscDatesSku').value=String(decoded).trim();
-      await wscDatesFind();
+      document.getElementById(isAmend?'wscDatesAmendSku':'wscDatesSku').value=String(decoded).trim();
+      await wscDatesFind(isAmend);
     },()=>{});
     if(wscDatesScanner===scanner)wscDatesMessage('Point the camera at a product QR code.');
     else {try{if(scanner.isScanning)await scanner.stop();await scanner.clear();}catch(e){}}
@@ -7814,6 +7818,7 @@ function wscDatesToggleAmendments(){
   document.getElementById('wscDatesAdmin').style.display='block';
   document.getElementById('wscDatesAmendSku').value=document.getElementById('wscDatesSku').value.trim();
   document.getElementById('wscDatesAmendResults').replaceChildren();
+  document.getElementById('wscDatesAddHeading').textContent='Add Dates';
   document.getElementById('wscDatesLot').value='';
   document.getElementById('wscDatesExpiry').value='';
   document.getElementById('wscDatesAmendMessage').textContent='';
@@ -7822,6 +7827,7 @@ function wscDatesToggleAmendments(){
 }
 function wscDatesCloseAmendments(){
   if(wscDatesBusy)return;
+  wscDatesStopScanner();
   document.getElementById('wscDatesAmendScreen').style.display='none';
   document.getElementById('wscDatesScreen').style.display='block';
   document.getElementById('wscDatesSku').value=document.getElementById('wscDatesAmendSku').value;
@@ -7976,7 +7982,7 @@ function wscDatesSetBusy(busy,label) {
   wscDatesBusy=busy;
   if(busy)wscDatesProcessing(label||'Processing…');
   else document.getElementById('wscDatesProcessingOverlay')?.remove();
-  ['wscDatesFind','wscDatesAmendFind','wscDatesCameraButton','wscDatesAmendButton','wscDatesScanButton'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=busy;});
+  ['wscDatesFind','wscDatesAmendFind','wscDatesCameraButton','wscDatesAmendButton','wscDatesScanButton','wscDatesAmendScanButton'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=busy;});
 }
 async function wscDatesFind(amend) {
   if(wscDatesBusy)return;
@@ -7987,6 +7993,7 @@ async function wscDatesFind(amend) {
   try {
     const data=await wscDatesRequest('getProductDates',{sku});
     wscDatesCurrentSku=data.sku;
+    if(isAmend)document.getElementById('wscDatesAddHeading').textContent='Add Dates for '+data.sku;
     const admin=data.canAmend === true && wscPermissions?.admin === true;
     wscDatesRefreshAdminButton();
     if(isAmend) document.getElementById('wscDatesAdmin').style.display=admin?'block':'none';
@@ -8014,7 +8021,7 @@ async function wscDatesFind(amend) {
     wscDatesMessage(data.lots.length+' lot(s) recorded.');
   } catch(e) {
     wscDatesCurrentSku='';document.getElementById(isAmend?'wscDatesAmendResults':'wscDatesResults').replaceChildren();
-    if(isAmend)document.getElementById('wscDatesAdmin').style.display='block';wscDatesRefreshAdminButton();wscDatesMessage(e.message);
+    if(isAmend){document.getElementById('wscDatesAdmin').style.display='block';document.getElementById('wscDatesAddHeading').textContent='Add Dates';}wscDatesRefreshAdminButton();wscDatesMessage(e.message);
   } finally {wscDatesSetBusy(false);}
 }
 async function wscDatesSave(){
