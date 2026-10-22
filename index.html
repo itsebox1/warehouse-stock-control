@@ -12,7 +12,7 @@
   });
 </script>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">\n  <style>#wscDatesScreen input,#wscDatesAmendScreen input,#wscDatesScreen select,#wscDatesAmendScreen select,#wscDatesScreen textarea,#wscDatesAmendScreen textarea{font-size:16px!important;max-width:100%;}#wscDatesScreen,#wscDatesAmendScreen{width:100%;box-sizing:border-box;}</style>
   <title>Warehouse Stock Control</title>
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#163e6e">
@@ -4901,6 +4901,7 @@ async function wscLoadOutstandingQB() {
 
  async function showWelcomeScreen() {
   const datesScreen=document.getElementById('wscDatesScreen'); if(datesScreen) datesScreen.style.display='none';
+  const datesAmend=document.getElementById('wscDatesAmendScreen');if(datesAmend)datesAmend.style.display='none';
   void wscRefreshPermissions();
      // Prepare the home screen immediately, while keeping the splash visible
      // for three seconds. Loading continues behind the splash.
@@ -7823,7 +7824,6 @@ function wscDatesToggleAmendments(){
   document.getElementById('wscDatesExpiry').value='';
   document.getElementById('wscDatesAmendMessage').textContent='';
   wscDatesCurrentSku='';
-  document.getElementById('wscDatesAmendSku').focus();
 }
 function wscDatesCloseAmendments(){
   if(wscDatesBusy)return;
@@ -7919,7 +7919,13 @@ async function wscDatesReadPhoto(input){
         found={lot:found.lot||other.lot,expiry:found.expiry||other.expiry};
       }catch(preprocessError){console.warn('Enhanced cap OCR unavailable',preprocessError);}
     }
-    if(found.lot)document.getElementById('wscDatesLot').value=found.lot;
+    if(found.lot){
+      // For this bottle-cap workflow, the printed lot has a leading numerical zero.
+      // Show it for visual verification; the operator can still edit before saving.
+      found.lot=found.lot.replace(/^O/i,'0');
+      if(!found.lot.startsWith('0'))found.lot='0'+found.lot;
+      document.getElementById('wscDatesLot').value=found.lot;
+    }
     if(found.expiry)document.getElementById('wscDatesExpiry').value=found.expiry;
     status.textContent=found.lot&&found.expiry?'Details detected. Check both fields against the bottle before confirming.':
       found.lot||found.expiry?'One detail was detected. Please enter the missing detail and check both before confirming.':
@@ -7935,6 +7941,9 @@ function wscDatesMessage(text) {
   document.getElementById(active?'wscDatesAmendMessage':'wscDatesMessage').textContent=text||'';
 }
 function wscDatesHome() {
+  document.activeElement?.blur?.();
+  wscDatesBusy=false;
+  document.getElementById('wscDatesProcessingOverlay')?.remove();
   wscDatesStopScanner();
   document.getElementById('wscDatesScreen').style.display='none';
   document.getElementById('wscDatesAmendScreen').style.display='none';
@@ -7954,7 +7963,6 @@ function wscOpenDates() {
   document.getElementById('wscDatesAmendButton').textContent='✏️ Amendments (Admin)';
   document.getElementById('wscDatesResults').replaceChildren();
   wscDatesCurrentSku=''; wscDatesMessage('');
-  document.getElementById('wscDatesSku').focus();
 }
 async function wscDatesRequest(action,extra={}) {
   const idToken = await window.getCurrentStaffToken();
