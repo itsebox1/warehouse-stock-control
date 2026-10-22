@@ -495,7 +495,16 @@ input[type="reset"]:disabled,
     <button id="wscDatesAmendButton" type="button" onclick="wscDatesToggleAmendments()" style="display:none;width:100%;margin-top:20px;background:#294766;color:white;">✏️ Amendments (Admin)</button>
     <p id="wscDatesMessage" role="status" aria-live="polite"></p>
     <div id="wscDatesResults"></div>
-    <section id="wscDatesAdmin" style="display:none; border:1px solid #d6dce5;border-radius:12px;padding:15px;margin-top:16px;background:white;">
+  </section>
+  <section id="wscDatesAmendScreen" style="display:none;max-width:650px;margin:0 auto;">
+    <button type="button" onclick="wscDatesCloseAmendments()" style="width:100%;">← Back to Check Dates</button>
+    <h2>✏️ Check Dates — Amendments</h2>
+    <label for="wscDatesAmendSku">Product SKU</label>
+    <input id="wscDatesAmendSku" type="text" placeholder="Enter SKU" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;margin:8px 0;">
+    <button id="wscDatesAmendFind" type="button" onclick="wscDatesFind(true)" style="width:100%;">Find Product</button>
+    <p id="wscDatesAmendMessage" role="status" aria-live="polite"></p>
+    <div id="wscDatesAmendResults"></div>
+    <section id="wscDatesAdmin" style="display:block; border:1px solid #d6dce5;border-radius:12px;padding:15px;margin-top:16px;background:white;">
       <h3>Add Dates (administrator)</h3>
       <button id="wscDatesCameraButton" type="button" onclick="document.getElementById('wscDatesCameraInput').click()" style="width:100%;margin:10px 0;background:#294766;color:white;">📷 Scan Bottle Cap</button>
       <input id="wscDatesCameraInput" type="file" accept="image/*" capture="environment" onchange="wscDatesReadPhoto(this)" style="display:none;">
@@ -508,6 +517,7 @@ input[type="reset"]:disabled,
       <input id="wscDatesExpiry" type="text" placeholder="e.g. 02-2028" style="width:100%;box-sizing:border-box;padding:10px;margin:6px 0 12px;">
       <button id="wscDatesSave" type="button" onclick="wscDatesSave()" style="width:100%;">Confirm</button>
     </section>
+  </section>
   </section>
   <div id="wscAdminPanel" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:2500; overflow-y:auto; padding:20px; box-sizing:border-box;">
     <section role="dialog" aria-modal="true" aria-label="Administrator settings" style="max-width:500px; margin:30px auto; background:white; color:#172b4d; border-radius:14px; padding:22px; box-shadow:0 8px 32px #0004;">
@@ -7799,16 +7809,40 @@ async function wscDatesStartScanner(){
   }finally{wscDatesScannerStarting=false;}
 }
 function wscDatesToggleAmendments(){
-  if(wscDatesBusy || wscPermissions?.admin!==true || document.getElementById('wscDatesAmendButton').style.display==='none')return;
-  const panel=document.getElementById('wscDatesAdmin');
-  const opening=panel.style.display!=='block';
-  panel.style.display=opening?'block':'none';
-  document.getElementById('wscDatesAmendButton').textContent=opening?'✕ Close Amendments':'✏️ Amendments (Admin)';
-  // Refresh to show or hide delete controls without changing the selected product.
-  wscDatesRenderDeleteButtons(opening);
+  if(wscDatesBusy || wscPermissions?.admin!==true)return;
+  document.getElementById('wscDatesScreen').style.display='none';
+  document.getElementById('wscDatesAmendScreen').style.display='block';
+  document.getElementById('wscDatesAmendSku').value=document.getElementById('wscDatesSku').value.trim();
+  document.getElementById('wscDatesAmendResults').replaceChildren();
+  document.getElementById('wscDatesAmendMessage').textContent='';
+  wscDatesCurrentSku='';
+  document.getElementById('wscDatesAmendSku').focus();
+}
+function wscDatesCloseAmendments(){
+  if(wscDatesBusy)return;
+  document.getElementById('wscDatesAmendScreen').style.display='none';
+  document.getElementById('wscDatesScreen').style.display='block';
+  document.getElementById('wscDatesSku').value=document.getElementById('wscDatesAmendSku').value;
+  if(document.getElementById('wscDatesSku').value.trim())wscDatesFind(false);
+}
+function wscDatesConfirmDelete(lot,expiry){
+  return new Promise(resolve=>{
+    const shade=document.createElement('div');
+    shade.style.cssText='position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;';
+    const panel=document.createElement('div');
+    panel.style.cssText='background:white;border-radius:14px;padding:24px;max-width:430px;width:100%;box-shadow:0 8px 32px #0004;color:#172b4d;';
+    const heading=document.createElement('h3');heading.textContent='Delete lot?';
+    const description=document.createElement('p');description.textContent='Permanently delete lot '+lot+' (expiry '+expiry+')? Only do this when no stock remains for this lot.';
+    const actions=document.createElement('div');actions.style.cssText='display:flex;gap:12px;';
+    const cancel=document.createElement('button');cancel.type='button';cancel.textContent='Cancel';cancel.style.cssText='flex:1;background:#66788d;';
+    const yes=document.createElement('button');yes.type='button';yes.textContent='Delete lot';yes.style.cssText='flex:1;background:#a32929;';
+    cancel.onclick=()=>{shade.remove();resolve(false);};
+    yes.onclick=()=>{shade.remove();resolve(true);};
+    actions.append(cancel,yes);panel.append(heading,description,actions);shade.append(panel);document.body.append(shade);
+  });
 }
 function wscDatesRenderDeleteButtons(show){
-  document.querySelectorAll('#wscDatesResults .wsc-dates-delete').forEach(b=>b.style.display=show?'inline-block':'none');
+  document.querySelectorAll('#wscDatesAmendResults .wsc-dates-delete').forEach(b=>b.style.display=show?'inline-block':'none');
 }
 let wscDatesOcrScriptPromise;
 function wscDatesLoadOCR(){
@@ -7888,10 +7922,14 @@ async function wscDatesReadPhoto(input){
 
 let wscDatesCurrentSku = '';
 let wscDatesBusy = false;
-function wscDatesMessage(text) {document.getElementById('wscDatesMessage').textContent = text || '';}
+function wscDatesMessage(text) {
+  const active=document.getElementById('wscDatesAmendScreen')?.style.display==='block';
+  document.getElementById(active?'wscDatesAmendMessage':'wscDatesMessage').textContent=text||'';
+}
 function wscDatesHome() {
   wscDatesStopScanner();
   document.getElementById('wscDatesScreen').style.display='none';
+  document.getElementById('wscDatesAmendScreen').style.display='none';
   showWelcomeScreen();
 }
 function wscOpenDates() {
@@ -7901,6 +7939,7 @@ function wscOpenDates() {
   document.getElementById('welcomeScreen').style.display='none';
   const screen = document.getElementById('wscDatesScreen');
   screen.style.display='block';
+  document.getElementById('wscDatesAmendScreen').style.display='none';
   document.getElementById('wscDatesAdmin').style.display='none';
   wscDatesStopScanner();
   wscDatesRefreshAdminButton();
@@ -7935,11 +7974,12 @@ function wscDatesSetBusy(busy,label) {
   wscDatesBusy=busy;
   if(busy)wscDatesProcessing(label||'Processing…');
   else document.getElementById('wscDatesProcessingOverlay')?.remove();
-  ['wscDatesFind','wscDatesCameraButton','wscDatesAmendButton','wscDatesScanButton'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=busy;});
+  ['wscDatesFind','wscDatesAmendFind','wscDatesCameraButton','wscDatesAmendButton','wscDatesScanButton'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=busy;});
 }
-async function wscDatesFind() {
+async function wscDatesFind(amend) {
   if(wscDatesBusy)return;
-  const sku=document.getElementById('wscDatesSku').value.trim();
+  const isAmend=amend===true || (amend!==false && document.getElementById('wscDatesAmendScreen').style.display==='block');
+  const sku=document.getElementById(isAmend?'wscDatesAmendSku':'wscDatesSku').value.trim();
   if(!sku){wscDatesMessage('Enter a SKU first.');return;}
   wscDatesSetBusy(true,'Looking up product…'); wscDatesMessage('Looking up product…');
   try {
@@ -7948,30 +7988,30 @@ async function wscDatesFind() {
     const admin=data.canAmend === true && wscPermissions?.admin === true;
     wscDatesRefreshAdminButton();
     if(!admin) document.getElementById('wscDatesAdmin').style.display='none';
-    const container=document.getElementById('wscDatesResults');container.replaceChildren();
+    const container=document.getElementById(isAmend?'wscDatesAmendResults':'wscDatesResults');container.replaceChildren();
     const heading=document.createElement('h3');heading.textContent=data.sku+' — '+data.name;container.append(heading);
     if(!data.lots.length){const p=document.createElement('p');p.textContent='No lots recorded for this SKU.';container.append(p);}
     data.lots.forEach(item=>{
       const line=document.createElement('div');line.style.cssText='background:white;border:1px solid #d6dce5;border-radius:10px;padding:12px;margin:8px 0;';
       const details=document.createElement('div');details.textContent='Lot: '+item.lot+' | Expiry: '+item.expiry;line.append(details);
-      if(admin){
+      if(admin && isAmend){
         const del=document.createElement('button');del.type='button';del.className='wsc-dates-delete';del.textContent='Delete this lot';del.style.cssText='width:auto;margin-top:8px;background:#a32929;display:none;';
         del.onclick=async()=>{
           if(wscDatesBusy)return;
-          if(!confirm('Permanently delete lot '+item.lot+' (expiry '+item.expiry+')? Only do this when no stock remains for this lot.'))return;
-          wscDatesSetBusy(true);del.disabled=true;wscDatesMessage('Deleting lot…');
+          if(!await wscDatesConfirmDelete(item.lot,item.expiry))return;
+          wscDatesSetBusy(true,'Deleting lot…');del.disabled=true;wscDatesMessage('Deleting lot…');
           try{await wscDatesRequest('deleteProductDate',{sku:data.sku,row:item.row,lot:item.lot,expiry:item.expiry});wscDatesMessage('Lot deleted.');}
           catch(e){wscDatesMessage(e.message);wscDatesSetBusy(false);del.disabled=false;return;}
-          wscDatesSetBusy(false);await wscDatesFind();
+          wscDatesSetBusy(false);await wscDatesFind(true);
         };
         line.append(del);
       }
       container.append(line);
     });
-    wscDatesRenderDeleteButtons(document.getElementById('wscDatesAdmin').style.display==='block');
+    wscDatesRenderDeleteButtons(isAmend);
     wscDatesMessage(data.lots.length+' lot(s) recorded.');
   } catch(e) {
-    wscDatesCurrentSku='';document.getElementById('wscDatesResults').replaceChildren();
+    wscDatesCurrentSku='';document.getElementById(isAmend?'wscDatesAmendResults':'wscDatesResults').replaceChildren();
     document.getElementById('wscDatesAdmin').style.display='none';wscDatesRefreshAdminButton();wscDatesMessage(e.message);
   } finally {wscDatesSetBusy(false);}
 }
@@ -7982,8 +8022,8 @@ async function wscDatesSave(){
   }
   const lot=document.getElementById('wscDatesLot').value.trim(),expiry=document.getElementById('wscDatesExpiry').value.trim();
   if(!lot||!expiry){wscDatesMessage('Enter both lot and expiry.');return;}
-  const enteredSku=document.getElementById('wscDatesSku').value.trim();
-  if(!enteredSku){wscDatesMessage('Enter or scan a product SKU before confirming. Your lot and expiry have been kept.');document.getElementById('wscDatesSku').focus();return;}
+  const enteredSku=document.getElementById('wscDatesAmendSku').value.trim();
+  if(!enteredSku){wscDatesMessage('Enter or scan a product SKU before confirming. Your lot and expiry have been kept.');document.getElementById('wscDatesAmendSku').focus();return;}
   wscDatesSetBusy(true,'Checking and saving lot…');wscDatesMessage('Checking product before saving…');
   try{
     // Always verify the SKU currently shown in the input; a previous lookup may
@@ -7996,7 +8036,7 @@ async function wscDatesSave(){
     document.getElementById('wscDatesLot').value='';document.getElementById('wscDatesExpiry').value='';
     wscDatesMessage(result.alreadyExists?'This lot and expiry are already recorded.':'Lot saved.');
   }catch(e){wscDatesMessage('Could not save: '+(e.message||String(e)));wscDatesSetBusy(false);return;}
-  wscDatesSetBusy(false);await wscDatesFind();
+  wscDatesSetBusy(false);await wscDatesFind(true);
 }
 
 // PWA registration; deliberately does not cache index.html or app data.
