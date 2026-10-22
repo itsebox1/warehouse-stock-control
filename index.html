@@ -3661,16 +3661,8 @@ async function updateQuarterlyStockTakeAlert() {
     });
     let cls = "upToDate";
     let message = "✓ Stock Take up to date";
-    // Do not silently reset an uncompleted previous month to 'up to date'.
-    // Check the previous month only; older historical gaps remain in the reports.
-    const previous = new Date(currentYear, currentMonth - 1, 1);
-    const previousYear = previous.getFullYear();
-    const previousMonth = previous.getMonth();
-    const previousDeadline = lastFriday(previousYear, previousMonth);
-    if (today > previousDeadline && !completedFor(previousYear, previousMonth)) {
-      cls = "overdue";
-      message = `⚠️ ${monthNames[previousMonth]} Stock Take is OVERDUE`;
-    } else if (!completedFor(currentYear, currentMonth) && today > currentDeadline) {
+    // Show reminders for the current month only; historical gaps remain in reports.
+    if (!completedFor(currentYear, currentMonth) && today > currentDeadline) {
       cls = "overdue";
       message = `⚠️ ${monthNames[currentMonth]} Stock Take is OVERDUE`;
     } else if (!completedFor(currentYear, currentMonth) && today >= warningStart) {
