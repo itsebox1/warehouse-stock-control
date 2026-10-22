@@ -7883,7 +7883,7 @@ async function wscDatesReadPhoto(input){
       found.lot||found.expiry?'One detail was detected. Please enter the missing detail and check both before confirming.':
       'Could not reliably read the printed details. Please enter the lot and expiry manually, or retake a closer, well-lit photograph.';
   }catch(e){status.textContent='Photo reading failed: '+e.message+'. You can still type both fields manually.';}
-  finally{wscDatesSetBusy(false);input.value='';}
+  finally{wscDatesSetBusy(false);input.value='';const confirmButton=document.getElementById('wscDatesSave');if(confirmButton)confirmButton.disabled=false;}
 }
 
 let wscDatesCurrentSku = '';
@@ -7935,7 +7935,7 @@ function wscDatesSetBusy(busy,label) {
   wscDatesBusy=busy;
   if(busy)wscDatesProcessing(label||'Processing…');
   else document.getElementById('wscDatesProcessingOverlay')?.remove();
-  ['wscDatesFind','wscDatesSave','wscDatesCameraButton','wscDatesAmendButton','wscDatesScanButton'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=busy;});
+  ['wscDatesFind','wscDatesCameraButton','wscDatesAmendButton','wscDatesScanButton'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=busy;});
 }
 async function wscDatesFind() {
   if(wscDatesBusy)return;
@@ -7976,7 +7976,7 @@ async function wscDatesFind() {
   } finally {wscDatesSetBusy(false);}
 }
 async function wscDatesSave(){
-  if(wscDatesBusy)return;
+  if(wscDatesBusy){wscDatesMessage('Please wait for the current Check Dates operation to finish, then press Confirm again.');return;}
   if(document.getElementById('wscDatesAdmin').style.display!=='block'){
     wscDatesMessage('Administrator Amendments must be open.');return;
   }
