@@ -7865,23 +7865,60 @@ function wscDatesLoadOCR(){
   return wscDatesOcrScriptPromise;
 }
 function wscDatesExtractText(text){
-  const raw=String(text||'').toUpperCase();
+  const raw=String(text||'').toUpperCase().replace(/[‐‑–—]/g,'-');
   const lines=raw.split(/[\r\n]+/).map(x=>x.trim()).filter(Boolean);
-  const expMatch=raw.match(/(?:EXP|EXF|EX[P]?)[\s:.-]*([01]?\d)[\s\/-]+(20\d{2}|\d{2})/i)
-    || raw.match(/\b([01]?\d)[\s\/-]+(20\d{2})\b/);
   let expiry='';
-  if(expMatch){const month=Number(expMatch[1]);if(month>=1&&month<=12){const year=expMatch[2].length===2?'20'+expMatch[2]:expMatch[2];expiry=String(month).padStart(2,'0')+'-'+year;}}
-  const candidateLines=lines.filter(x=>!/EXP|EXF/.test(x));
-  let lot='';
-  for(const line of candidateLines){
-    const matches=line.match(/[A-Z0-9]{5,}(?:[-][A-Z0-9]{1,8})?/g)||[];
-    const match=matches.find(x=>/\d/.test(x));
-    if(match){lot=match;break;}
+  for(const line of lines){
+    const normalized=line.replace(/[OQ]/g,'0').replace(/[IL|]/g,'1');
+    const match=normalized.match(/(?:EXP|EXF|EX?P)?\s*[:.]?\s*([01]?\d)\s*[-/. ]\s*(20\d{2}|\d{2})\b/)
+      || normalized.match(/\b([01]?\d)(20\d{2})\b/);
+    if(match){
+      const m=Number(match[1]),year=match[2].length===2?'20'+match[2]:match[2];
+      if(m>=1&&m<=12){expiry=String(m).padStart(2,'0')+'-'+year;break;}
+    }
   }
-  // OCR often reads a printed leading zero as the letter O.
-  // Only normalise an existing O, never invent a digit if OCR omitted it.
-  if(/^O(?=[0-9])/.test(lot))lot='0'+lot.slice(1);
+  let lot='';
+  for(let i=0;i<lines.length;i++){
+    const line=lines[i];
+    if(/\bEXP|EXF|EXPIR/.test(line))continue;
+    const cleaned=line.replace(/\bLOT\b\s*[:.]?/,'').replace(/\s+/g,'');
+    const candidates=cleaned.match(/[A-Z0-9]{5,}(?:-[A-Z0-9]{1,8})?/g)||[];
+    const candidate=candidates.find(x=>/\d/.test(x)&&!/^20\d{2}$/.test(x));
+    if(candidate){lot=candidate;break;}
+  }
+  if(/^O(?=\d)/.test(lot))lot='0'+lot.slice(1);
   return {lot,expiry};
+}
+async function wscDatesMakeOcrCanvas(file,variant){
+  const bitmap=await createImageBitmap(file);
+  try{
+    const w=bitmap.width,h=bitmap.height;
+    // Printed characters occupy the middle of bottle-cap photos.
+    // Crop out hands, shelves and other distracting text.
+    const crop=variant==='centre'?{x:w*.16,y:h*.24,w:w*.68,h:h*.53}:
+      variant==='wide'?{x:w*.08,y:h*.14,w:w*.84,h:h*.70}:{x:0,y:0,w,h};
+    const scale=Math.min(4,2000/Math.max(crop.w,crop.h));
+    const canvas=document.createElement('canvas');
+    canvas.width=Math.max(1,Math.round(crop.w*scale));
+    canvas.height=Math.max(1,Math.round(crop.h*scale));
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    ctx.drawImage(bitmap,crop.x,crop.y,crop.w,crop.h,0,0,canvas.width,canvas.height);
+    const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);
+    // Local contrast enhancement, without destroying the fine dot-matrix strokes.
+    let min=255,max=0;
+    for(let i=0;i<pixels.data.length;i+=4){
+      const v=.299*pixels.data[i]+.587*pixels.data[i+1]+.114*pixels.data[i+2];
+      min=Math.min(min,v);max=Math.max(max,v);
+    }
+    for(let i=0;i<pixels.data.length;i+=4){
+      const v=.299*pixels.data[i]+.587*pixels.data[i+1]+.114*pixels.data[i+2];
+      const normalized=Math.max(0,Math.min(255,(v-min)*255/Math.max(35,max-min)));
+      const out=variant==='centre'?(normalized<125?0:255):normalized;
+      pixels.data[i]=pixels.data[i+1]=pixels.data[i+2]=out;
+    }
+    ctx.putImageData(pixels,0,0);
+    return canvas;
+  }finally{bitmap.close?.();}
 }
 async function wscDatesReadPhoto(input){
   const file=input.files?.[0];if(!file)return;
@@ -7893,37 +7930,23 @@ async function wscDatesReadPhoto(input){
   status.textContent='Reading printed lot and expiry from photograph…';
   try{
     const tesseract=await wscDatesLoadOCR();
-    const options={};
-    // Dot-matrix cap labels often need a second, high-contrast reading.
-    const first=await tesseract.recognize(file,'eng',options);
-    let found=wscDatesExtractText(first?.data?.text);
-    if(!found.lot||!found.expiry){
-      status.textContent='Checking faint printed characters…';
+    let found={lot:'',expiry:''};
+    const attempts=[file];
+    try{attempts.push(await wscDatesMakeOcrCanvas(file,'wide'));}catch(e){console.warn('Photo crop unavailable',e);}
+    try{attempts.push(await wscDatesMakeOcrCanvas(file,'centre'));}catch(e){console.warn('Photo contrast unavailable',e);}
+    for(let i=0;i<attempts.length;i++){
+      if(i)status.textContent=i===1?'Reading enlarged bottle-cap text…':'Checking fine dot-matrix characters…';
       try{
-        const bitmap=await createImageBitmap(file);
-        const scale=Math.min(3,2200/Math.max(bitmap.width,bitmap.height));
-        const canvas=document.createElement('canvas');
-        canvas.width=Math.round(bitmap.width*scale);canvas.height=Math.round(bitmap.height*scale);
-        const ctx=canvas.getContext('2d',{willReadFrequently:true});
-        ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
-        if(bitmap.close)bitmap.close();
-        const pixels=ctx.getImageData(0,0,canvas.width,canvas.height);
-        for(let i=0;i<pixels.data.length;i+=4){
-          const v=.299*pixels.data[i]+.587*pixels.data[i+1]+.114*pixels.data[i+2];
-          const adjusted=v<155?0:v>205?255:(v-155)*255/50;
-          pixels.data[i]=pixels.data[i+1]=pixels.data[i+2]=adjusted;
-        }
-        ctx.putImageData(pixels,0,0);
-        const second=await tesseract.recognize(canvas,'eng');
-        const other=wscDatesExtractText(second?.data?.text);
-        found={lot:found.lot||other.lot,expiry:found.expiry||other.expiry};
-      }catch(preprocessError){console.warn('Enhanced cap OCR unavailable',preprocessError);}
+        const result=await tesseract.recognize(attempts[i],'eng');
+        const other=wscDatesExtractText(result?.data?.text);
+        if(!found.lot&&other.lot)found.lot=other.lot;
+        if(!found.expiry&&other.expiry)found.expiry=other.expiry;
+        if(found.lot&&found.expiry)break;
+      }catch(e){console.warn('Bottle OCR attempt failed',e);}
     }
     if(found.lot){
-      // For this bottle-cap workflow, the printed lot has a leading numerical zero.
-      // Show it for visual verification; the operator can still edit before saving.
       found.lot=found.lot.replace(/^O/i,'0');
-      if(!found.lot.startsWith('0'))found.lot='0'+found.lot;
+      // Do not fabricate a leading digit; always ask the user to check the printed label.
       document.getElementById('wscDatesLot').value=found.lot;
     }
     if(found.expiry)document.getElementById('wscDatesExpiry').value=found.expiry;
