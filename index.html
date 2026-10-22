@@ -7865,28 +7865,22 @@ function wscDatesLoadOCR(){
   return wscDatesOcrScriptPromise;
 }
 function wscDatesExtractText(text){
-  const raw=String(text||'').toUpperCase().replace(/[‐‑–—]/g,'-');
-  const lines=raw.split(/[\r\n]+/).map(x=>x.trim()).filter(Boolean);
-  let expiry='';
-  for(const line of lines){
-    const normalized=line.replace(/[OQ]/g,'0').replace(/[IL|]/g,'1');
-    const match=normalized.match(/(?:EXP|EXF|EX?P)?\s*[:.]?\s*([01]?\d)\s*[-/. ]\s*(20\d{2}|\d{2})\b/)
-      || normalized.match(/\b([01]?\d)(20\d{2})\b/);
-    if(match){
-      const m=Number(match[1]),year=match[2].length===2?'20'+match[2]:match[2];
-      if(m>=1&&m<=12){expiry=String(m).padStart(2,'0')+'-'+year;break;}
-    }
-  }
-  let lot='';
+  const lines=String(text||'').toUpperCase().replace(/[‐‑–—]/g,'-').split(/[\r\n]+/).map(x=>x.trim()).filter(Boolean);
+  let lot='',expiry='';
+  // Read only lines explicitly identified by LOT and EXP; never read background text.
   for(let i=0;i<lines.length;i++){
     const line=lines[i];
-    if(/\bEXP|EXF|EXPIR/.test(line))continue;
-    const cleaned=line.replace(/\bLOT\b\s*[:.]?/,'').replace(/\s+/g,'');
-    const candidates=cleaned.match(/[A-Z0-9]{5,}(?:-[A-Z0-9]{1,8})?/g)||[];
-    const candidate=candidates.find(x=>/\d/.test(x)&&!/^20\d{2}$/.test(x));
-    if(candidate){lot=candidate;break;}
+    if(/\bLOT\b/.test(line)){
+      const inline=line.replace(/^.*?\bLOT\b\s*[:.]?\s*/,'').trim();
+      const candidate=(inline||lines[i+1]||'').replace(/\s+/g,'').match(/^([0-9O][A-Z0-9]{4,14}(?:-[A-Z0-9]{1,5})?)$/);
+      if(candidate)lot=candidate[1].replace(/^O/,'0');
+    }
+    if(/\bEXP\b|\bEXPIRY\b/.test(line)){
+      const value=line.replace(/^.*?\bEXP(?:IRY)?\b\s*[:.]?\s*/,'').trim() || lines[i+1]||'';
+      const match=value.replace(/[OQ]/g,'0').match(/^([01]?\d)\s*[-/.]\s*(20\d{2})$/);
+      if(match&&Number(match[1])>=1&&Number(match[1])<=12)expiry=match[1].padStart(2,'0')+'-'+match[2];
+    }
   }
-  if(/^O(?=\d)/.test(lot))lot='0'+lot.slice(1);
   return {lot,expiry};
 }
 async function wscDatesMakeOcrCanvas(file,variant){
@@ -7930,29 +7924,26 @@ async function wscDatesReadPhoto(input){
   status.textContent='Reading printed lot and expiry from photograph…';
   try{
     const tesseract=await wscDatesLoadOCR();
-    let found={lot:'',expiry:''};
+    // Never merge unrelated guesses from different OCR passes into a fake success.
+    // Require the printed LOT / EXP labels and consistent results.
+    const readings=[];
     const attempts=[file];
     try{attempts.push(await wscDatesMakeOcrCanvas(file,'wide'));}catch(e){console.warn('Photo crop unavailable',e);}
-    try{attempts.push(await wscDatesMakeOcrCanvas(file,'centre'));}catch(e){console.warn('Photo contrast unavailable',e);}
     for(let i=0;i<attempts.length;i++){
-      if(i)status.textContent=i===1?'Reading enlarged bottle-cap text…':'Checking fine dot-matrix characters…';
+      if(i)status.textContent='Double-checking the bottle-cap printing…';
       try{
         const result=await tesseract.recognize(attempts[i],'eng');
-        const other=wscDatesExtractText(result?.data?.text);
-        if(!found.lot&&other.lot)found.lot=other.lot;
-        if(!found.expiry&&other.expiry)found.expiry=other.expiry;
-        if(found.lot&&found.expiry)break;
+        readings.push(wscDatesExtractText(result?.data?.text));
       }catch(e){console.warn('Bottle OCR attempt failed',e);}
     }
-    if(found.lot){
-      found.lot=found.lot.replace(/^O/i,'0');
-      // Do not fabricate a leading digit; always ask the user to check the printed label.
-      document.getElementById('wscDatesLot').value=found.lot;
-    }
-    if(found.expiry)document.getElementById('wscDatesExpiry').value=found.expiry;
-    status.textContent=found.lot&&found.expiry?'Details detected. Check both fields against the bottle before confirming.':
-      found.lot||found.expiry?'One detail was detected. Please enter the missing detail and check both before confirming.':
-      'Could not reliably read the printed details. Please enter the lot and expiry manually, or retake a closer, well-lit photograph.';
+    const first=readings[0]||{lot:'',expiry:''};
+    const second=readings[1]||{lot:'',expiry:''};
+    const lot=first.lot&&first.lot===second.lot?first.lot:'';
+    const expiry=first.expiry&&first.expiry===second.expiry?first.expiry:'';
+    document.getElementById('wscDatesLot').value=lot;
+    document.getElementById('wscDatesExpiry').value=expiry;
+    status.textContent=lot&&expiry?'Both readings agree. Check the bottle carefully before confirming.':
+      'The text reader could not verify both details consistently. Please type or correct the lot and expiry from the bottle before confirming.';
   }catch(e){status.textContent='Photo reading failed: '+e.message+'. You can still type both fields manually.';}
   finally{wscDatesSetBusy(false);input.value='';const confirmButton=document.getElementById('wscDatesSave');if(confirmButton)confirmButton.disabled=false;}
 }
