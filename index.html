@@ -8044,7 +8044,7 @@ async function wscDatesFind(amend) {
     if(isAmend) document.getElementById('wscDatesAdmin').style.display=admin?'block':'none';
     const container=document.getElementById(isAmend?'wscDatesAmendResults':'wscDatesResults');container.replaceChildren();
     const heading=document.createElement('h3');heading.textContent=data.sku+' — '+data.name;container.append(heading);
-    if(!data.lots.length){const p=document.createElement('p');p.textContent='No lots recorded for this SKU.';container.append(p);}
+    if(!data.lots.length){const p=document.createElement('p');p.textContent='Out of Stock';container.append(p);}
     // Oldest expiry first; invalid/missing expiry dates remain at the bottom.
     const sortedLots=[...data.lots].sort((a,b)=>{
       const am=wscDatesExpiryMonth(a.expiry),bm=wscDatesExpiryMonth(b.expiry);
