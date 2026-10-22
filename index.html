@@ -3629,44 +3629,59 @@ function thirdFriday(year, monthIndex) {
 }
 
 async function updateQuarterlyStockTakeAlert() {
+  // The function name is retained because existing page startup code calls it.
   const alertBox = document.getElementById("quarterlyStockTakeAlert");
   if (!alertBox) return;
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const year = today.getFullYear();
-  const month = today.getMonth();
-  const monthName = new Intl.DateTimeFormat("en-GB", {month:"long"}).format(today);
-  const deadline = lastFriday(year, month);
-  const warningStart = new Date(deadline);
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth();
+  const monthNames = ["January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"];
+  const currentDeadline = lastFriday(currentYear, currentMonth);
+  const warningStart = new Date(currentDeadline);
   warningStart.setDate(warningStart.getDate() - 14);
   try {
     const idToken = await window.getCurrentStaffToken();
     const response = await fetch("https://warehouse-stock-reports.tmerry.workers.dev", {
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({action:"listClosedStockTakes",idToken})
+      method: "POST", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({action: "listClosedStockTakes", idToken})
     });
     if (!response.ok) throw new Error("Unable to check Stock Take status");
     const result = await response.json();
-    if (!result.success) throw new Error(result.error || "Unable to check Stock Takes");
-    const complete = (result.stockTakes || []).some(st => {
-      if (String(st.status || "").toLowerCase() !== "closed" ||
-          String(st.stockTakePeriod || "").toLowerCase() !== monthName.toLowerCase()) return false;
+    if (!result.success || !Array.isArray(result.stockTakes)) {
+      throw new Error(result.error || "Unable to check Stock Takes");
+    }
+    const completedFor = (year, month) => result.stockTakes.some(st => {
+      if (String(st.status || "").trim().toLowerCase() !== "closed" ||
+          String(st.stockTakePeriod || "").trim().toLowerCase() !== monthNames[month].toLowerCase()) return false;
       const finished = new Date(st.finishedAt);
-      return !isNaN(finished.getTime()) && finished.getFullYear() === year && finished.getMonth() === month;
+      return !Number.isNaN(finished.getTime()) &&
+        finished.getFullYear() === year && finished.getMonth() === month;
     });
-    let cls = "upToDate", message = "✓ Stock Take up to date";
-    if (!complete && today > deadline) {
+    let cls = "upToDate";
+    let message = "✓ Stock Take up to date";
+    // Do not silently reset an uncompleted previous month to 'up to date'.
+    // Check the previous month only; older historical gaps remain in the reports.
+    const previous = new Date(currentYear, currentMonth - 1, 1);
+    const previousYear = previous.getFullYear();
+    const previousMonth = previous.getMonth();
+    const previousDeadline = lastFriday(previousYear, previousMonth);
+    if (today > previousDeadline && !completedFor(previousYear, previousMonth)) {
       cls = "overdue";
-      message = `⚠️ ${monthName} Stock Take is OVERDUE`;
-    } else if (!complete && today >= warningStart) {
+      message = `⚠️ ${monthNames[previousMonth]} Stock Take is OVERDUE`;
+    } else if (!completedFor(currentYear, currentMonth) && today > currentDeadline) {
+      cls = "overdue";
+      message = `⚠️ ${monthNames[currentMonth]} Stock Take is OVERDUE`;
+    } else if (!completedFor(currentYear, currentMonth) && today >= warningStart) {
       cls = "warning";
-      message = `⚠️ ${monthName} Stock Take is due on ${deadline.toLocaleDateString("en-GB")}`;
+      message = `⚠️ ${monthNames[currentMonth]} Stock Take is due on ${currentDeadline.toLocaleDateString("en-GB")}`;
     }
     alertBox.className = cls;
     alertBox.style.display = "block";
     alertBox.textContent = message;
-  } catch(error) {
-    console.error("Monthly Stock Take alert error:",error);
+  } catch (error) {
+    console.error("Monthly Stock Take alert error:", error);
     alertBox.className = "warning";
     alertBox.textContent = "⚠️ Unable to verify Stock Take status";
     alertBox.style.display = "block";
