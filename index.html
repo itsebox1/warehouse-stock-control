@@ -5739,6 +5739,22 @@ row.append(details, status, resume);
 list.appendChild(row);
     });
 
+    // Only offer a new Trade Show below the open-session cards when one exists.
+    const newTradeShowButton = document.createElement("button");
+    newTradeShowButton.type = "button";
+    newTradeShowButton.textContent = "➕ Create New Trade Show";
+    newTradeShowButton.style.width = "100%";
+    newTradeShowButton.style.margin = "14px 0 4px";
+    newTradeShowButton.onclick = () => {
+      showTradeShowSetup();
+      const fields = document.getElementById("newTradeShowFields");
+      const toggle = document.getElementById("toggleNewTradeShowButton");
+      if (fields) fields.style.display = "block";
+      if (toggle) toggle.setAttribute("aria-expanded", "true");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+    list.appendChild(newTradeShowButton);
+
   } catch (error) {
     list.textContent =
       "Error loading Trade Shows: " + error.message;
