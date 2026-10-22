@@ -3172,6 +3172,8 @@ if (startLoading) {
 }
   
 async function startStockCount() {
+  const countReason = await window.showWSCCountReason();
+  if (countReason === null) return;
   if (!(await wscCheckNewInventoryAllowed())) return;
   const button =
     document.getElementById("startNewStockCountFromReport")?.offsetParent
@@ -3210,6 +3212,7 @@ async function startStockCount() {
         },
         body: JSON.stringify({
           action: "startStockCount",
+          reasonForCount: countReason,
           idToken: idToken
         })
       }
@@ -7140,6 +7143,31 @@ box.style.cssText = `
 document.body.appendChild(overlay);
 };
 
+
+window.showWSCCountReason = function() {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:100002;padding:20px';
+    const box = document.createElement('div');
+    box.style.cssText = 'background:white;border-radius:12px;padding:24px;max-width:480px;width:100%;box-sizing:border-box;box-shadow:0 8px 30px rgba(0,0,0,.3);color:#222';
+    const heading = document.createElement('h2'); heading.textContent = 'Reason for Count'; heading.style.marginTop='0';
+    const select = document.createElement('select');
+    select.style.cssText='width:100%;box-sizing:border-box;padding:12px;font-size:16px;border:1px solid #aaa;border-radius:6px';
+    [['','Select a reason...'],['Confirm Qty','Confirm Qty'],['Confirm Safeswim Qty','Confirm Safeswim Qty'],['Confirm Arsenic Kits','Confirm Arsenic Kits'],['Confirm Lables','Confirm Lables'],['Other','Other (please specify)']].forEach(([value,label])=>{ const option=document.createElement('option');option.value=value;option.textContent=label;select.append(option); });
+    const other=document.createElement('input');other.type='text';other.placeholder='Please specify reason';other.maxLength=200;
+    other.style.cssText='display:none;width:100%;box-sizing:border-box;margin-top:12px;padding:12px;font-size:16px;border:1px solid #aaa;border-radius:6px';
+    const actions=document.createElement('div');actions.style.cssText='display:flex;gap:10px;justify-content:flex-end;margin-top:24px';
+    const cancel=document.createElement('button');cancel.textContent='Cancel';
+    const create=document.createElement('button');create.textContent='Create';create.disabled=true;
+    for(const button of [cancel,create]) button.style.cssText='padding:10px 20px;border:0;border-radius:6px;color:white;font-weight:bold;cursor:pointer';
+    cancel.style.background='#777';create.style.background='#244b72';
+    const update=()=>{other.style.display=select.value==='Other'?'block':'none';create.disabled=!select.value||(select.value==='Other'&&!other.value.trim());create.style.opacity=create.disabled?'0.5':'1';};
+    const finish=value=>{overlay.remove();resolve(value);};
+    select.onchange=update;other.oninput=update;cancel.onclick=()=>finish(null);
+    create.onclick=()=>{if(!create.disabled)finish(select.value==='Other'?other.value.trim():select.value);};
+    actions.append(cancel,create);box.append(heading,select,other,actions);overlay.append(box);document.body.append(overlay);update();select.focus();
+  });
+};
 
 // WSC-styled input dialog: resolves to entered text, or null on cancellation.
 window.showWSCInput = function(title, message, initialValue = "") {
