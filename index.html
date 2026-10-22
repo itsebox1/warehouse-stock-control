@@ -8007,6 +8007,28 @@ function wscDatesSetBusy(busy,label) {
   else document.getElementById('wscDatesProcessingOverlay')?.remove();
   ['wscDatesFind','wscDatesAmendFind','wscDatesCameraButton','wscDatesAmendButton','wscDatesScanButton','wscDatesAmendScanButton'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=busy;});
 }
+// Check Dates: compare expiry months against the current calendar month.
+// A month-only expiry is valid through the final day of its stated month.
+function wscDatesExpiryMonth(value){
+  const v=String(value||'').trim();
+  let m,y,match;
+  if((match=v.match(/^(\d{1,2})\s*[-\/.]\s*(20\d{2}|\d{2})$/))){
+    m=Number(match[1]);y=Number(match[2]);
+  }else if((match=v.match(/^\d{1,2}\s*[-\/.]\s*(\d{1,2})\s*[-\/.]\s*(\d{4})$/))){
+    m=Number(match[1]);y=Number(match[2]);
+  }else if((match=v.match(/^(20\d{2})\s*[-\/.]\s*(\d{1,2})(?:\s*[-\/.]\s*\d{1,2})?$/))){
+    y=Number(match[1]);m=Number(match[2]);
+  }else return null;
+  if(y<100)y+=2000;
+  if(m<1||m>12||y<2000||y>2100)return null;
+  return y*12+m-1;
+}
+function wscDatesExpiryMonthsRemaining(value){
+  const month=wscDatesExpiryMonth(value);
+  if(month===null)return null;
+  const today=new Date();
+  return month-(today.getFullYear()*12+today.getMonth());
+}
 async function wscDatesFind(amend) {
   if(wscDatesBusy)return;
   const isAmend=amend===true || (amend!==false && document.getElementById('wscDatesAmendScreen').style.display==='block');
@@ -8023,8 +8045,19 @@ async function wscDatesFind(amend) {
     const container=document.getElementById(isAmend?'wscDatesAmendResults':'wscDatesResults');container.replaceChildren();
     const heading=document.createElement('h3');heading.textContent=data.sku+' — '+data.name;container.append(heading);
     if(!data.lots.length){const p=document.createElement('p');p.textContent='No lots recorded for this SKU.';container.append(p);}
-    data.lots.forEach(item=>{
+    // Oldest expiry first; invalid/missing expiry dates remain at the bottom.
+    const sortedLots=[...data.lots].sort((a,b)=>{
+      const am=wscDatesExpiryMonth(a.expiry),bm=wscDatesExpiryMonth(b.expiry);
+      return (am===null?Infinity:am)-(bm===null?Infinity:bm);
+    });
+    sortedLots.forEach(item=>{
       const line=document.createElement('div');line.style.cssText='background:white;border:1px solid #d6dce5;border-radius:10px;padding:12px;margin:8px 0;';
+      const remaining=wscDatesExpiryMonthsRemaining(item.expiry);
+      if(remaining!==null && remaining<=6){
+        line.style.background='#f9d6d6';line.style.borderColor='#b42323';line.style.color='#711717';
+      }else if(remaining!==null && remaining<=10){
+        line.style.background='#ffe3b8';line.style.borderColor='#d17c12';line.style.color='#633b08';
+      }
       const details=document.createElement('div');details.textContent='Lot: '+item.lot+' | Expiry: '+item.expiry;line.append(details);
       if(admin && isAmend){
         const del=document.createElement('button');del.type='button';del.className='wsc-dates-delete';del.textContent='Delete this lot';del.style.cssText='width:auto;margin-top:8px;background:#a32929;display:none;';
