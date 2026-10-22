@@ -518,7 +518,6 @@ input[type="reset"]:disabled,
       <button id="wscDatesSave" type="button" onclick="wscDatesSave()" style="width:100%;">Confirm</button>
     </section>
   </section>
-  </section>
   <div id="wscAdminPanel" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:2500; overflow-y:auto; padding:20px; box-sizing:border-box;">
     <section role="dialog" aria-modal="true" aria-label="Administrator settings" style="max-width:500px; margin:30px auto; background:white; color:#172b4d; border-radius:14px; padding:22px; box-shadow:0 8px 32px #0004;">
       <button type="button" onclick="wscCloseAdmin()" style="float:right; width:auto; padding:7px 13px;">✕ Close</button>
@@ -7812,8 +7811,11 @@ function wscDatesToggleAmendments(){
   if(wscDatesBusy || wscPermissions?.admin!==true)return;
   document.getElementById('wscDatesScreen').style.display='none';
   document.getElementById('wscDatesAmendScreen').style.display='block';
+  document.getElementById('wscDatesAdmin').style.display='block';
   document.getElementById('wscDatesAmendSku').value=document.getElementById('wscDatesSku').value.trim();
   document.getElementById('wscDatesAmendResults').replaceChildren();
+  document.getElementById('wscDatesLot').value='';
+  document.getElementById('wscDatesExpiry').value='';
   document.getElementById('wscDatesAmendMessage').textContent='';
   wscDatesCurrentSku='';
   document.getElementById('wscDatesAmendSku').focus();
@@ -7987,7 +7989,7 @@ async function wscDatesFind(amend) {
     wscDatesCurrentSku=data.sku;
     const admin=data.canAmend === true && wscPermissions?.admin === true;
     wscDatesRefreshAdminButton();
-    if(!admin) document.getElementById('wscDatesAdmin').style.display='none';
+    if(isAmend) document.getElementById('wscDatesAdmin').style.display=admin?'block':'none';
     const container=document.getElementById(isAmend?'wscDatesAmendResults':'wscDatesResults');container.replaceChildren();
     const heading=document.createElement('h3');heading.textContent=data.sku+' — '+data.name;container.append(heading);
     if(!data.lots.length){const p=document.createElement('p');p.textContent='No lots recorded for this SKU.';container.append(p);}
@@ -8012,7 +8014,7 @@ async function wscDatesFind(amend) {
     wscDatesMessage(data.lots.length+' lot(s) recorded.');
   } catch(e) {
     wscDatesCurrentSku='';document.getElementById(isAmend?'wscDatesAmendResults':'wscDatesResults').replaceChildren();
-    document.getElementById('wscDatesAdmin').style.display='none';wscDatesRefreshAdminButton();wscDatesMessage(e.message);
+    if(isAmend)document.getElementById('wscDatesAdmin').style.display='block';wscDatesRefreshAdminButton();wscDatesMessage(e.message);
   } finally {wscDatesSetBusy(false);}
 }
 async function wscDatesSave(){
