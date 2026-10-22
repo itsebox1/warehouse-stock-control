@@ -517,6 +517,7 @@ input[type="reset"]:disabled,
       <p style="font-size:13px;">Check and correct both fields before confirming. Nothing from the photograph is saved automatically.</p>
       <label for="wscDatesLot">Lot number</label>
       <input id="wscDatesLot" type="text" placeholder="e.g. 0127603-KK" style="width:100%;box-sizing:border-box;padding:10px;margin:6px 0 12px;">
+      <div id="wscDatesLotSuggestion" role="status" aria-live="polite" style="display:none;margin:-4px 0 14px;padding:12px;border:1px solid #e4c37a;background:#fff7e5;border-radius:10px;color:#473300;"></div>
       <label for="wscDatesExpiry">Expiry (as printed)</label>
       <input id="wscDatesExpiry" type="text" placeholder="e.g. 02-2028" style="width:100%;box-sizing:border-box;padding:10px;margin:6px 0 12px;">
       <button id="wscDatesSave" type="button" onclick="wscDatesSave()" style="width:100%;">Confirm</button>
@@ -7822,6 +7823,7 @@ function wscDatesToggleAmendments(){
   document.getElementById('wscDatesAmendResults').replaceChildren();
   document.getElementById('wscDatesAddHeading').textContent='Add Dates';
   document.getElementById('wscDatesLot').value='';
+  wscDatesShowLotSuggestion('');
   document.getElementById('wscDatesExpiry').value='';
   document.getElementById('wscDatesAmendMessage').textContent='';
   wscDatesCurrentSku='';
@@ -7915,6 +7917,26 @@ async function wscDatesMakeOcrCanvas(file,variant){
     return canvas;
   }finally{bitmap.close?.();}
 }
+function wscDatesSuggestLot(lot){
+  // A suggestion only: the warehouse operator must explicitly accept it.
+  // Do not impose this format on other manufacturers or product lines.
+  const match=String(lot||'').toUpperCase().match(/^([0-9]{3})7([0-9]{3}-[A-Z]{2})$/);
+  return match ? match[1]+'T'+match[2] : '';
+}
+function wscDatesShowLotSuggestion(lot){
+  const box=document.getElementById('wscDatesLotSuggestion');
+  if(!box)return;
+  box.replaceChildren();box.style.display='none';
+  const proposed=wscDatesSuggestLot(lot);
+  if(!proposed)return;
+  const message=document.createElement('div');
+  message.textContent='Possible OCR mix-up: the fourth character may be T rather than 7. Check the bottle cap.';
+  const button=document.createElement('button');button.type='button';
+  button.textContent='Use suggested lot: '+proposed;
+  button.style.cssText='width:100%;margin-top:10px;background:#294766;color:white;';
+  button.onclick=()=>{document.getElementById('wscDatesLot').value=proposed;box.style.display='none';};
+  box.append(message,button);box.style.display='block';
+}
 async function wscDatesReadPhoto(input){
   const file=input.files?.[0];if(!file)return;
   const status=document.getElementById('wscDatesPhotoStatus');
@@ -7923,6 +7945,7 @@ async function wscDatesReadPhoto(input){
   preview.onload=()=>URL.revokeObjectURL(url);
   wscDatesSetBusy(true,'Reading bottle cap…');
   status.textContent='Reading printed lot and expiry with Google Vision…';
+  wscDatesShowLotSuggestion('');
   try{
     // Resize locally before upload to keep the authenticated request small.
     const bitmap=await createImageBitmap(file);
@@ -7935,7 +7958,7 @@ async function wscDatesReadPhoto(input){
     const imageBase64=canvas.toDataURL('image/jpeg',0.85).split(',')[1];
     const result=await wscDatesRequest('scanBottleCap',{imageBase64});
     const found=wscDatesExtractText(result.text||'');
-    if(found.lot)document.getElementById('wscDatesLot').value=found.lot;
+    if(found.lot){document.getElementById('wscDatesLot').value=found.lot;wscDatesShowLotSuggestion(found.lot);}
     if(found.expiry)document.getElementById('wscDatesExpiry').value=found.expiry;
     status.textContent=found.lot&&found.expiry?
       'Google Vision detected both details. Check the bottle carefully before confirming.':
