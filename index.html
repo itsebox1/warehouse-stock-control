@@ -1,3 +1,4 @@
+<!-- WSC BUILD: 2026-10-23 SESSION-NAV-RESTORED -->
 <!DOCTYPE html>
 <html lang="en">
 <!-- GitHub Pages redeploy 29-09-2026 -->  
@@ -453,7 +454,7 @@ input[type="reset"]:disabled,
 </div>
 
 
-  <button id="wscDatesHomeButton" data-wsc-area="DATES" type="button" onclick="wscOpenDates()" style="width:100%; margin:30px 0 8px; background:#294766; color:white;">📅 Check Dates</button>
+  <button id="wscDatesHomeButton" data-wsc-area="DATES" type="button" onclick="wscOpenDates()" style="width:100%; margin:30px 0 30px; background:#294766; color:white;">📅 Check Dates</button>
 
   <div class="wsc-module" data-module="ST"><div class="wsc-module-header">
     <button class="wsc-module-main" data-wsc-area="ST" onclick="wscModuleMainClick('ST')">📦 ST – Stock Take</button>
@@ -1114,7 +1115,7 @@ function validateTradeShowFields() {
     🏠 Home
   </button>
 
-  <h2>Stock Count Reports</h2>
+  <h2>Reports</h2>
 
   <p>Select a report to view or print.</p>
 
@@ -4772,13 +4773,17 @@ async function hideITSSplash() {
   
 
 function wscModuleMainClick(area) {
-  const module = document.querySelector('.wsc-module[data-module="' + area + '"]');
-  if (module?.querySelector('.wsc-module-header')?.classList.contains('wsc-attention')) {
-    wscToggleModule(area);
-    return;
-  }
-  if (area === 'ST' || area === 'SC') showReportOptions(area);
-  else if (area === 'TR') showTradeShowSetup();
+  // Main buttons always open the working module. The separate arrow expands
+  // outstanding sessions on Home; it must not hijack navigation.
+  if (area === 'ST' || area === 'SC') {
+    const homeMode = document.querySelector('input[name="homeCountType"][value="' + area + '"]');
+    if (homeMode) homeMode.checked = true;
+    const countMode = document.querySelector('input[name="countType"][value="' + area + '"]');
+    if (countMode) countMode.checked = true;
+    const heading = document.getElementById('stockPageHeading');
+    if (heading) heading.textContent = area === 'ST' ? 'ST - Warehouse Stock Take' : 'SC - Warehouse Stock Count';
+    showStockScreen();
+  } else if (area === 'TR') showTradeShowSetup();
   else if (area === 'DL') showDeliverySetup();
 }
 function wscToggleModule(area) {
@@ -5402,7 +5407,10 @@ async function finishStockCount(reportNumber, finishButton) {
   }
 }  
   async function loadStockCountList(retryCount = 0) {
-  const list = document.getElementById("homeStockCountSessions");
+  const scSessionScreen = document.getElementById("stockCountSession");
+  const scWorking = document.getElementById("stockApp")?.style.display !== "none" &&
+    scSessionScreen?.style.display !== "none";
+  const list = document.getElementById(scWorking ? "stockCountSessionsList" : "homeStockCountSessions");
 
   try {
     const idToken = await window.getCurrentStaffToken();
