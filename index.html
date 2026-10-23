@@ -1107,15 +1107,37 @@ function validateTradeShowFields() {
 </div>
 
 </div> 
-<div id="reportsScreen" style="display:none;">
-
-  <button onclick="showWelcomeScreen()">
-    🏠 Home
-  </button>
-
-  <h2>Reports</h2>
-  <p>Use the ST – Stock Take or SC – Stock Count buttons on Home to open their existing report screens.</p>
-
+<div id="reportsScreen" style="display:none; max-width:650px; margin:0 auto;">
+  <button type="button" onclick="showWelcomeScreen()">🏠 Home</button>
+  <h2 style="text-align:center;">📊 Reports</h2>
+  <label for="wscCentralReportType"><strong>Select Report</strong></label>
+  <select id="wscCentralReportType" onchange="wscCentralReportChanged()" style="display:block;width:100%;box-sizing:border-box;padding:12px;margin:8px 0 20px;">
+    <option value="ST">ST – Stock Take</option>
+    <option value="BOM">BOM – Bill of Materials</option>
+    <option value="SC">SC – Stock Count</option>
+    <option value="DL">DL – Delivery</option>
+    <option value="TR">TR – Trade Show</option>
+  </select>
+  <div id="wscCentralSearchPanel">
+    <label for="wscCentralSearchBy"><strong>Search By</strong></label>
+    <select id="wscCentralSearchBy" onchange="wscCentralSearchChanged()" style="display:block;width:100%;box-sizing:border-box;padding:12px;margin:8px 0 20px;"></select>
+    <div id="wscCentralTextArea">
+      <label id="wscCentralInputLabel" for="wscCentralInput">Report Number</label>
+      <div style="display:flex;align-items:center;gap:9px;margin:8px 0 16px;">
+        <strong id="wscCentralPrefix" style="padding:10px;background:#eef2f6;border-radius:6px;white-space:nowrap;">ST-</strong>
+        <input id="wscCentralInput" type="text" inputmode="numeric" placeholder="000001" autocomplete="off" style="flex:1;min-width:0;box-sizing:border-box;padding:11px;" />
+      </div>
+    </div>
+    <div id="wscCentralDates" style="display:none;margin-bottom:16px;">
+      <label for="wscCentralDateFrom">Date From</label>
+      <input id="wscCentralDateFrom" type="date" style="display:block;width:100%;box-sizing:border-box;padding:10px;margin:6px 0 14px;" />
+      <label for="wscCentralDateTo">Date To</label>
+      <input id="wscCentralDateTo" type="date" style="display:block;width:100%;box-sizing:border-box;padding:10px;margin:6px 0 14px;" />
+    </div>
+    <button type="button" id="wscCentralFindButton" onclick="wscCentralFindReport()">🔍 Find Report</button>
+  </div>
+  <p id="wscCentralMessage" role="status" style="margin:15px 0;"></p>
+  <div id="wscCentralLegacyResults"></div>
 </div>
 
 <div id="reportOptionsScreen" style="display:none;">
@@ -1127,7 +1149,7 @@ function validateTradeShowFields() {
          alt="About Warehouse Stock Control">
   </a>
 
-  <button class="report-back-button" onclick="showWelcomeScreen()">
+  <button class="report-back-button" onclick="showReportsScreen()">
     🏠 Home
   </button>
 
@@ -1138,7 +1160,7 @@ function validateTradeShowFields() {
     <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
     <button id="startNewStockTakeFromReport" onclick="wscShowNewStockTakeChoice(this)" style="margin-top:12px; display:none;">➕ Create New Stock Take</button>
     <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
-    <h3>Find Stock Take</h3>
+    <h3 style="display:none;">Find Stock Take</h3>
   </section>
 
   <!-- SC uses the same Start New / Find Report layout as Trade Show. -->
@@ -1146,9 +1168,10 @@ function validateTradeShowFields() {
     <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
     <button id="startNewStockCountFromReport" onclick="startStockCount()" style="margin-top:12px; display:none;">➕ Create New Stock Count</button>
     <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
-    <h3>Find Stock Count</h3>
+    <h3 style="display:none;">Find Stock Count</h3>
   </section>
 
+  <div id="wscLegacyStockSearch" style="display:none;">
   <div id="scSearchOptions" style="display:none; margin-bottom:20px;">
 
   <p><strong>Search Stock Count by:</strong></p>
@@ -1291,6 +1314,7 @@ function validateTradeShowFields() {
     📄 Generate Report
   </button>
 
+  </div>
   <div id="reportInProgressStockTakes" style="margin-bottom:15px;"></div>
 
 
@@ -5836,11 +5860,124 @@ function openSelectedReports() {
   showReportOptions(selectedType);
 }
   
+// Central reporting UI: existing ST/SC/DL/TR report handlers are retained.
+const WSC_CENTRAL_SEARCH_FIELDS = {
+  ST: [["number", "Report Number"], ["date", "Date Period"], ["staff", "Counted By"], ["sku", "SKU"]],
+  BOM: [["number", "Report Number"], ["date", "Date Period"], ["sku", "SKU"]],
+  SC: [["number", "Report Number"], ["date", "Date Period"], ["staff", "Counted By"], ["sku", "SKU"]],
+  DL: [["number", "Report Number"], ["invoice", "Invoice Number"], ["date", "Invoice Date"]],
+  TR: [["number", "Report Number"], ["date", "Date Period"], ["name", "Name of Trade Show"]]
+};
+function wscCentralReportChanged() {
+  const type = document.getElementById("wscCentralReportType").value;
+  const search = document.getElementById("wscCentralSearchBy");
+  search.replaceChildren();
+  WSC_CENTRAL_SEARCH_FIELDS[type].forEach(([value, label]) => {
+    const option = document.createElement("option"); option.value = value; option.textContent = label;
+    search.appendChild(option);
+  });
+  document.getElementById("wscCentralSearchPanel").style.display = type === "BOM" ? "none" : "block";
+  document.getElementById("wscCentralMessage").textContent = type === "BOM" ? "BOM reporting — Coming Soon." : "";
+  ["wscCentralDLResults", "wscCentralTRResults"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = "none"; });
+  wscCentralSearchChanged();
+}
+function wscCentralSearchChanged() {
+  const type = document.getElementById("wscCentralReportType").value;
+  const mode = document.getElementById("wscCentralSearchBy").value;
+  const dates = mode === "date" && type !== "DL";
+  document.getElementById("wscCentralDates").style.display = dates ? "block" : "none";
+  document.getElementById("wscCentralTextArea").style.display = dates ? "none" : "block";
+  document.getElementById("wscCentralPrefix").style.display = mode === "number" ? "inline" : "none";
+  document.getElementById("wscCentralPrefix").textContent = type + "-";
+  document.getElementById("wscCentralInputLabel").textContent = WSC_CENTRAL_SEARCH_FIELDS[type].find(pair => pair[0] === mode)?.[1] || "Search";
+  const input = document.getElementById("wscCentralInput");
+  input.type = type === "DL" && mode === "date" ? "date" : "text";
+  input.inputMode = mode === "number" ? "numeric" : "text";
+  input.placeholder = mode === "number" ? "000001" : "Enter " + document.getElementById("wscCentralInputLabel").textContent.toLowerCase();
+  input.value = "";
+  document.getElementById("wscCentralMessage").textContent = type === "BOM" ? "BOM reporting — Coming Soon." : "";
+  ["wscCentralDLResults", "wscCentralTRResults"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = "none"; });
+}
+function wscCentralFindReport() {
+  const type = document.getElementById("wscCentralReportType").value;
+  const mode = document.getElementById("wscCentralSearchBy").value;
+  const value = document.getElementById("wscCentralInput").value.trim();
+  const from = document.getElementById("wscCentralDateFrom").value;
+  const to = document.getElementById("wscCentralDateTo").value;
+  const message = document.getElementById("wscCentralMessage");
+  if (type === "BOM") { message.textContent = "BOM reporting — Coming Soon."; return; }
+  if (mode === "date" && type !== "DL" ? (!from || !to || from > to) : !value) {
+    message.textContent = "Please enter a valid search value or date period."; return;
+  }
+  if (mode === "number" && !/^\d{1,6}$/.test(value)) {
+    message.textContent = "Enter the numeric part of the report number (up to six digits)."; return;
+  }
+  message.textContent = "";
+  ["wscCentralDLResults", "wscCentralTRResults"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = id === (type === "DL" ? "wscCentralDLResults" : "wscCentralTRResults") ? "block" : "none"; });
+  const number = mode === "number" ? value.padStart(6, "0") : value;
+  if (type === "ST" || type === "SC") {
+    showReportOptions(type);
+    document.getElementById("stReportNumber").value = type === "ST" && mode === "number" ? number : "";
+    document.getElementById("scReportNumber").value = type === "SC" && mode === "number" ? number : "";
+    document.getElementById("reportDateFrom").value = from;
+    document.getElementById("reportDateTo").value = to;
+    document.getElementById("scCountedBy").value = mode === "staff" ? value : "";
+    document.getElementById("scSku").value = mode === "sku" ? value : "";
+    const radioName = type === "ST" ? "stSearchMode" : "scSearchMode";
+    // The original ST handler supports number/date; staff/SKU use the SC-compatible backend fields.
+    const radioValue = type === "ST" && (mode === "staff" || mode === "sku") ? mode : mode;
+    let radio = document.querySelector(`input[name="${radioName}"][value="${radioValue}"]`);
+    if (!radio && type === "ST") {
+      radio = document.createElement("input"); radio.type = "radio"; radio.name = radioName; radio.value = radioValue;
+      radio.style.display = "none"; document.getElementById("wscLegacyStockSearch").appendChild(radio);
+    }
+    if (radio) radio.checked = true;
+    if (type === "ST") updateReportSearchMode(); else changeSCSearch();
+    generateStockReport();
+    return;
+  }
+  if (type === "DL") {
+    const radio = document.querySelector(`input[name="deliverySearchMode"][value="${mode}"]`);
+    if (radio) radio.checked = true;
+    changeDeliverySearch();
+    document.getElementById("deliverySearchValue").value = number;
+    searchDeliveries();
+    return;
+  }
+  if (type === "TR") {
+    const radio = document.querySelector(`input[name="trReportSearchType"][value="${mode}"]`);
+    if (radio) radio.checked = true;
+    updateTRReportSearchFields();
+    document.getElementById("trReportSearchValue").value = number;
+    document.getElementById("trReportStartDate").value = from;
+    document.getElementById("trReportEndDate").value = to;
+    searchTRReports();
+  }
+}
+function wscMountCentralReportResults() {
+  const host = document.getElementById("wscCentralLegacyResults");
+  const dl = document.getElementById("deliverySearchResults");
+  const tr = document.getElementById("trReportSearchResults");
+  const trMessage = document.getElementById("trReportSearchMessage");
+  if (dl && !host.contains(dl)) {
+    const wrap = document.createElement("div"); wrap.id = "wscCentralDLResults"; wrap.style.display = "none";
+    wrap.appendChild(dl); host.appendChild(wrap);
+  }
+  if (tr && !host.contains(tr)) {
+    const wrap = document.createElement("div"); wrap.id = "wscCentralTRResults"; wrap.style.display = "none";
+    if (trMessage) wrap.appendChild(trMessage);
+    wrap.appendChild(tr); host.appendChild(wrap);
+  }
+  // Keep search inputs and buttons mounted in their original forms for legacy handlers.
+  document.getElementById("deliverySearchType")?.parentElement?.classList?.add("wsc-legacy-search-parent");
+}
 function showReportsScreen() {
   document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("stockApp").style.display = "none";
   document.getElementById("reportsScreen").style.display = "block";
   document.getElementById("reportOptionsScreen").style.display = "none";
+  wscMountCentralReportResults();
+  wscCentralReportChanged();
 }
 
  function changeSCSearch() {
