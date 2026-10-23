@@ -439,8 +439,6 @@ input[type="reset"]:disabled,
     
    <div id="quarterlyStockTakeAlert" class="upToDate">✓ Stock Take up to date</div>
 
-  <button id="wscDatesHomeButton" data-wsc-area="DATES" type="button" onclick="wscOpenDates()" style="width:100%; margin:14px 0 30px; background:#294766; color:white;">📅 Check Dates</button>
-
 <div class="count-type-selector" style="display:none;">
   <label>
     <input type="radio" name="homeCountType" value="ST" checked>
@@ -470,12 +468,7 @@ input[type="reset"]:disabled,
     <button class="wsc-module-main" data-wsc-area="TR" type="button" onclick="wscModuleMainClick('TR')">🎪 TR – Trade Show</button>
     <button class="wsc-module-arrow" type="button" aria-label="Expand open Trade Shows" onclick="wscToggleModule('TR')" hidden>⌄</button>
   </div><div class="wsc-module-count" hidden></div><div class="wsc-module-detail" hidden><div id="homeTradeShowSessions"></div></div></div>
-
-  <div id="wscPermissionNotice" role="status" aria-live="polite" style="display:none; margin:12px 0; padding:12px; border:1px solid #d8a94b; border-radius:8px; background:#fff8e8; color:#4a3512; text-align:center;">
-    Unable to verify access to WSC modules. Check your connection and try again.
-    <button type="button" onclick="wscRefreshPermissions()" style="margin-top:8px; width:100%;">Retry access check</button>
-  </div>
-  <button id="wscReportsHomeButton" type="button" onclick="showReportsScreen()" style="width:100%; margin:26px 0 12px; background:#294766; color:white;">📊 Reports</button>
+  <button id="wscDatesHomeButton" data-wsc-area="DATES" type="button" onclick="wscOpenDates()" style="width:100%; margin:30px 0 8px; background:#294766; color:white;">📅 Check Dates</button>
   <div class="wsc-module" data-module="QB" id="wscQbModule" hidden><div class="wsc-module-header wsc-attention">
     <button class="wsc-module-main" type="button" onclick="wscToggleModule('QB')">📋 Outstanding QB Commitments</button>
     <button class="wsc-module-arrow" type="button" onclick="wscToggleModule('QB')">⌄</button>
@@ -885,7 +878,7 @@ function validateTradeShowFields() {
   <div id="stockTakeSessionsList"></div>
   <br>
 
-  <button id="startStockTakeButton" onclick="wscShowNewStockTakeChoice(this)">
+  <button id="startStockTakeButton" onclick="wscShowBOMChoice(this)">
     Start New Stock Take
   </button>
 
@@ -1107,37 +1100,24 @@ function validateTradeShowFields() {
 </div>
 
 </div> 
-<div id="reportsScreen" style="display:none; max-width:650px; margin:0 auto;">
-  <button type="button" onclick="showWelcomeScreen()">🏠 Home</button>
-  <h2 style="text-align:center;">📊 Reports</h2>
-  <label for="wscCentralReportType"><strong>Select Report</strong></label>
-  <select id="wscCentralReportType" onchange="wscCentralReportChanged()" style="display:block;width:100%;box-sizing:border-box;padding:12px;margin:8px 0 20px;">
-    <option value="ST">ST – Stock Take</option>
-    <option value="BOM">BOM – Bill of Materials</option>
-    <option value="SC">SC – Stock Count</option>
-    <option value="DL">DL – Delivery</option>
-    <option value="TR">TR – Trade Show</option>
-  </select>
-  <div id="wscCentralSearchPanel">
-    <label for="wscCentralSearchBy"><strong>Search By</strong></label>
-    <select id="wscCentralSearchBy" onchange="wscCentralSearchChanged()" style="display:block;width:100%;box-sizing:border-box;padding:12px;margin:8px 0 20px;"></select>
-    <div id="wscCentralTextArea">
-      <label id="wscCentralInputLabel" for="wscCentralInput">Report Number</label>
-      <div style="display:flex;align-items:center;gap:9px;margin:8px 0 16px;">
-        <strong id="wscCentralPrefix" style="padding:10px;background:#eef2f6;border-radius:6px;white-space:nowrap;">ST-</strong>
-        <input id="wscCentralInput" type="text" inputmode="numeric" placeholder="000001" autocomplete="off" style="flex:1;min-width:0;box-sizing:border-box;padding:11px;" />
-      </div>
-    </div>
-    <div id="wscCentralDates" style="display:none;margin-bottom:16px;">
-      <label for="wscCentralDateFrom">Date From</label>
-      <input id="wscCentralDateFrom" type="date" style="display:block;width:100%;box-sizing:border-box;padding:10px;margin:6px 0 14px;" />
-      <label for="wscCentralDateTo">Date To</label>
-      <input id="wscCentralDateTo" type="date" style="display:block;width:100%;box-sizing:border-box;padding:10px;margin:6px 0 14px;" />
-    </div>
-    <button type="button" id="wscCentralFindButton" onclick="wscCentralFindReport()">🔍 Find Report</button>
-  </div>
-  <p id="wscCentralMessage" role="status" style="margin:15px 0;"></p>
-  <div id="wscCentralLegacyResults"></div>
+<div id="reportsScreen" style="display:none;">
+
+  <button onclick="showWelcomeScreen()">
+    🏠 Home
+  </button>
+
+  <h2>Stock Count Reports</h2>
+
+  <p>Select a report to view or print.</p>
+
+  <button onclick="showReportOptions('ST')">
+    📋 ST — Stock Take Report
+  </button>
+
+  <button onclick="showReportOptions('SC')">
+    📊 SC — Stock Count Report
+  </button>
+
 </div>
 
 <div id="reportOptionsScreen" style="display:none;">
@@ -1149,7 +1129,7 @@ function validateTradeShowFields() {
          alt="About Warehouse Stock Control">
   </a>
 
-  <button class="report-back-button" onclick="showReportsScreen()">
+  <button class="report-back-button" onclick="showWelcomeScreen()">
     🏠 Home
   </button>
 
@@ -1158,9 +1138,9 @@ function validateTradeShowFields() {
   <!-- ST layout: creation action above report search, preserving its original handler and ID. -->
   <section id="stStartNewSection" style="display:none; margin:25px 0 28px;">
     <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
-    <button id="startNewStockTakeFromReport" onclick="wscShowNewStockTakeChoice(this)" style="margin-top:12px; display:none;">➕ Create New Stock Take</button>
+    <button id="startNewStockTakeFromReport" onclick="selectStockTakeQuarter(this)" style="margin-top:12px; display:none;">➕ Create New Stock Take</button>
     <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
-    <h3 style="display:none;">Find Stock Take</h3>
+    <h3>Find Stock Take</h3>
   </section>
 
   <!-- SC uses the same Start New / Find Report layout as Trade Show. -->
@@ -1168,10 +1148,9 @@ function validateTradeShowFields() {
     <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
     <button id="startNewStockCountFromReport" onclick="startStockCount()" style="margin-top:12px; display:none;">➕ Create New Stock Count</button>
     <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
-    <h3 style="display:none;">Find Stock Count</h3>
+    <h3>Find Stock Count</h3>
   </section>
 
-  <div id="wscLegacyStockSearch" style="display:none;">
   <div id="scSearchOptions" style="display:none; margin-bottom:20px;">
 
   <p><strong>Search Stock Count by:</strong></p>
@@ -1314,7 +1293,6 @@ function validateTradeShowFields() {
     📄 Generate Report
   </button>
 
-  </div>
   <div id="reportInProgressStockTakes" style="margin-bottom:15px;"></div>
 
 
@@ -3042,56 +3020,44 @@ async function wscCheckNewInventoryAllowed() {
   }
 }
 
-// WSC optional BOM entry point. UI only: no QuickBooks or backend actions here.
-function wscShowNewStockTakeChoice(clickedButton) {
-  if (document.getElementById("wscNewStockTakeChoiceOverlay")) return;
-  const overlay = document.createElement("div");
-  overlay.id = "wscNewStockTakeChoiceOverlay";
-  overlay.setAttribute("role", "presentation");
-  overlay.style.cssText = "position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;";
 
-  const panel = document.createElement("div");
-  panel.setAttribute("role", "dialog");
-  panel.setAttribute("aria-modal", "true");
-  panel.setAttribute("aria-labelledby", "wscNewStockTakeChoiceTitle");
-  panel.style.cssText = "background:#fff;color:#263d59;width:100%;max-width:440px;padding:24px;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.3);box-sizing:border-box;text-align:center;";
-  panel.innerHTML = `
-    <h2 id="wscNewStockTakeChoiceTitle" style="margin:0 0 8px;">WSC — New Stock Take</h2>
-    <p style="margin:0 0 22px;">What would you like to do?</p>
-    <button type="button" data-wsc-choice="bom" style="display:block;width:100%;margin:0 0 8px;">Check BOM Stock (Optional)</button>
-    <p style="font-size:13px;margin:0 0 20px;">Review kit component stock before a Stock Take.</p>
-    <button type="button" data-wsc-choice="stock" style="display:block;width:100%;margin:0 0 12px;">New Stock Take</button>
-    <button type="button" data-wsc-choice="cancel" style="display:block;width:100%;background:#777;">Cancel</button>`;
-  overlay.appendChild(panel);
-  document.body.appendChild(overlay);
-
-  const close = () => { overlay.remove(); document.removeEventListener("keydown", onKeyDown); };
-  const onKeyDown = event => {
-    if (event.key === "Escape") { event.preventDefault(); close(); }
-    if (event.key === "Tab") {
-      const buttons = Array.from(panel.querySelectorAll("button"));
-      const first = buttons[0], last = buttons[buttons.length - 1];
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
-    }
+// Optional BOM preview before beginning a Stock Take. Report only, never commits.
+let wscBOMBusy = false;
+function wscShowBOMChoice(button) {
+  if (document.getElementById('wscBOMChoice')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'wscBOMChoice';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10002;display:flex;align-items:center;justify-content:center;padding:16px';
+  const card = document.createElement('div');
+  card.style.cssText = 'background:white;border-radius:12px;max-width:420px;width:100%;padding:24px;text-align:center;box-shadow:0 8px 25px #0003';
+  const heading = document.createElement('h2'); heading.textContent = 'Start Stock Take';
+  const info = document.createElement('p'); info.textContent = 'You can check BOM stock before starting a new Stock Take. This is a read-only Sandbox report.';
+  const preview = document.createElement('button'); preview.type='button'; preview.textContent='Check BOM Stock (Optional)';
+  const normal = document.createElement('button'); normal.type='button'; normal.textContent='New Stock Take';
+  const cancel = document.createElement('button'); cancel.type='button'; cancel.textContent='Cancel';
+  [preview,normal,cancel].forEach(b => {b.style.cssText='display:block;width:100%;margin:10px 0;padding:12px';card.appendChild(b);});
+  card.prepend(info); card.prepend(heading); overlay.appendChild(card); document.body.appendChild(overlay);
+  cancel.onclick=()=>overlay.remove();
+  normal.onclick=()=>{overlay.remove();selectStockTakeQuarter(button);};
+  preview.onclick=async()=>{
+    if(wscBOMBusy)return;
+    wscBOMBusy=true;preview.disabled=true;normal.disabled=true;cancel.disabled=true;
+    const original=preview.textContent;preview.textContent='Preparing BOM report…';
+    try {
+      const idToken=await window.getCurrentStaffToken();
+      const response=await fetch('https://warehouse-stock-reports.tmerry.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'getBOMReport',idToken})});
+      const result=await response.json();
+      if(!response.ok||!result.success)throw new Error(result.error||'BOM report unavailable.');
+      if(result.noAdjustments){window.showWSCMessage('BOM Report',result.message);return;}
+      const bytes=atob(result.pdfBase64);const array=new Uint8Array(bytes.length);
+      for(let i=0;i<bytes.length;i++)array[i]=bytes.charCodeAt(i);
+      const url=URL.createObjectURL(new Blob([array],{type:'application/pdf'}));
+      const link=document.createElement('a');link.href=url;link.download=result.filename||'WSC_BOM_Report_Only.pdf';document.body.appendChild(link);link.click();link.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),60000);
+      window.showWSCMessage('BOM Report Only','PDF ready: '+result.finishedCount+' finished products and '+result.componentCount+' consolidated components. No QuickBooks changes made.');
+    }catch(error){window.showWSCMessage('BOM Report',String(error.message||error));}
+    finally{wscBOMBusy=false;preview.disabled=false;normal.disabled=false;cancel.disabled=false;preview.textContent=original;}
   };
-  document.addEventListener("keydown", onKeyDown);
-  overlay.addEventListener("click", event => { if (event.target === overlay) close(); });
-  panel.querySelector('[data-wsc-choice="cancel"]').onclick = close;
-  panel.querySelector('[data-wsc-choice="bom"]').onclick = () => {
-    close();
-    window.showWSCMessage("WSC — Check BOM Stock", "BOM Stock checking is not connected yet.\n\nThis option will be enabled when the read-only QuickBooks report is ready.\n\nNo stock quantities have been changed.");
-  };
-  panel.querySelector('[data-wsc-choice="stock"]').onclick = () => {
-    close();
-    // Preserve the exact existing entry flow for each original button.
-    if (clickedButton && clickedButton.id === "startNewStockTakeFromReport") {
-      selectStockTakeQuarter(clickedButton);
-    } else {
-      startStockTake(clickedButton);
-    }
-  };
-  panel.querySelector('[data-wsc-choice="bom"]').focus();
 }
 
 async function selectStockTakeQuarter(clickedButton) {
@@ -5860,124 +5826,11 @@ function openSelectedReports() {
   showReportOptions(selectedType);
 }
   
-// Central reporting UI: existing ST/SC/DL/TR report handlers are retained.
-const WSC_CENTRAL_SEARCH_FIELDS = {
-  ST: [["number", "Report Number"], ["date", "Date Period"], ["staff", "Counted By"], ["sku", "SKU"]],
-  BOM: [["number", "Report Number"], ["date", "Date Period"], ["sku", "SKU"]],
-  SC: [["number", "Report Number"], ["date", "Date Period"], ["staff", "Counted By"], ["sku", "SKU"]],
-  DL: [["number", "Report Number"], ["invoice", "Invoice Number"], ["date", "Invoice Date"]],
-  TR: [["number", "Report Number"], ["date", "Date Period"], ["name", "Name of Trade Show"]]
-};
-function wscCentralReportChanged() {
-  const type = document.getElementById("wscCentralReportType").value;
-  const search = document.getElementById("wscCentralSearchBy");
-  search.replaceChildren();
-  WSC_CENTRAL_SEARCH_FIELDS[type].forEach(([value, label]) => {
-    const option = document.createElement("option"); option.value = value; option.textContent = label;
-    search.appendChild(option);
-  });
-  document.getElementById("wscCentralSearchPanel").style.display = type === "BOM" ? "none" : "block";
-  document.getElementById("wscCentralMessage").textContent = type === "BOM" ? "BOM reporting — Coming Soon." : "";
-  ["wscCentralDLResults", "wscCentralTRResults"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = "none"; });
-  wscCentralSearchChanged();
-}
-function wscCentralSearchChanged() {
-  const type = document.getElementById("wscCentralReportType").value;
-  const mode = document.getElementById("wscCentralSearchBy").value;
-  const dates = mode === "date" && type !== "DL";
-  document.getElementById("wscCentralDates").style.display = dates ? "block" : "none";
-  document.getElementById("wscCentralTextArea").style.display = dates ? "none" : "block";
-  document.getElementById("wscCentralPrefix").style.display = mode === "number" ? "inline" : "none";
-  document.getElementById("wscCentralPrefix").textContent = type + "-";
-  document.getElementById("wscCentralInputLabel").textContent = WSC_CENTRAL_SEARCH_FIELDS[type].find(pair => pair[0] === mode)?.[1] || "Search";
-  const input = document.getElementById("wscCentralInput");
-  input.type = type === "DL" && mode === "date" ? "date" : "text";
-  input.inputMode = mode === "number" ? "numeric" : "text";
-  input.placeholder = mode === "number" ? "000001" : "Enter " + document.getElementById("wscCentralInputLabel").textContent.toLowerCase();
-  input.value = "";
-  document.getElementById("wscCentralMessage").textContent = type === "BOM" ? "BOM reporting — Coming Soon." : "";
-  ["wscCentralDLResults", "wscCentralTRResults"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = "none"; });
-}
-function wscCentralFindReport() {
-  const type = document.getElementById("wscCentralReportType").value;
-  const mode = document.getElementById("wscCentralSearchBy").value;
-  const value = document.getElementById("wscCentralInput").value.trim();
-  const from = document.getElementById("wscCentralDateFrom").value;
-  const to = document.getElementById("wscCentralDateTo").value;
-  const message = document.getElementById("wscCentralMessage");
-  if (type === "BOM") { message.textContent = "BOM reporting — Coming Soon."; return; }
-  if (mode === "date" && type !== "DL" ? (!from || !to || from > to) : !value) {
-    message.textContent = "Please enter a valid search value or date period."; return;
-  }
-  if (mode === "number" && !/^\d{1,6}$/.test(value)) {
-    message.textContent = "Enter the numeric part of the report number (up to six digits)."; return;
-  }
-  message.textContent = "";
-  ["wscCentralDLResults", "wscCentralTRResults"].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = id === (type === "DL" ? "wscCentralDLResults" : "wscCentralTRResults") ? "block" : "none"; });
-  const number = mode === "number" ? value.padStart(6, "0") : value;
-  if (type === "ST" || type === "SC") {
-    showReportOptions(type);
-    document.getElementById("stReportNumber").value = type === "ST" && mode === "number" ? number : "";
-    document.getElementById("scReportNumber").value = type === "SC" && mode === "number" ? number : "";
-    document.getElementById("reportDateFrom").value = from;
-    document.getElementById("reportDateTo").value = to;
-    document.getElementById("scCountedBy").value = mode === "staff" ? value : "";
-    document.getElementById("scSku").value = mode === "sku" ? value : "";
-    const radioName = type === "ST" ? "stSearchMode" : "scSearchMode";
-    // The original ST handler supports number/date; staff/SKU use the SC-compatible backend fields.
-    const radioValue = type === "ST" && (mode === "staff" || mode === "sku") ? mode : mode;
-    let radio = document.querySelector(`input[name="${radioName}"][value="${radioValue}"]`);
-    if (!radio && type === "ST") {
-      radio = document.createElement("input"); radio.type = "radio"; radio.name = radioName; radio.value = radioValue;
-      radio.style.display = "none"; document.getElementById("wscLegacyStockSearch").appendChild(radio);
-    }
-    if (radio) radio.checked = true;
-    if (type === "ST") updateReportSearchMode(); else changeSCSearch();
-    generateStockReport();
-    return;
-  }
-  if (type === "DL") {
-    const radio = document.querySelector(`input[name="deliverySearchMode"][value="${mode}"]`);
-    if (radio) radio.checked = true;
-    changeDeliverySearch();
-    document.getElementById("deliverySearchValue").value = number;
-    searchDeliveries();
-    return;
-  }
-  if (type === "TR") {
-    const radio = document.querySelector(`input[name="trReportSearchType"][value="${mode}"]`);
-    if (radio) radio.checked = true;
-    updateTRReportSearchFields();
-    document.getElementById("trReportSearchValue").value = number;
-    document.getElementById("trReportStartDate").value = from;
-    document.getElementById("trReportEndDate").value = to;
-    searchTRReports();
-  }
-}
-function wscMountCentralReportResults() {
-  const host = document.getElementById("wscCentralLegacyResults");
-  const dl = document.getElementById("deliverySearchResults");
-  const tr = document.getElementById("trReportSearchResults");
-  const trMessage = document.getElementById("trReportSearchMessage");
-  if (dl && !host.contains(dl)) {
-    const wrap = document.createElement("div"); wrap.id = "wscCentralDLResults"; wrap.style.display = "none";
-    wrap.appendChild(dl); host.appendChild(wrap);
-  }
-  if (tr && !host.contains(tr)) {
-    const wrap = document.createElement("div"); wrap.id = "wscCentralTRResults"; wrap.style.display = "none";
-    if (trMessage) wrap.appendChild(trMessage);
-    wrap.appendChild(tr); host.appendChild(wrap);
-  }
-  // Keep search inputs and buttons mounted in their original forms for legacy handlers.
-  document.getElementById("deliverySearchType")?.parentElement?.classList?.add("wsc-legacy-search-parent");
-}
 function showReportsScreen() {
   document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("stockApp").style.display = "none";
   document.getElementById("reportsScreen").style.display = "block";
   document.getElementById("reportOptionsScreen").style.display = "none";
-  wscMountCentralReportResults();
-  wscCentralReportChanged();
 }
 
  function changeSCSearch() {
@@ -6675,8 +6528,6 @@ function wscPaintPermissions(permissions) {
   document.querySelectorAll("[data-wsc-area]").forEach(button => {
     button.style.display = areas[button.dataset.wscArea] === true ? "" : "none";
   });
-  const notice = document.getElementById("wscPermissionNotice");
-  if (notice) notice.style.display = permissions ? "none" : "block";
   if (cog) cog.style.display = permissions?.admin === true ? "block" : "none";
   document.querySelectorAll('button[id^="qb-ST-"]').forEach(button => {
     if (button.textContent.trim() === "Committed to QB") {
