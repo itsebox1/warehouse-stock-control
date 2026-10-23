@@ -878,7 +878,7 @@ function validateTradeShowFields() {
   <div id="stockTakeSessionsList"></div>
   <br>
 
-  <button id="startStockTakeButton" onclick="startStockTake()">
+  <button id="startStockTakeButton" onclick="wscShowNewStockTakeChoice(this)">
     Start New Stock Take
   </button>
 
@@ -1138,7 +1138,7 @@ function validateTradeShowFields() {
   <!-- ST layout: creation action above report search, preserving its original handler and ID. -->
   <section id="stStartNewSection" style="display:none; margin:25px 0 28px;">
     <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
-    <button id="startNewStockTakeFromReport" onclick="selectStockTakeQuarter(this)" style="margin-top:12px; display:none;">➕ Create New Stock Take</button>
+    <button id="startNewStockTakeFromReport" onclick="wscShowNewStockTakeChoice(this)" style="margin-top:12px; display:none;">➕ Create New Stock Take</button>
     <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
     <h3>Find Stock Take</h3>
   </section>
@@ -3018,6 +3018,58 @@ async function wscCheckNewInventoryAllowed() {
   } finally {
     wscEndInventoryPreflight();
   }
+}
+
+// WSC optional BOM entry point. UI only: no QuickBooks or backend actions here.
+function wscShowNewStockTakeChoice(clickedButton) {
+  if (document.getElementById("wscNewStockTakeChoiceOverlay")) return;
+  const overlay = document.createElement("div");
+  overlay.id = "wscNewStockTakeChoiceOverlay";
+  overlay.setAttribute("role", "presentation");
+  overlay.style.cssText = "position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;";
+
+  const panel = document.createElement("div");
+  panel.setAttribute("role", "dialog");
+  panel.setAttribute("aria-modal", "true");
+  panel.setAttribute("aria-labelledby", "wscNewStockTakeChoiceTitle");
+  panel.style.cssText = "background:#fff;color:#263d59;width:100%;max-width:440px;padding:24px;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.3);box-sizing:border-box;text-align:center;";
+  panel.innerHTML = `
+    <h2 id="wscNewStockTakeChoiceTitle" style="margin:0 0 8px;">WSC — New Stock Take</h2>
+    <p style="margin:0 0 22px;">What would you like to do?</p>
+    <button type="button" data-wsc-choice="bom" style="display:block;width:100%;margin:0 0 8px;">Check BOM Stock (Optional)</button>
+    <p style="font-size:13px;margin:0 0 20px;">Review kit component stock before a Stock Take.</p>
+    <button type="button" data-wsc-choice="stock" style="display:block;width:100%;margin:0 0 12px;">New Stock Take</button>
+    <button type="button" data-wsc-choice="cancel" style="display:block;width:100%;background:#777;">Cancel</button>`;
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+
+  const close = () => { overlay.remove(); document.removeEventListener("keydown", onKeyDown); };
+  const onKeyDown = event => {
+    if (event.key === "Escape") { event.preventDefault(); close(); }
+    if (event.key === "Tab") {
+      const buttons = Array.from(panel.querySelectorAll("button"));
+      const first = buttons[0], last = buttons[buttons.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    }
+  };
+  document.addEventListener("keydown", onKeyDown);
+  overlay.addEventListener("click", event => { if (event.target === overlay) close(); });
+  panel.querySelector('[data-wsc-choice="cancel"]').onclick = close;
+  panel.querySelector('[data-wsc-choice="bom"]').onclick = () => {
+    close();
+    window.showWSCMessage("WSC — Check BOM Stock", "BOM Stock checking is not connected yet.\n\nThis option will be enabled when the read-only QuickBooks report is ready.\n\nNo stock quantities have been changed.");
+  };
+  panel.querySelector('[data-wsc-choice="stock"]').onclick = () => {
+    close();
+    // Preserve the exact existing entry flow for each original button.
+    if (clickedButton && clickedButton.id === "startNewStockTakeFromReport") {
+      selectStockTakeQuarter(clickedButton);
+    } else {
+      startStockTake(clickedButton);
+    }
+  };
+  panel.querySelector('[data-wsc-choice="bom"]').focus();
 }
 
 async function selectStockTakeQuarter(clickedButton) {
