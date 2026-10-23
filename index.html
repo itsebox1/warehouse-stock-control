@@ -439,6 +439,8 @@ input[type="reset"]:disabled,
     
    <div id="quarterlyStockTakeAlert" class="upToDate">✓ Stock Take up to date</div>
 
+  <button id="wscDatesHomeButton" data-wsc-area="DATES" type="button" onclick="wscOpenDates()" style="width:100%; margin:14px 0 30px; background:#294766; color:white;">📅 Check Dates</button>
+
 <div class="count-type-selector" style="display:none;">
   <label>
     <input type="radio" name="homeCountType" value="ST" checked>
@@ -468,7 +470,8 @@ input[type="reset"]:disabled,
     <button class="wsc-module-main" data-wsc-area="TR" type="button" onclick="wscModuleMainClick('TR')">🎪 TR – Trade Show</button>
     <button class="wsc-module-arrow" type="button" aria-label="Expand open Trade Shows" onclick="wscToggleModule('TR')" hidden>⌄</button>
   </div><div class="wsc-module-count" hidden></div><div class="wsc-module-detail" hidden><div id="homeTradeShowSessions"></div></div></div>
-  <button id="wscDatesHomeButton" data-wsc-area="DATES" type="button" onclick="wscOpenDates()" style="width:100%; margin:30px 0 8px; background:#294766; color:white;">📅 Check Dates</button>
+
+  <button id="wscReportsHomeButton" type="button" onclick="showReportsScreen()" style="width:100%; margin:26px 0 12px; background:#294766; color:white;">📊 Reports</button>
   <div class="wsc-module" data-module="QB" id="wscQbModule" hidden><div class="wsc-module-header wsc-attention">
     <button class="wsc-module-main" type="button" onclick="wscToggleModule('QB')">📋 Outstanding QB Commitments</button>
     <button class="wsc-module-arrow" type="button" onclick="wscToggleModule('QB')">⌄</button>
