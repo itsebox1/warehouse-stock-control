@@ -471,6 +471,10 @@ input[type="reset"]:disabled,
     <button class="wsc-module-arrow" type="button" aria-label="Expand open Trade Shows" onclick="wscToggleModule('TR')" hidden>⌄</button>
   </div><div class="wsc-module-count" hidden></div><div class="wsc-module-detail" hidden><div id="homeTradeShowSessions"></div></div></div>
 
+  <div id="wscPermissionNotice" role="status" aria-live="polite" style="display:none; margin:12px 0; padding:12px; border:1px solid #d8a94b; border-radius:8px; background:#fff8e8; color:#4a3512; text-align:center;">
+    Unable to verify access to WSC modules. Check your connection and try again.
+    <button type="button" onclick="wscRefreshPermissions()" style="margin-top:8px; width:100%;">Retry access check</button>
+  </div>
   <button id="wscReportsHomeButton" type="button" onclick="showReportsScreen()" style="width:100%; margin:26px 0 12px; background:#294766; color:white;">📊 Reports</button>
   <div class="wsc-module" data-module="QB" id="wscQbModule" hidden><div class="wsc-module-header wsc-attention">
     <button class="wsc-module-main" type="button" onclick="wscToggleModule('QB')">📋 Outstanding QB Commitments</button>
@@ -1109,17 +1113,8 @@ function validateTradeShowFields() {
     🏠 Home
   </button>
 
-  <h2>Stock Count Reports</h2>
-
-  <p>Select a report to view or print.</p>
-
-  <button onclick="showReportOptions('ST')">
-    📋 ST — Stock Take Report
-  </button>
-
-  <button onclick="showReportOptions('SC')">
-    📊 SC — Stock Count Report
-  </button>
+  <h2>Reports</h2>
+  <p>Use the ST – Stock Take or SC – Stock Count buttons on Home to open their existing report screens.</p>
 
 </div>
 
@@ -6543,6 +6538,8 @@ function wscPaintPermissions(permissions) {
   document.querySelectorAll("[data-wsc-area]").forEach(button => {
     button.style.display = areas[button.dataset.wscArea] === true ? "" : "none";
   });
+  const notice = document.getElementById("wscPermissionNotice");
+  if (notice) notice.style.display = permissions ? "none" : "block";
   if (cog) cog.style.display = permissions?.admin === true ? "block" : "none";
   document.querySelectorAll('button[id^="qb-ST-"]').forEach(button => {
     if (button.textContent.trim() === "Committed to QB") {
