@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <!-- GitHub Pages redeploy 29-09-2026 -->  
-<!-- WSC BUILD: 2026-10-23 HOME-REPORTS-DATES-BOM VERIFIED -->
+<!-- WSC BUILD: 2026-10-23 UNIFIED-REPORTS-SELECTOR -->
 <head>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
@@ -1109,24 +1109,40 @@ function validateTradeShowFields() {
 </div>
 
 </div> 
+<!-- Unified Reports selector: keep legacy ST/SC report engine behind this interface. -->
 <div id="reportsScreen" style="display:none;">
-
-  <button onclick="showWelcomeScreen()">
-    🏠 Home
-  </button>
-
-  <h2>Reports</h2>
-
-  <p>Select a report to view or print.</p>
-
-  <button onclick="showReportOptions('ST')">
-    📋 ST — Stock Take Report
-  </button>
-
-  <button onclick="showReportOptions('SC')">
-    📊 SC — Stock Count Report
-  </button>
-
+  <button type="button" onclick="showWelcomeScreen()">🏠 Home</button>
+  <div style="max-width:720px;margin:22px auto;padding:18px;border:1px solid #d5dce5;border-radius:12px;box-sizing:border-box;">
+    <h2>📊 WSC Reports</h2>
+    <label for="wscReportSelect"><strong>Select Report</strong></label>
+    <select id="wscReportSelect" onchange="wscReportsUpdate()" style="display:block;width:100%;margin:8px 0 18px;padding:12px;box-sizing:border-box;">
+      <option value="ST">ST — Stock Take</option>
+      <option value="SC">SC — Stock Count</option>
+      <option value="BOM">BOM — Bill of Materials</option>
+      <option value="DL">DL — Delivery</option>
+      <option value="TR">TR — Trade Show</option>
+    </select>
+    <label for="wscReportSearchBy"><strong>Search By</strong></label>
+    <select id="wscReportSearchBy" onchange="wscReportsUpdateFields()" style="display:block;width:100%;margin:8px 0 18px;padding:12px;box-sizing:border-box;"></select>
+    <div id="wscReportNumberRow">
+      <label for="wscReportNumber"><strong>Report Number</strong></label>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+        <strong id="wscReportPrefix">ST-</strong>
+        <input id="wscReportNumber" type="text" inputmode="numeric" placeholder="000001" style="flex:1;min-width:0;box-sizing:border-box;" />
+      </div>
+      <small id="wscReportExample">Example: ST-000001</small>
+    </div>
+    <div id="wscReportDatesRow" style="display:none;">
+      <label for="wscReportFrom">Date From</label><input type="date" id="wscReportFrom" style="display:block;width:100%;box-sizing:border-box;">
+      <label for="wscReportTo">Date To</label><input type="date" id="wscReportTo" style="display:block;width:100%;box-sizing:border-box;">
+    </div>
+    <div id="wscReportTextRow" style="display:none;">
+      <label for="wscReportText" id="wscReportTextLabel">Search</label>
+      <input id="wscReportText" type="text" style="display:block;width:100%;box-sizing:border-box;">
+    </div>
+    <button type="button" id="wscReportRunButton" onclick="wscRunUnifiedReport()" style="width:100%;margin-top:20px;">📄 Generate Report</button>
+    <p id="wscReportInfo" aria-live="polite" style="font-size:13px;"></p>
+  </div>
 </div>
 
 <div id="reportOptionsScreen" style="display:none;">
@@ -5847,6 +5863,78 @@ function showReportsScreen() {
   document.getElementById("stockApp").style.display = "none";
   document.getElementById("reportsScreen").style.display = "block";
   document.getElementById("reportOptionsScreen").style.display = "none";
+  wscReportsUpdate();
+}
+
+function wscReportsUpdate() {
+  const type = document.getElementById('wscReportSelect').value;
+  const select = document.getElementById('wscReportSearchBy');
+  const options = [['number','Report Number'],['date','Date Period']];
+  if (type === 'ST' || type === 'SC') options.push(['staff','Counted By'],['sku','SKU']);
+  if (type === 'DL') options.push(['invoice','Invoice Number'],['invoiceDate','Invoice Date']);
+  if (type === 'TR') options.push(['showName','Name of Trade Show']);
+  select.replaceChildren();
+  options.forEach(([value,label]) => {const o=document.createElement('option');o.value=value;o.textContent=label;select.appendChild(o);});
+  wscReportsUpdateFields();
+}
+function wscReportsUpdateFields() {
+  const type=document.getElementById('wscReportSelect').value;
+  const search=document.getElementById('wscReportSearchBy').value;
+  document.getElementById('wscReportNumberRow').style.display=search==='number'?'block':'none';
+  document.getElementById('wscReportDatesRow').style.display=(search==='date'||search==='invoiceDate')?'block':'none';
+  document.getElementById('wscReportTextRow').style.display=['number','date','invoiceDate'].includes(search)?'none':'block';
+  document.getElementById('wscReportPrefix').textContent=type+'-';
+  document.getElementById('wscReportExample').textContent='Example: '+type+'-000001';
+  const selected=document.getElementById('wscReportSearchBy').selectedOptions[0];
+  document.getElementById('wscReportTextLabel').textContent=selected?selected.textContent:'Search';
+  document.getElementById('wscReportInfo').textContent='';
+}
+async function wscRunUnifiedReport() {
+  const type=document.getElementById('wscReportSelect').value;
+  const search=document.getElementById('wscReportSearchBy').value;
+  if (type==='BOM') {
+    // Existing read-only BOM PDF action; no QuickBooks write route.
+    if (search!=='number') {
+      window.showWSCMessage('BOM Reports','Date-based BOM report lookup is not yet supported. Use the BOM preview from Create New Stock Take.');
+      return;
+    }
+    window.showWSCMessage('BOM Reports','Saved BOM report-number lookup is not yet available. For a new read-only BOM PDF, choose ST — Stock Take → Create New Stock Take → Check BOM Stock.');
+    return;
+  }
+  if (type==='DL'||type==='TR') {
+    window.showWSCMessage('Reports','This report search has not yet been connected to the existing '+type+' report handler. Your original '+type+' records are unchanged.');
+    return;
+  }
+  if (search==='staff' && type==='ST') {
+    window.showWSCMessage('Reports','Stock Take reports currently support report number and date period.');return;
+  }
+  const number=document.getElementById('wscReportNumber').value.trim().replace(/^(ST|SC)-/i,'');
+  if (search==='number' && !/^\d{6}$/.test(number)) {
+    window.showWSCMessage('Reports','Enter a six-digit report number, such as 000001.');return;
+  }
+  const from=document.getElementById('wscReportFrom').value;
+  const to=document.getElementById('wscReportTo').value;
+  if (search==='date' && (!from||!to||from>to)) {
+    window.showWSCMessage('Reports','Enter a valid From and To date.');return;
+  }
+  if (['staff','sku'].includes(search) && !document.getElementById('wscReportText').value.trim()) {
+    window.showWSCMessage('Reports','Enter a search value.');return;
+  }
+  // Map the unified controls to the existing, tested ST/SC report request logic.
+  showReportOptions(type);
+  if (type==='ST') {
+    document.querySelector('input[name="stSearchMode"][value="'+(search==='date'?'date':'number')+'"]').checked=true;
+    document.getElementById('stReportNumber').value=number;
+  } else {
+    document.querySelector('input[name="scSearchMode"][value="'+search+'"]').checked=true;
+    document.getElementById('scReportNumber').value=number;
+    document.getElementById('scCountedBy').value=search==='staff'?document.getElementById('wscReportText').value.trim():'';
+    document.getElementById('scSku').value=search==='sku'?document.getElementById('wscReportText').value.trim():'';
+  }
+  document.getElementById('reportDateFrom').value=from;
+  document.getElementById('reportDateTo').value=to;
+  updateReportSearchMode();
+  await generateStockReport();
 }
 
  function changeSCSearch() {
@@ -5878,9 +5966,9 @@ function toggleNewStockCount() {
 function showReportOptions(type) {
   selectedReportType = type;
   const stStartSection = document.getElementById("stStartNewSection");
-  if (stStartSection) stStartSection.style.display = type === "ST" ? "block" : "none";
+  if (stStartSection) stStartSection.style.display = "none";
   const scStartSection = document.getElementById("scStartNewSection");
-  if (scStartSection) scStartSection.style.display = type === "SC" ? "block" : "none";
+  if (scStartSection) scStartSection.style.display = "none";
   const scNewFields = document.getElementById("newStockCountFields");
   if (scNewFields) scNewFields.style.display = "none";
   document.getElementById("toggleNewStockCountButton")?.setAttribute("aria-expanded", "false");
@@ -5895,16 +5983,14 @@ const startNewSTButton =
   document.getElementById("startNewStockTakeFromReport");
 
 if (startNewSTButton) {
-  startNewSTButton.style.display =
-    type === "ST" ? "block" : "none";
+  startNewSTButton.style.display = "none";
 }
 
   const startNewSCButton =
   document.getElementById("startNewStockCountFromReport");
 
 if (startNewSCButton) {
-  startNewSCButton.style.display =
-    type === "SC" ? "block" : "none";
+  startNewSCButton.style.display = "none";
 }
  
   document.getElementById("stNumberSearch").style.display =
