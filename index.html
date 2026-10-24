@@ -3079,7 +3079,9 @@ function wscShowBOMChoice(button) {
       const url=URL.createObjectURL(new Blob([array],{type:'application/pdf'}));
       const link=document.createElement('a');link.href=url;link.download=result.filename||'WSC_BOM_Report_Only.pdf';document.body.appendChild(link);link.click();link.remove();
       setTimeout(()=>URL.revokeObjectURL(url),60000);
-      window.showWSCMessage('BOM Report Only','Saved '+result.reportNumber+': '+result.finishedCount+' finished products and '+result.componentCount+' components. No QuickBooks changes made.');
+      overlay.remove();
+      const missing=Number(result.missingCount)||0;
+      window.showWSCMessage('BOM Report Only','Saved '+result.reportNumber+': '+result.finishedCount+' finished products and '+result.componentCount+' components.'+(missing?' WARNING: '+missing+' SKU(s) not found in QuickBooks. Calculations are incomplete; see PDF.':'')+' No QuickBooks changes made.');
     }catch(error){window.showWSCMessage('BOM Report',String(error.message||error));}
     finally{wscBOMBusy=false;preview.disabled=false;normal.disabled=false;cancel.disabled=false;preview.textContent=original;}
   };
