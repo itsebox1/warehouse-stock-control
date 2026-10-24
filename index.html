@@ -3060,13 +3060,19 @@ function wscShowBOMChoice(button) {
   card.style.cssText = 'background:white;border-radius:12px;max-width:420px;width:100%;padding:24px;text-align:center;box-shadow:0 8px 25px #0003';
   const heading = document.createElement('h2'); heading.textContent = 'BOM Stock Check';
   const info = document.createElement('p'); info.textContent = 'You can check BOM stock before starting a new Stock Take. This saves a numbered, read-only Sandbox report. No QuickBooks stock will change.';
-  const preview = document.createElement('button'); preview.type='button'; preview.textContent='Check BOM Stock (Optional)';
+  const preview = document.createElement('button'); preview.type='button'; preview.textContent='Check BOM Stock';
   const normal = document.createElement('button'); normal.type='button'; normal.textContent='New Stock Take';
   const cancel = document.createElement('button'); cancel.type='button'; cancel.textContent='Cancel';
   [preview,normal,cancel].forEach(b => {b.style.cssText='display:block;width:100%;margin:10px 0;padding:12px';card.appendChild(b);});
   card.prepend(info); card.prepend(heading); overlay.appendChild(card); document.body.appendChild(overlay);
   cancel.onclick=()=>overlay.remove();
-  normal.onclick=()=>{overlay.remove();selectStockTakeQuarter(button);};
+  normal.onclick=async()=>{
+    overlay.remove();
+    const proceed=await window.showWSCConfirm('BOM Stock Check',
+      'We recommend completing a BOM Stock Check before starting a new Stock Take.\n\nContinue without checking BOM stock?');
+    if(proceed)selectStockTakeQuarter(button);
+    else wscShowBOMChoice(button);
+  };
   preview.onclick=async()=>{
     if(wscBOMBusy)return;
     wscBOMBusy=true;preview.disabled=true;normal.disabled=true;cancel.disabled=true;
@@ -5276,6 +5282,25 @@ if (!result || result.verificationRequired) {
 }
 
     
+    // The Stock Take is already closed. A failed BOM link must not undo completion.
+    try {
+      const linkChoice = await window.showWSCConfirm('Link BOM Report',
+        'Would you like the latest saved BOM report to be tied to ' + stockTake.reportNumber + '?\n\nYes links it permanently. No keeps the reports separate.');
+      if (linkChoice) {
+        const linkToken = await window.getCurrentStaffToken();
+        const linkResponse = await fetch('https://warehouse-stock-reports.tmerry.workers.dev', {
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({action:'linkLatestBOMToStockTake',reportNumber:stockTake.reportNumber,idToken:linkToken})
+        });
+        const linkResult = await linkResponse.json();
+        if (!linkResponse.ok || !linkResult.success) throw new Error(linkResult.error || 'Could not link BOM report');
+        window.showWSCMessage('BOM Linked', stockTake.reportNumber + ' tied with ' + linkResult.bomReportNumber);
+      }
+    } catch (linkError) {
+      window.showWSCMessage('Stock Take Finished — BOM Link Not Saved',
+        'The Stock Take has finished, but the BOM link was not saved: ' + String(linkError.message || linkError));
+    }
+
     localStorage.removeItem("activeStockTake");
     localStorage.removeItem("activeStockTakePeriod");
 
