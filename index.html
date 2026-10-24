@@ -6000,10 +6000,27 @@ async function wscRunUnifiedReport() {
       for(const item of reports){
         const card=document.createElement('div');card.style.cssText='border:1px solid #ddd;border-radius:8px;padding:14px;margin:12px 0';
         const heading=document.createElement('strong');heading.textContent=item.reportNumber+' — '+(item.createdAt||'');card.appendChild(heading);
-        const note=document.createElement('p');note.textContent='Report Only — Not committed to QuickBooks';card.appendChild(note);
+        const note=document.createElement('p');note.textContent='QuickBooks: '+(item.qbStatus||'Not Committed');card.appendChild(note);
         const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
         const open=async print=>{wscUnifiedBusy(true);try{const data=await wscBOMRequest({action:'openBOMReport',reportNumber:item.reportNumber});wscOpenBOMPdf(data,print);}catch(e){window.showWSCMessage('BOM Reports',String(e.message||e));}finally{wscUnifiedBusy(false);}};
         for(const [label,print] of [['View PDF',false],['Print',true]]){const button=document.createElement('button');button.type='button';button.textContent=label;button.style.width='auto';button.onclick=()=>open(print);actions.appendChild(button);}
+        const previewButton=document.createElement('button');previewButton.type='button';previewButton.textContent='Review QB Adjustment';previewButton.style.width='auto';
+        previewButton.disabled=(item.qbStatus||'Not Committed')!=='Not Committed';
+        previewButton.onclick=async()=>{
+          wscUnifiedBusy(true);
+          try {
+            const check=await wscBOMRequest({action:'previewBOMQuickBooks',reportNumber:item.reportNumber});
+            const detail=check.items.map(x=>x.sku+': '+x.previous+' → '+x.target+' ('+(x.qtyDiff>0?'+':'')+x.qtyDiff+')').join('\n');
+            const confirmed=await window.showWSCConfirm('BOM QuickBooks Sandbox',
+              item.reportNumber+'\nAccount: WSC-BOM\n'+check.lineCount+' adjustment lines\n\n'+detail+'\n\nCommit this exact adjustment to Sandbox?');
+            if(!confirmed)return;
+            const result=await wscBOMRequest({action:'commitBOMQuickBooks',reportNumber:item.reportNumber,confirmation:'COMMIT '+item.reportNumber});
+            note.textContent='QuickBooks: '+result.qbStatus;previewButton.disabled=true;
+            window.showWSCMessage('BOM Committed','Sandbox adjustment '+(result.docNumber||result.adjustmentId)+' submitted.');
+          }catch(e){window.showWSCMessage('BOM QuickBooks',String(e.message||e));}
+          finally{wscUnifiedBusy(false);}
+        };
+        actions.appendChild(previewButton);
         card.appendChild(actions);target.appendChild(card);
       }
       document.getElementById('wscReportInfo').textContent='BOM reports can be viewed and printed. Email is not yet supported by the saved BOM report endpoint.';
