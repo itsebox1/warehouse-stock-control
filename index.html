@@ -3056,7 +3056,7 @@ function wscShowBOMChoice(button) {
   const card = document.createElement('div');
   card.style.cssText = 'background:white;border-radius:12px;max-width:420px;width:100%;padding:24px;text-align:center;box-shadow:0 8px 25px #0003';
   const heading = document.createElement('h2'); heading.textContent = 'Start Stock Take';
-  const info = document.createElement('p'); info.textContent = 'You can check BOM stock before starting a new Stock Take. This is a read-only Sandbox report.';
+  const info = document.createElement('p'); info.textContent = 'You can check BOM stock before starting a new Stock Take. This saves a numbered, read-only Sandbox report. No QuickBooks stock will change.';
   const preview = document.createElement('button'); preview.type='button'; preview.textContent='Check BOM Stock (Optional)';
   const normal = document.createElement('button'); normal.type='button'; normal.textContent='New Stock Take';
   const cancel = document.createElement('button'); cancel.type='button'; cancel.textContent='Cancel';
@@ -3073,13 +3073,13 @@ function wscShowBOMChoice(button) {
       const response=await fetch('https://warehouse-stock-reports.tmerry.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'getBOMReport',idToken})});
       const result=await response.json();
       if(!response.ok||!result.success)throw new Error(result.error||'BOM report unavailable.');
-      if(result.noAdjustments){window.showWSCMessage('BOM Report',result.message);return;}
+      
       const bytes=atob(result.pdfBase64);const array=new Uint8Array(bytes.length);
       for(let i=0;i<bytes.length;i++)array[i]=bytes.charCodeAt(i);
       const url=URL.createObjectURL(new Blob([array],{type:'application/pdf'}));
       const link=document.createElement('a');link.href=url;link.download=result.filename||'WSC_BOM_Report_Only.pdf';document.body.appendChild(link);link.click();link.remove();
       setTimeout(()=>URL.revokeObjectURL(url),60000);
-      window.showWSCMessage('BOM Report Only','PDF ready: '+result.finishedCount+' finished products and '+result.componentCount+' consolidated components. No QuickBooks changes made.');
+      window.showWSCMessage('BOM Report Only','Saved '+result.reportNumber+': '+result.finishedCount+' finished products and '+result.componentCount+' components. No QuickBooks changes made.');
     }catch(error){window.showWSCMessage('BOM Report',String(error.message||error));}
     finally{wscBOMBusy=false;preview.disabled=false;normal.disabled=false;cancel.disabled=false;preview.textContent=original;}
   };
@@ -5889,16 +5889,43 @@ function wscReportsUpdateFields() {
   document.getElementById('wscReportTextLabel').textContent=selected?selected.textContent:'Search';
   document.getElementById('wscReportInfo').textContent='';
 }
+function wscDownloadBOMPdf_(result) {
+  const bytes=atob(result.pdfBase64), array=new Uint8Array(bytes.length);
+  for(let i=0;i<bytes.length;i++)array[i]=bytes.charCodeAt(i);
+  const url=URL.createObjectURL(new Blob([array],{type:'application/pdf'}));
+  const link=document.createElement('a');link.href=url;link.download=result.filename||'WSC_BOM_Report.pdf';
+  document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
 async function wscRunUnifiedReport() {
   const type=document.getElementById('wscReportSelect').value;
   const search=document.getElementById('wscReportSearchBy').value;
   if (type==='BOM') {
-    // Existing read-only BOM PDF action; no QuickBooks write route.
-    if (search!=='number') {
-      window.showWSCMessage('BOM Reports','Date-based BOM report lookup is not yet supported. Use the BOM preview from Create New Stock Take.');
-      return;
-    }
-    window.showWSCMessage('BOM Reports','Saved BOM report-number lookup is not yet available. For a new read-only BOM PDF, choose ST — Stock Take → Create New Stock Take → Check BOM Stock.');
+    const numberInput=document.getElementById('wscReportNumber').value.trim().replace(/^BOM-/i,'');
+    const dateFrom=document.getElementById('wscReportFrom').value;
+    const dateTo=document.getElementById('wscReportTo').value;
+    if (search==='number' && !/^\d{6}$/.test(numberInput)) {window.showWSCMessage('BOM Reports','Enter a six-digit BOM report number.');return;}
+    if (search==='date' && (!dateFrom||!dateTo||dateFrom>dateTo)) {window.showWSCMessage('BOM Reports','Select a valid date range.');return;}
+    const button=document.getElementById('wscReportRunButton');button.disabled=true;
+    try {
+      const idToken=await window.getCurrentStaffToken();
+      const call=async payload=>{
+        const response=await fetch('https://warehouse-stock-reports.tmerry.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,idToken})});
+        const result=await response.json();if(!response.ok||!result.success)throw new Error(result.error||'BOM report unavailable.');return result;
+      };
+      const found=await call({action:'findBOMReports',searchBy:search,reportNumber:'BOM-'+numberInput,dateFrom,dateTo});
+      if(!found.reports.length){window.showWSCMessage('BOM Reports','No saved reports match your search.');return;}
+      if(found.reports.length>1){
+        const list=found.reports.slice(0,30).map(r=>r.reportNumber+' — '+r.createdAt).join('\n');
+        const choice=prompt('Saved BOM reports (first 30):\n'+list+'\n\nEnter the report number to download:');
+        if(!choice)return;
+        if(!found.reports.some(r=>r.reportNumber===choice.trim().toUpperCase()))throw new Error('Select a report number from the results.');
+        var selected=choice.trim().toUpperCase();
+      } else {var selected=found.reports[0].reportNumber;}
+      const report=await call({action:'openBOMReport',reportNumber:selected});
+      wscDownloadBOMPdf_(report);
+      window.showWSCMessage('BOM Reports','Downloaded saved '+selected+'. No QuickBooks changes made.');
+    }catch(error){window.showWSCMessage('BOM Reports',String(error.message||error));}
+    finally{button.disabled=false;}
     return;
   }
   if (type==='DL'||type==='TR') {
