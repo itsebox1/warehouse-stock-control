@@ -5903,7 +5903,7 @@ function wscReportsUpdate() {
   const type = document.getElementById('wscReportSelect').value;
   const select = document.getElementById('wscReportSearchBy');
   const options = [['number','Report Number'],['date','Date Period']];
-  if (type === 'ST' || type === 'SC') options.push(['staff','Counted By'],['sku','SKU']);
+  if (type === 'SC') options.push(['staff','Counted By'],['sku','SKU']);
   if (type === 'DL') options.push(['invoice','Invoice Number'],['invoiceDate','Invoice Date']);
   if (type === 'TR') options.push(['showName','Name of Trade Show']);
   select.replaceChildren();
@@ -6039,7 +6039,12 @@ async function wscRunUnifiedReport() {
     window.showWSCMessage('Reports','Enter a search value.');return;
   }
   // Map the unified controls to the existing, tested ST/SC report request logic.
+  // Initialise the existing ST/SC report engine without navigating away from
+  // the unified Reports screen. The legacy screen stays in the DOM because its
+  // inputs, result builder and existing action handlers are still needed.
   showReportOptions(type);
+  document.getElementById('reportOptionsScreen').style.display='none';
+  document.getElementById('reportsScreen').style.display='block';
   if (type==='ST') {
     document.querySelector('input[name="stSearchMode"][value="'+(search==='date'?'date':'number')+'"]').checked=true;
     document.getElementById('stReportNumber').value=number;
@@ -6049,6 +6054,7 @@ async function wscRunUnifiedReport() {
     document.getElementById('scCountedBy').value=search==='staff'?document.getElementById('wscReportText').value.trim():'';
     document.getElementById('scSku').value=search==='sku'?document.getElementById('wscReportText').value.trim():'';
   }
+  document.getElementById('wscUnifiedResults').replaceChildren();
   document.getElementById('reportDateFrom').value=from;
   document.getElementById('reportDateTo').value=to;
   updateReportSearchMode();
