@@ -4311,11 +4311,11 @@ function changeDeliverySearch() {
   document.getElementById("deliverySearchResults").replaceChildren();
 }
 
-async function searchDeliveries() {
+async function searchDeliveries(searchOverride = null) {
   const button = document.getElementById("deliverySearchButton");
   const results = document.getElementById("deliverySearchResults");
-  const searchType = document.querySelector('input[name="deliverySearchMode"]:checked').value;
-  const rawDeliverySearchValue = document.getElementById("deliverySearchValue").value.trim();
+  const searchType = searchOverride ? searchOverride.searchType : document.querySelector('input[name="deliverySearchMode"]:checked').value;
+  const rawDeliverySearchValue = searchOverride ? searchOverride.searchValue : document.getElementById("deliverySearchValue").value.trim();
   const searchValue = searchType === "number" && rawDeliverySearchValue ? ("DL-" + rawDeliverySearchValue.replace(/^DL-/i, "")) : rawDeliverySearchValue;
 
   if (!searchValue) {
@@ -6010,13 +6010,14 @@ async function wscRunUnifiedReport() {
         const info=document.createElement('p');info.textContent=msg.textContent;target.prepend(info);
       }else{
         if(search==='date'){
-          window.showWSCMessage('Delivery Reports','The existing Delivery search supports a single invoice date. Choose Invoice Date and enter the same date in both fields.');return;
+          await searchDeliveries({searchType:'dateRange',searchValue:from+'|'+to});
+        }else{
+          const mode=search==='invoiceDate'?'date':search;
+          const radio=document.querySelector('input[name="deliverySearchMode"][value="'+mode+'"]');radio.checked=true;
+          changeDeliverySearch();
+          document.getElementById('deliverySearchValue').value=mode==='number'?raw.replace(/^DL-/i,''):mode==='date'?from:text;
+          await searchDeliveries();
         }
-        const mode=search==='invoiceDate'?'date':search;
-        const radio=document.querySelector('input[name="deliverySearchMode"][value="'+mode+'"]');radio.checked=true;
-        changeDeliverySearch();
-        document.getElementById('deliverySearchValue').value=mode==='number'?raw.replace(/^DL-/i,''):mode==='date'?from:text;
-        await searchDeliveries();
         target.appendChild(document.getElementById('deliverySearchResults'));
       }
     }catch(e){window.showWSCMessage('Reports',String(e.message||e));}
