@@ -15,7 +15,8 @@
 </script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>#wscDatesScreen input,#wscDatesAmendScreen input,#wscDatesScreen select,#wscDatesAmendScreen select,#wscDatesScreen textarea,#wscDatesAmendScreen textarea{font-size:16px!important;max-width:100%;}#wscDatesScreen,#wscDatesAmendScreen{width:100%;box-sizing:border-box;}</style>
+  <style>#wscDatesScreen input,#wscDatesAmendScreen input,#wscDatesScreen select,#wscDatesAmendScreen select,#wscDatesScreen textarea,#wscDatesAmendScreen textarea{font-size:16px!important;max-width:100%;}#wscDatesScreen,#wscDatesAmendScreen{width:100%;box-sizing:border-box;}@keyframes wscUnifiedSpin {to {transform:rotate(360deg)}}
+</style>
   <title>Warehouse Stock Control</title>
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#163e6e">
@@ -1142,6 +1143,8 @@ function validateTradeShowFields() {
     </div>
     <button type="button" id="wscReportRunButton" onclick="wscRunUnifiedReport()" style="width:100%;margin-top:20px;">📄 Generate Report</button>
     <p id="wscReportInfo" aria-live="polite" style="font-size:13px;"></p>
+    <div id="wscUnifiedLoading" style="display:none;text-align:center;padding:18px;border:1px solid #d5dce5;border-radius:10px;margin-top:15px;" role="status" aria-live="polite"><img src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png" alt="" style="width:54px;height:54px;object-fit:contain;animation:wscUnifiedSpin 1.6s linear infinite;"><div>Generating your WSC report…</div></div>
+    <div id="wscUnifiedResults" style="margin-top:16px;" aria-live="polite"></div>
   </div>
 </div>
 
@@ -5896,6 +5899,7 @@ function showReportsScreen() {
 }
 
 function wscReportsUpdate() {
+  const previousResults=document.getElementById('wscUnifiedResults'); if(previousResults) previousResults.replaceChildren();
   const type = document.getElementById('wscReportSelect').value;
   const select = document.getElementById('wscReportSearchBy');
   const options = [['number','Report Number'],['date','Date Period']];
@@ -5925,6 +5929,33 @@ function wscDownloadBOMPdf_(result) {
   const link=document.createElement('a');link.href=url;link.download=result.filename||'WSC_BOM_Report.pdf';
   document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
+function wscUnifiedBusy(active){
+  const loading=document.getElementById('wscUnifiedLoading');if(loading)loading.style.display=active?'block':'none';
+  const button=document.getElementById('wscReportRunButton');if(button)button.disabled=!!active;
+}
+async function wscBOMRequest(payload){
+  const idToken=await window.getCurrentStaffToken();
+  const response=await fetch('https://warehouse-stock-reports.tmerry.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,idToken})});
+  const data=await response.json();if(!response.ok||!data.success)throw new Error(data.error||'BOM report unavailable');return data;
+}
+function wscOpenBOMPdf(result,print){
+  const bytes=atob(result.pdfBase64),array=new Uint8Array(bytes.length);
+  for(let i=0;i<bytes.length;i++)array[i]=bytes.charCodeAt(i);
+  const url=URL.createObjectURL(new Blob([array],{type:'application/pdf'}));
+  const win=window.open(url,'_blank');
+  if(!win){wscDownloadBOMPdf_(result);return;}
+  if(print)win.addEventListener('load',()=>{try{win.print();}catch(e){}},{once:true});
+  setTimeout(()=>URL.revokeObjectURL(url),120000);
+}
+function wscAddPrintButtons(container){
+  container.querySelectorAll('details').forEach(details=>{
+    const summary=details.querySelector('summary');if(!summary||summary.querySelector('.wscPrintReport'))return;
+    const btn=document.createElement('button');btn.type='button';btn.className='wscPrintReport';btn.textContent='🖨 Print';
+    btn.style.cssText='width:auto;padding:8px 12px;background:#244b72;color:white;border:0;border-radius:6px;cursor:pointer';
+    btn.onclick=e=>{e.preventDefault();e.stopPropagation();const wasOpen=details.open;details.open=true;window.print();details.open=wasOpen;};
+    summary.appendChild(btn);
+  });
+}
 async function wscRunUnifiedReport() {
   const type=document.getElementById('wscReportSelect').value;
   const search=document.getElementById('wscReportSearchBy').value;
@@ -5932,33 +5963,64 @@ async function wscRunUnifiedReport() {
     const numberInput=document.getElementById('wscReportNumber').value.trim().replace(/^BOM-/i,'');
     const dateFrom=document.getElementById('wscReportFrom').value;
     const dateTo=document.getElementById('wscReportTo').value;
-    if (search==='number' && !/^\d{6}$/.test(numberInput)) {window.showWSCMessage('BOM Reports','Enter a six-digit BOM report number.');return;}
-    if (search==='date' && (!dateFrom||!dateTo||dateFrom>dateTo)) {window.showWSCMessage('BOM Reports','Select a valid date range.');return;}
-    const button=document.getElementById('wscReportRunButton');button.disabled=true;
+    if(search==='number'&&!/^\d{6}$/.test(numberInput)){window.showWSCMessage('BOM Reports','Enter a six-digit BOM report number.');return;}
+    if(search==='date'&&(!dateFrom||!dateTo||dateFrom>dateTo)){window.showWSCMessage('BOM Reports','Select a valid date range.');return;}
+    wscUnifiedBusy(true);
     try {
-      const idToken=await window.getCurrentStaffToken();
-      const call=async payload=>{
-        const response=await fetch('https://warehouse-stock-reports.tmerry.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,idToken})});
-        const result=await response.json();if(!response.ok||!result.success)throw new Error(result.error||'BOM report unavailable.');return result;
-      };
-      const found=await call({action:'findBOMReports',searchBy:search,reportNumber:'BOM-'+numberInput,dateFrom,dateTo});
-      if(!found.reports.length){window.showWSCMessage('BOM Reports','No saved reports match your search.');return;}
-      if(found.reports.length>1){
-        const list=found.reports.slice(0,30).map(r=>r.reportNumber+' — '+r.createdAt).join('\n');
-        const choice=prompt('Saved BOM reports (first 30):\n'+list+'\n\nEnter the report number to download:');
-        if(!choice)return;
-        if(!found.reports.some(r=>r.reportNumber===choice.trim().toUpperCase()))throw new Error('Select a report number from the results.');
-        var selected=choice.trim().toUpperCase();
-      } else {var selected=found.reports[0].reportNumber;}
-      const report=await call({action:'openBOMReport',reportNumber:selected});
-      wscDownloadBOMPdf_(report);
-      window.showWSCMessage('BOM Reports','Downloaded saved '+selected+'. No QuickBooks changes made.');
-    }catch(error){window.showWSCMessage('BOM Reports',String(error.message||error));}
-    finally{button.disabled=false;}
+      const found=await wscBOMRequest({action:'findBOMReports',searchBy:search,reportNumber:'BOM-'+numberInput,dateFrom,dateTo});
+      const target=document.getElementById('wscUnifiedResults');target.replaceChildren();
+      const reports=found.reports||[];
+      if(!reports.length){target.textContent='No saved BOM reports match your search.';return;}
+      const title=document.createElement('h3');title.textContent='BOM — Saved Reports ('+reports.length+')';target.appendChild(title);
+      for(const item of reports){
+        const card=document.createElement('div');card.style.cssText='border:1px solid #ddd;border-radius:8px;padding:14px;margin:12px 0';
+        const heading=document.createElement('strong');heading.textContent=item.reportNumber+' — '+(item.createdAt||'');card.appendChild(heading);
+        const note=document.createElement('p');note.textContent='Report Only — Not committed to QuickBooks';card.appendChild(note);
+        const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
+        const open=async print=>{wscUnifiedBusy(true);try{const data=await wscBOMRequest({action:'openBOMReport',reportNumber:item.reportNumber});wscOpenBOMPdf(data,print);}catch(e){window.showWSCMessage('BOM Reports',String(e.message||e));}finally{wscUnifiedBusy(false);}};
+        for(const [label,print] of [['View PDF',false],['Print',true]]){const button=document.createElement('button');button.type='button';button.textContent=label;button.style.width='auto';button.onclick=()=>open(print);actions.appendChild(button);}
+        card.appendChild(actions);target.appendChild(card);
+      }
+      document.getElementById('wscReportInfo').textContent='BOM reports can be viewed and printed. Email is not yet supported by the saved BOM report endpoint.';
+    }catch(e){window.showWSCMessage('BOM Reports',String(e.message||e));}
+    finally{wscUnifiedBusy(false);}
     return;
   }
-  if (type==='DL'||type==='TR') {
-    window.showWSCMessage('Reports','This report search has not yet been connected to the existing '+type+' report handler. Your original '+type+' records are unchanged.');
+  if(type==='DL'||type==='TR') {
+    const target=document.getElementById('wscUnifiedResults');target.replaceChildren();
+    const raw=document.getElementById('wscReportNumber').value.trim();
+    const text=document.getElementById('wscReportText').value.trim();
+    const from=document.getElementById('wscReportFrom').value;
+    const to=document.getElementById('wscReportTo').value;
+    if(search==='number'&&!/^\d{6}$/.test(raw.replace(/^(DL|TR)-/i,''))){window.showWSCMessage('Reports','Enter a six-digit report number.');return;}
+    if((search==='date'||search==='invoiceDate')&&(!from||!to||from>to)){window.showWSCMessage('Reports','Enter a valid date range.');return;}
+    if(['invoice','showName'].includes(search)&&!text){window.showWSCMessage('Reports','Enter a search value.');return;}
+    wscUnifiedBusy(true);
+    try{
+      if(type==='TR'){
+        const mode=search==='showName'?'name':search;
+        const radio=document.querySelector('input[name="trReportSearchType"][value="'+mode+'"]');radio.checked=true;
+        updateTRReportSearchFields();
+        document.getElementById('trReportSearchValue').value=mode==='number'?raw.replace(/^TR-/i,''):text;
+        document.getElementById('trReportStartDate').value=from;
+        document.getElementById('trReportEndDate').value=to;
+        await searchTRReports();
+        const results=document.getElementById('trReportSearchResults');target.appendChild(results);
+        const msg=document.getElementById('trReportSearchMessage');
+        const info=document.createElement('p');info.textContent=msg.textContent;target.prepend(info);
+      }else{
+        if(search==='date'){
+          window.showWSCMessage('Delivery Reports','The existing Delivery search supports a single invoice date. Choose Invoice Date and enter the same date in both fields.');return;
+        }
+        const mode=search==='invoiceDate'?'date':search;
+        const radio=document.querySelector('input[name="deliverySearchMode"][value="'+mode+'"]');radio.checked=true;
+        changeDeliverySearch();
+        document.getElementById('deliverySearchValue').value=mode==='number'?raw.replace(/^DL-/i,''):mode==='date'?from:text;
+        await searchDeliveries();
+        target.appendChild(document.getElementById('deliverySearchResults'));
+      }
+    }catch(e){window.showWSCMessage('Reports',String(e.message||e));}
+    finally{wscUnifiedBusy(false);}
     return;
   }
   if (search==='staff' && type==='ST') {
@@ -5990,7 +6052,14 @@ async function wscRunUnifiedReport() {
   document.getElementById('reportDateFrom').value=from;
   document.getElementById('reportDateTo').value=to;
   updateReportSearchMode();
-  await generateStockReport();
+  try {
+    wscUnifiedBusy(true);
+    await generateStockReport();
+    const result=document.getElementById('reportResults');
+    if(result){document.getElementById('wscUnifiedResults').appendChild(result);wscAddPrintButtons(result);}
+    document.getElementById('reportOptionsScreen').style.display='none';
+    document.getElementById('reportsScreen').style.display='block';
+  } finally {wscUnifiedBusy(false);}
 }
 
  function changeSCSearch() {
