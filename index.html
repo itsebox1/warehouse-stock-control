@@ -5090,7 +5090,33 @@ item.innerHTML = `
 }
 }
 
+  let wscFinishStockTakeBusy = false;
+  function wscShowFinishStockTakeOverlay() {
+    document.getElementById("wscFinishStockTakeOverlay")?.remove();
+    const overlay = document.createElement("div");
+    overlay.id = "wscFinishStockTakeOverlay";
+    overlay.setAttribute("role", "status");
+    overlay.setAttribute("aria-live", "polite");
+    overlay.style.cssText = "position:fixed;inset:0;z-index:9998;background:rgba(255,255,255,.48);display:flex;align-items:center;justify-content:center;pointer-events:all;";
+    const panel = document.createElement("div");
+    panel.style.cssText = "display:flex;align-items:center;gap:14px;padding:18px 24px;border-radius:12px;background:white;box-shadow:0 5px 24px rgba(0,0,0,.2);color:#304B70;font-weight:600;";
+    const globe = document.createElement("img");
+    globe.src = "Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png";
+    globe.alt = "";
+    globe.className = "spinning";
+    globe.style.cssText = "width:54px;height:54px;object-fit:contain;animation:globeSpin 3s linear infinite;";
+    const label = document.createElement("span");
+    label.textContent = "Finishing Stock Take…";
+    panel.append(globe, label);
+    overlay.appendChild(panel);
+    document.body.appendChild(overlay);
+  }
   async function finishStockTake(stockTake, finish) {
+  if (wscFinishStockTakeBusy || finish.disabled) return;
+  wscFinishStockTakeBusy = true;
+  const originalFinishLabel = finish.textContent;
+  finish.disabled = true;
+  try {
   const stockTakePeriod = stockTake.stockTakePeriod;
 
   if (!stockTakePeriod) {
@@ -5105,9 +5131,8 @@ item.innerHTML = `
     return;
 }
 
-  finish.disabled = true;
   finish.textContent = "Finishing...";
-  startGlobeLoading();
+  wscShowFinishStockTakeOverlay();
 
   try {
     const idToken = await window.getCurrentStaffToken();
@@ -5312,12 +5337,15 @@ if (reportOptions) {
     
   } catch (error) {
     window.showWSCMessage("WSC", "Unable to finish stock take: " + error.message);
-    finish.disabled = false;
-    finish.textContent = "Finish";
 } finally {
-    stopGlobeLoading();
+    document.getElementById("wscFinishStockTakeOverlay")?.remove();
   
     document.querySelector(".stock-home-button")?.classList.remove("loading");
+  }
+  } finally {
+    finish.disabled = false;
+    finish.textContent = originalFinishLabel;
+    wscFinishStockTakeBusy = false;
   }
   }
 
