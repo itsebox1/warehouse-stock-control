@@ -1801,42 +1801,22 @@ async function findDeliveryExtraSku() {
   }
 }
   
-  function lookupDeliveryProduct(sku) {
-  return new Promise((resolve, reject) => {
-    const callbackName = "warehouseProductCallback";
-    const script = document.createElement("script");
-
-    const timeout = setTimeout(() => {
-      cleanup();
-      reject(new Error("Product lookup timed out."));
-    }, 30000);
-
-    function cleanup() {
-      clearTimeout(timeout);
-      delete window[callbackName];
-      script.remove();
+  async function wscAuthenticatedLiveProductLookup_(sku) {
+    const idToken = await window.getCurrentStaffToken();
+    if (!idToken) throw new Error('Sign in required for live stock lookup.');
+    const response = await fetch(workerUrl, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({action:'getLiveProduct', idToken, sku:String(sku).trim()})
+    });
+    const result = await response.json();
+    if (!response.ok || !result || result.success === false || result.error || !result.sku || !Number.isFinite(Number(result.qbStock))) {
+      throw new Error((result && result.error) || 'Live stock quantity unavailable.');
     }
-
-    window[callbackName] = function(product) {
-      cleanup();
-      resolve(product);
-    };
-
-    script.onerror = function() {
-      cleanup();
-      reject(new Error("Could not load product details."));
-    };
-
-    script.src =
-      workerUrl +
-      "?page=api&sku=" +
-      encodeURIComponent(sku) +
-      "&callback=" +
-      callbackName;
-
-    document.body.appendChild(script);
-  });
-}
+    return result;
+  }
+  function lookupDeliveryProduct(sku) {
+    return wscAuthenticatedLiveProductLookup_(sku);
+  }
 async function lookupProduct(sku) {
   const result = document.getElementById("result");
   const details = document.getElementById("productDetails");
@@ -1857,40 +1837,7 @@ async function lookupProduct(sku) {
   result.textContent = "Looking up product: " + sku;
 
   try {
-    const product = await new Promise((resolve, reject) => {
-      const callbackName = "warehouseProductCallback";
-      const script = document.createElement("script");
-
-      const timeout = setTimeout(() => {
-        cleanup();
-        reject(new Error("Product lookup timed out"));
-      }, 30000);
-
-      function cleanup() {
-        clearTimeout(timeout);
-        window[callbackName] = function() {};
-        script.remove();
-      }
-
-      window[callbackName] = function(data) {
-        cleanup();
-        resolve(data);
-      };
-
-      script.onerror = function() {
-        cleanup();
-        reject(new Error("Could not load product details"));
-      };
-
-      script.src =
-        workerUrl +
-        "?page=api&sku=" +
-        encodeURIComponent(sku) +
-        "&callback=" +
-        callbackName;
-
-      document.body.appendChild(script);
-    });
+    const product = await wscAuthenticatedLiveProductLookup_(sku);
 
     if (product && product.sku) {
       productCache.set(sku, product);
@@ -2067,40 +2014,7 @@ async function lookupTradeShowProduct(sku) {
   startTradeShowCountingLoading();
 
   try {
-    const product = await new Promise((resolve, reject) => {
-      const callbackName = "tradeShowProductCallback";
-      const script = document.createElement("script");
-
-      const timeout = setTimeout(() => {
-        cleanup();
-        reject(new Error("Product lookup timed out"));
-      }, 30000);
-
-      function cleanup() {
-        clearTimeout(timeout);
-        delete window[callbackName];
-        script.remove();
-      }
-
-      window[callbackName] = function(data) {
-        cleanup();
-        resolve(data);
-      };
-
-      script.onerror = function() {
-        cleanup();
-        reject(new Error("Could not load product details"));
-      };
-
-      script.src =
-        workerUrl +
-        "?page=api&sku=" +
-        encodeURIComponent(sku) +
-        "&callback=" +
-        callbackName;
-
-      document.body.appendChild(script);
-    });
+    const product = await wscAuthenticatedLiveProductLookup_(sku);
 
     if (!product || !product.sku) {
       details.textContent = "No matching product for SKU: " + sku;
@@ -3059,7 +2973,7 @@ function wscShowBOMChoice(button) {
   const card = document.createElement('div');
   card.style.cssText = 'background:white;border-radius:12px;max-width:420px;width:100%;padding:24px;text-align:center;box-shadow:0 8px 25px #0003';
   const heading = document.createElement('h2'); heading.textContent = 'BOM Stock Check';
-  const info = document.createElement('p'); info.textContent = 'You can check BOM stock before starting a new Stock Take. This saves a numbered, read-only Sandbox report. No QuickBooks stock will change.';
+  const info = document.createElement('p'); info.textContent = 'You can check BOM stock before starting a new Stock Take. This saves a numbered, read-only Production report. No QuickBooks stock will change.';
   const preview = document.createElement('button'); preview.type='button'; preview.textContent='Check BOM Stock';
   const normal = document.createElement('button'); normal.type='button'; normal.textContent='New Stock Take';
   const cancel = document.createElement('button'); cancel.type='button'; cancel.textContent='Cancel';
@@ -3098,7 +3012,7 @@ function wscShowBOMChoice(button) {
       if(missing){
         const warning=document.createElement('p');
         warning.style.cssText='font-weight:600;color:#9a4514';
-        warning.textContent='Warning: '+missing+' SKU(s) missing from QuickBooks Sandbox. Calculations are incomplete; see PDF.';
+        warning.textContent='Warning: '+missing+' SKU(s) missing from QuickBooks Production. Calculations are incomplete; see PDF.';
         panel.appendChild(warning);
       }
       const download=document.createElement('button');download.type='button';
@@ -6011,12 +5925,12 @@ async function wscRunUnifiedReport() {
           try {
             const check=await wscBOMRequest({action:'previewBOMQuickBooks',reportNumber:item.reportNumber});
             const detail=check.items.map(x=>x.sku+': '+x.previous+' → '+x.target+' ('+(x.qtyDiff>0?'+':'')+x.qtyDiff+')').join('\n');
-            const confirmed=await window.showWSCConfirm('BOM QuickBooks Sandbox',
-              item.reportNumber+'\nAccount: WSC-BOM\n'+check.lineCount+' adjustment lines\n\n'+detail+'\n\nCommit this exact adjustment to Sandbox?');
+            const confirmed=await window.showWSCConfirm('BOM QuickBooks (disabled)',
+              item.reportNumber+'\nAccount: WSC-BOM\n'+check.lineCount+' adjustment lines\n\n'+detail+'\n\nQuickBooks Production submissions are currently disabled.');
             if(!confirmed)return;
             const result=await wscBOMRequest({action:'commitBOMQuickBooks',reportNumber:item.reportNumber,confirmation:'COMMIT '+item.reportNumber});
             note.textContent='QuickBooks: '+result.qbStatus;previewButton.disabled=true;
-            window.showWSCMessage('BOM Committed','Sandbox adjustment '+(result.docNumber||result.adjustmentId)+' submitted.');
+            window.showWSCMessage('BOM Committed','QuickBooks adjustment '+(result.docNumber||result.adjustmentId)+' submitted.');
           }catch(e){window.showWSCMessage('BOM QuickBooks',String(e.message||e));}
           finally{wscUnifiedBusy(false);}
         };
@@ -7737,7 +7651,7 @@ async function getQuickBooksCommitStatus(reportNumber) {
 if (wscPermissions) wscPaintPermissions(wscPermissions);
 }
 
-// SC Sandbox submission requires a verified status and administrator switch.
+// SC QuickBooks submission requires a verified status and administrator switch.
 window.scQuickBooksSubmitting = false;
 window.readStockCountQuickBooksStatus = async function(reportNumber) {
   if (!/^SC-\d{6}$/.test(reportNumber)) throw new Error("Invalid SC report number.");
@@ -7775,7 +7689,7 @@ window.updateStockCountQuickBooksStatus = async function(reportNumber) {
       button.style.background = "#dc3545";
       button.style.cursor = "pointer";
       button.textContent = "Commit to QB";
-      button.title = "Submit " + reportNumber + " to QuickBooks Sandbox after confirmation";
+      button.title = "Submit " + reportNumber + " to QuickBooks (currently disabled)";
     } else {
       button.textContent = "QB Submissions Disabled";
       button.title = "SC QuickBooks submissions are disabled in Administrator Settings";
@@ -7800,8 +7714,8 @@ window.confirmStockCountQuickBooksCommit = async function(reportNumber) {
       throw new Error("A QuickBooks submission status already exists. Do not retry; verify the record first.");
     }
     const approved = await window.showWSCConfirm(
-      "WSC — QuickBooks Sandbox",
-      "Submit " + reportNumber + " to QuickBooks Sandbox? This will adjust stock for the counted products. Please confirm the quantities are correct."
+      "WSC — QuickBooks",
+      "Submit " + reportNumber + " to QuickBooks? This will adjust stock for the counted products. Please confirm the quantities are correct."
     );
     if (!approved) return;
     // Reuse the existing report globe and Home-button loading layout during SC submission.
@@ -7824,7 +7738,7 @@ window.confirmStockCountQuickBooksCommit = async function(reportNumber) {
     if (!response.ok || result.success !== true) {
       throw new Error(result.error || "QuickBooks submission could not be confirmed. Check status before taking any further action.");
     }
-    window.showWSCMessage("Submitted to QuickBooks", reportNumber + " was submitted to QuickBooks Sandbox successfully.");
+    window.showWSCMessage("Submitted to QuickBooks", reportNumber + " was submitted to QuickBooks successfully.");
   } catch (error) {
     window.showWSCMessage("SC QuickBooks Submission", error.message + " Do not retry until the QuickBooks and session status have been checked.");
   } finally {
