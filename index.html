@@ -7818,8 +7818,13 @@ function wscDatesCloseAmendments(){
   wscDatesStopScanner();
   document.getElementById('wscDatesAmendScreen').style.display='none';
   document.getElementById('wscDatesScreen').style.display='block';
-  document.getElementById('wscDatesSku').value=document.getElementById('wscDatesAmendSku').value;
-  if(document.getElementById('wscDatesSku').value.trim())wscDatesFind(false);
+  const input=document.getElementById('wscDatesSku');
+  input.value='';
+  wscQuickDismiss(input);
+  wscQuickDismiss(document.getElementById('wscDatesAmendSku'));
+  document.getElementById('wscDatesResults').replaceChildren();
+  document.getElementById('wscDatesMessage').textContent='';
+  wscDatesCurrentSku='';
 }
 function wscDatesConfirmDelete(lot,expiry){
   return new Promise(resolve=>{
@@ -8160,15 +8165,7 @@ function wscDatesExpiryMonthsRemaining(value){
   const today=new Date();
   return month-(today.getFullYear()*12+today.getMonth());
 }
-async function wscDatesFind(amend) {
-  if(wscDatesBusy)return;
-  const isAmend=amend===true || (amend!==false && document.getElementById('wscDatesAmendScreen').style.display==='block');
-  const sku=document.getElementById(isAmend?'wscDatesAmendSku':'wscDatesSku').value.trim();
-  if(!sku){wscDatesMessage('Enter a SKU first.');return;}
-  wscDatesHideSuggestions();
-  wscDatesSetBusy(true,'Looking up product…'); wscDatesMessage('Looking up product…');
-  try {
-    const data=await wscDatesRequest('getProductDates',{sku});
+function wscDatesRenderProduct(data,isAmend){
     wscDatesCurrentSku=data.sku;
     if(isAmend)document.getElementById('wscDatesAddHeading').textContent='Add Dates for '+data.sku;
     const admin=data.canAmend === true && wscPermissions?.admin === true;
@@ -8212,6 +8209,17 @@ async function wscDatesFind(amend) {
     });
     wscDatesRenderDeleteButtons(isAmend);
     wscDatesMessage(data.lots.length+' lot(s) recorded.');
+}
+async function wscDatesFind(amend) {
+  if(wscDatesBusy)return;
+  const isAmend=amend===true || (amend!==false && document.getElementById('wscDatesAmendScreen').style.display==='block');
+  const sku=document.getElementById(isAmend?'wscDatesAmendSku':'wscDatesSku').value.trim();
+  if(!sku){wscDatesMessage('Enter a SKU first.');return;}
+  wscDatesHideSuggestions();
+  wscDatesSetBusy(true,'Looking up product…'); wscDatesMessage('Looking up product…');
+  try {
+    const data=await wscDatesRequest('getProductDates',{sku});
+    wscDatesRenderProduct(data,isAmend);
   } catch(e) {
     wscDatesCurrentSku='';document.getElementById(isAmend?'wscDatesAmendResults':'wscDatesResults').replaceChildren();
     if(isAmend){document.getElementById('wscDatesAdmin').style.display='block';document.getElementById('wscDatesAddHeading').textContent='Add Dates';}wscDatesRefreshAdminButton();wscDatesMessage(e.message);
@@ -8226,19 +8234,21 @@ async function wscDatesSave(){
   if(!lot||!expiry){wscDatesMessage('Enter both lot and expiry.');return;}
   const enteredSku=document.getElementById('wscDatesAmendSku').value.trim();
   if(!enteredSku){wscDatesMessage('Enter or scan a product SKU before confirming. Your lot and expiry have been kept.');document.getElementById('wscDatesAmendSku').focus();return;}
-  wscDatesSetBusy(true,'Checking and saving lot…');wscDatesMessage('Checking product before saving…');
+  wscDatesSetBusy(true,'Saving lot…');wscDatesMessage('Saving lot…');
   try{
-    // Always verify the SKU currently shown in the input; a previous lookup may
-    // belong to another product. Never silently save against an old selection.
-    const verified=await wscDatesRequest('getProductDates',{sku:enteredSku});
-    if(verified.canAmend!==true)throw new Error('Administrator permission required.');
-    const sku=verified.sku;
-    if(!sku)throw new Error('Product not found. Check the SKU.');
-    const result=await wscDatesRequest('addProductDate',{sku,lot,expiry});
+    // The server verifies the currently entered SKU, admin permission and duplicates.
+    const result=await wscDatesRequest('addProductDate',{sku:enteredSku,lot,expiry});
     document.getElementById('wscDatesLot').value='';document.getElementById('wscDatesExpiry').value='';
+    wscDatesShowLotSuggestion('');
+    const preview=document.getElementById('wscDatesPhotoPreview');
+    preview.removeAttribute('src');preview.style.display='none';
+    document.getElementById('wscDatesPhotoStatus').textContent='';
+    if(result.product)wscDatesRenderProduct(result.product,true);
+    else document.getElementById('wscDatesAmendResults').replaceChildren();
     wscDatesMessage(result.alreadyExists?'This lot and expiry are already recorded.':'Lot saved.');
-  }catch(e){wscDatesMessage('Could not save: '+(e.message||String(e)));wscDatesSetBusy(false);return;}
-  wscDatesSetBusy(false);await wscDatesFind(true);
+  }catch(e){
+    wscDatesMessage('Save was not confirmed: '+(e.message||String(e))+'. Your entries have been kept.');
+  }finally{wscDatesSetBusy(false);}
 }
 
 // PWA registration; deliberately does not cache index.html or app data.
