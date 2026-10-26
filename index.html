@@ -1772,35 +1772,40 @@ let deliveryReviewProducts = [];
   let deliveryExtraFoundProduct = null;
 async function findDeliveryExtraSku() {
   const input = document.getElementById("deliveryExtraSku");
-  const message = document.getElementById("deliveryReviewMessage");
-  const sku = input.value.trim().toUpperCase();
+  const message = document.getElementById("deliverySkuSearchMessage");
+  const button = document.getElementById("deliveryFindExtraSkuButton");
+  const entry = document.getElementById("deliveryExtraProductEntry");
+  const sku = (input?.value || "").trim().toUpperCase();
 
   if (!sku) {
     message.textContent = "Please enter a SKU.";
+    input?.focus();
     return;
   }
-
+  if (button.disabled) return;
+  deliveryExtraFoundProduct = null;
+  entry.style.display = "none";
   message.textContent = "Looking up SKU " + sku + "...";
-
+  button.disabled = true;
+  wscBOMLoading("Finding product " + sku + "...");
   try {
     const product = await lookupDeliveryProduct(sku);
-
     if (!product || !product.sku) {
       message.textContent = "Product not found: " + sku;
       return;
     }
-
     deliveryExtraFoundProduct = product;
-    message.textContent =
-      "Product found: " + product.sku +
-      " — " + product.name;
-    document.getElementById("deliveryExtraProductEntry").style.display = "block";
-
+    message.textContent = "Product found: " + product.sku + " — " + (product.name || "");
+    entry.style.display = "block";
+    document.getElementById("deliveryExtraQty")?.focus();
   } catch (error) {
-    message.textContent = "Lookup failed: " + error.message;
+    message.textContent = "Lookup failed for " + sku + ": " + (error?.message || String(error));
+  } finally {
+    button.disabled = false;
+    wscBOMLoadingEnd();
   }
 }
-  
+
   async function wscAuthenticatedLiveProductLookup_(sku) {
     const idToken = await window.getCurrentStaffToken();
     if (!idToken) throw new Error('Sign in required for live stock lookup.');
