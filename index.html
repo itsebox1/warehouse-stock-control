@@ -8167,7 +8167,7 @@ async function wscDatesFind(amend) {
     const container=document.getElementById(isAmend?'wscDatesAmendResults':'wscDatesResults');container.replaceChildren();
     const heading=document.createElement('h3');heading.textContent=data.sku+' — '+data.name;container.append(heading);
     if(data.notApplicable === true || /LBL$/i.test(String(data.sku).trim())) {
-      const p=document.createElement('p');p.textContent='Not applicable — label product; no expiry date or lot number';container.append(p);
+      const p=document.createElement('p');p.textContent='Not applicable — '+(data.notApplicableType==='kit'?'kit':'label')+' product; no expiry date or lot number';container.append(p);
       if(isAmend)document.getElementById('wscDatesAdmin').style.display='none';
       wscDatesMessage('');return;
     }
