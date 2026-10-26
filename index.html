@@ -1354,7 +1354,7 @@ function validateTradeShowFields() {
 
   <p id="reportDisplayDates"></p>
 
-  <button onclick="window.print()">
+  <button onclick="wscPrintSelectedReport(document.getElementById('reportDisplayScreen'))">
     Print / Save PDF
   </button>
 
@@ -5891,12 +5891,55 @@ function wscOpenBOMPdf(result,print){
   if(print)win.addEventListener('load',()=>{try{win.print();}catch(e){}},{once:true});
   setTimeout(()=>URL.revokeObjectURL(url),120000);
 }
+// Print an isolated copy: never include the app's search form or other reports.
+function wscPrintSelectedReport(source) {
+  if(!source)return;
+  const copy=source.cloneNode(true);
+  copy.querySelectorAll('button,input,select,textarea,script,style,iframe').forEach(el=>el.remove());
+  [copy,...copy.querySelectorAll('*')].forEach(el=>{
+    // Screen widths, scroll containers and hidden panels must not clip the paper copy.
+    [...el.attributes].forEach(attr=>{
+      if(['style','class','id','hidden'].includes(attr.name) || attr.name.startsWith('on'))el.removeAttribute(attr.name);
+    });
+  });
+  copy.querySelectorAll('details').forEach(el=>el.open=true);
+  if(copy.tagName==='DETAILS')copy.open=true;
+  const summary=copy.querySelector('summary');
+  let title='WSC Stock Report';
+  if(summary){
+    title=summary.textContent.replace(/\s+/g,' ').trim();
+    const heading=document.createElement('h1');heading.textContent=title;summary.replaceWith(heading);
+  }
+  document.getElementById('wscReportPrintFrame')?.remove();
+  const frame=document.createElement('iframe');frame.id='wscReportPrintFrame';
+  frame.title='Selected report print layout';frame.setAttribute('aria-hidden','true');
+  frame.style.cssText='position:fixed;left:-10000px;top:0;width:1120px;height:800px;border:0;';
+  frame.onload=()=>{
+    const win=frame.contentWindow;
+    if(!win)return;
+    win.document.title=title;
+    win.addEventListener('afterprint',()=>setTimeout(()=>frame.remove(),0),{once:true});
+    // Wait for the isolated document to finish layout before opening print preview.
+    win.requestAnimationFrame(()=>win.requestAnimationFrame(()=>{
+      try{win.focus();win.print();}
+      catch(e){frame.remove();window.showWSCMessage('Print report','Unable to open print preview. Please try again.');}
+    }));
+  };
+  frame.srcdoc='<!doctype html><html><head><meta charset="utf-8"><title>WSC Report</title><style>'+
+    '@page{size:A4 landscape;margin:12mm}body{font:11pt Arial,sans-serif;color:#172b4d;background:white;margin:0}'+
+    'h1,h2{font-size:17pt;margin:0 0 12pt}table{width:100%;border-collapse:collapse;table-layout:fixed}'+
+    'th,td{border:1px solid #bbc4ce;padding:7pt;text-align:left;vertical-align:top;overflow-wrap:anywhere}'+
+    'th{background:#e8edf2;font-weight:bold}thead{display:table-header-group}tr{break-inside:avoid;page-break-inside:avoid}'+
+    'details,div{overflow:visible;max-width:none}summary{display:block}button{display:none}'+
+    '</style></head><body>'+copy.outerHTML+'</body></html>';
+  document.body.append(frame);
+}
 function wscAddPrintButtons(container){
   container.querySelectorAll('details').forEach(details=>{
     const summary=details.querySelector('summary');if(!summary||summary.querySelector('.wscPrintReport'))return;
     const btn=document.createElement('button');btn.type='button';btn.className='wscPrintReport';btn.textContent='🖨 Print';
     btn.style.cssText='width:auto;padding:8px 12px;background:#244b72;color:white;border:0;border-radius:6px;cursor:pointer';
-    btn.onclick=e=>{e.preventDefault();e.stopPropagation();const wasOpen=details.open;details.open=true;window.print();details.open=wasOpen;};
+    btn.onclick=e=>{e.preventDefault();e.stopPropagation();wscPrintSelectedReport(details);};
     summary.appendChild(btn);
   });
 }
