@@ -2559,25 +2559,8 @@ table.appendChild(colgroup);
     throw new Error(qbStatus.error || "Unable to check QB status.");
   }
 
-  const status = String(qbStatus.status || "").trim().toLowerCase();
-
-  if (qbStatus.submitted || status === "submitted") {
-    qbButton.textContent = "✓ Committed to QB";
-    qbButton.style.background = "#28a745";
-    qbButton.disabled = true;
-  } else if (status === "pending") {
-    qbButton.textContent = "QB Submission Pending";
-    qbButton.style.background = "#777";
-    qbButton.disabled = true;
-  } else {
-    qbButton.textContent = "📤 Commit to QB";
-    qbButton.style.background = "#c62828";
-    qbButton.disabled = wscPermissions?.quickBooks?.TR !== true;
-    if (qbButton.disabled) {
-      qbButton.textContent = "QB Submissions Disabled";
-      qbButton.style.background = "#777";
-    }
-  }
+  wscPaintLiveQBButton(qbButton,reportNumber,qbStatus);
+  window.wscSyncTRCardStatus?.(reportNumber,qbButton);
 
 } catch (qbError) {
   qbButton.textContent = "QB Status Unavailable";
@@ -2596,70 +2579,8 @@ table.appendChild(colgroup);
   }
 }
 
-document.getElementById("tradeShowCommitQBButton").onclick = async function () {
-  const reportNumber = this.dataset.reportNumber;
-
-  if (!reportNumber) {
-    window.showWSCMessage(
-      "QuickBooks Submission",
-      "Please open a Trade Show report first."
-    );
-    return;
-  }
-
-  if (wscPermissions?.quickBooks?.TR !== true) {
-    window.showWSCMessage("QuickBooks Submission", "Trade Show QuickBooks submissions are disabled by the administrator.");
-    return;
-  }
-  const button = this;
-  button.disabled = true;
-  setTRReportLoading(true);
-
-  try {
-    const idToken = await window.getCurrentStaffToken();
-
-    const response = await fetch(
-      "https://warehouse-stock-reports.tmerry.workers.dev",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          action: "commitTradeShowToQuickBooks",
-          reportNumber: reportNumber,
-          idToken: idToken
-        })
-      }
-    );
-
-    const responseText = await response.text();
-
-    const result = responseText.trim().startsWith("{")
-      ? JSON.parse(responseText)
-      : { success: false, error: responseText };
-
-    if (!response.ok || !result.success) {
-      throw new Error(
-        result.error || "QuickBooks submission is unavailable."
-      );
-    }
-
-    window.showWSCMessage(
-      "QuickBooks Submission",
-      "Trade Show " + reportNumber + " was submitted successfully."
-    );
-
-  } catch (error) {
-    window.showWSCMessage(
-      "QuickBooks Submission",
-      String(error.message || error)
-    );
-  } finally {
-    setTRReportLoading(false);
-    // Re-read the actual submission state. Never allow a blind retry.
-    await loadTradeShowReport(reportNumber);
-  }
+document.getElementById("tradeShowCommitQBButton").onclick = function () {
+  return wscSubmitLiveQB(this.dataset.reportNumber, this);
 };
   
 document.getElementById("tradeShowEmailButton").onclick = async function () {
@@ -4660,12 +4581,7 @@ async function searchTRReports() {
       qb.textContent = "Checking QB status...";
       qb.style.cssText = "width:auto;background:#777;color:white;border:0;border-radius:6px;padding:9px 14px;font-weight:bold;cursor:not-allowed";
       qb.dataset.trQBCard = show.reportNumber;
-      qb.onclick = () => {
-        if (qb.disabled || wscPermissions?.quickBooks?.TR !== true) return;
-        const shared = document.getElementById("tradeShowCommitQBButton");
-        shared.dataset.reportNumber = show.reportNumber;
-        shared.click();
-      };
+      qb.onclick = () => wscSubmitLiveQB(show.reportNumber,qb);
       actions.append(view, email, qb);
       row.append(title, actions);
       card.appendChild(row);
@@ -4679,20 +4595,7 @@ async function searchTRReports() {
           });
           const status = await response.json();
           if (!response.ok || status.success === false) throw new Error("QB status unavailable");
-          const value = String(status.status || "").trim().toLowerCase();
-          if (status.submitted || value === "submitted") {
-            qb.textContent = "Committed to QB";
-            qb.style.background = "#28a745";
-          } else if (value === "pending") {
-            qb.textContent = "QB Submission Pending";
-          } else if (wscPermissions?.quickBooks?.TR === true) {
-            qb.textContent = "Commit to QB";
-            qb.style.background = "#c62828";
-            qb.disabled = false;
-            qb.style.cursor = "pointer";
-          } else {
-            qb.textContent = "QB Submissions Disabled";
-          }
+          wscPaintLiveQBButton(qb,show.reportNumber,status);
         } catch (error) {
           qb.textContent = "QB Status Unavailable";
           qb.disabled = true;
@@ -6019,20 +5922,11 @@ async function wscRunUnifiedReport() {
         const open=async print=>{wscUnifiedBusy(true);try{const data=await wscBOMRequest({action:'openBOMReport',reportNumber:item.reportNumber});wscOpenBOMPdf(data,print);}catch(e){window.showWSCMessage('BOM Reports',String(e.message||e));}finally{wscUnifiedBusy(false);}};
         for(const [label,print] of [['View PDF',false],['Print',true]]){const button=document.createElement('button');button.type='button';button.textContent=label;button.style.width='auto';button.onclick=()=>open(print);actions.appendChild(button);}
         const previewButton=document.createElement('button');previewButton.type='button';previewButton.textContent='Review QB Adjustment';previewButton.style.width='auto';
-        previewButton.disabled=(item.qbStatus||'Not Committed')!=='Not Committed';
+        wscPaintLiveQBButton(previewButton,item.reportNumber,item);
         previewButton.onclick=async()=>{
-          wscUnifiedBusy(true);
-          try {
-            const check=await wscBOMRequest({action:'previewBOMQuickBooks',reportNumber:item.reportNumber});
-            const detail=check.items.map(x=>x.sku+': '+x.previous+' → '+x.target+' ('+(x.qtyDiff>0?'+':'')+x.qtyDiff+')').join('\n');
-            const confirmed=await window.showWSCConfirm('BOM QuickBooks (disabled)',
-              item.reportNumber+'\nAccount: WSC-BOM\n'+check.lineCount+' adjustment lines\n\n'+detail+'\n\nQuickBooks Production submissions are currently disabled.');
-            if(!confirmed)return;
-            const result=await wscBOMRequest({action:'commitBOMQuickBooks',reportNumber:item.reportNumber,confirmation:'COMMIT '+item.reportNumber});
-            note.textContent='QuickBooks: '+result.qbStatus;previewButton.disabled=true;
-            window.showWSCMessage('BOM Committed','QuickBooks adjustment '+(result.docNumber||result.adjustmentId)+' submitted.');
-          }catch(e){window.showWSCMessage('BOM QuickBooks',String(e.message||e));}
-          finally{wscUnifiedBusy(false);}
+          await wscSubmitLiveQB(item.reportNumber,previewButton);
+          const result=wscLiveQBUI.statuses.get(item.reportNumber);
+          if(result)note.textContent='QuickBooks: '+(result.qbStatus||'Not Committed');
         };
         actions.appendChild(previewButton);
         card.appendChild(actions);target.appendChild(card);
@@ -6695,9 +6589,9 @@ ${committedToQB && emailFailed ? `
 if (wscPermissions) wscPaintPermissions(wscPermissions);
 
 // SC status is checked individually for every report, without report-number exceptions.
-if (selectedReportType === "SC") {
+if (["ST","SC"].includes(selectedReportType)) {
   for (const number of Object.keys(reportGroups)) {
-    void window.updateStockCountQuickBooksStatus(number);
+    void wscRefreshLiveQBButton(number);
   }
 }
 
@@ -6724,7 +6618,7 @@ if (selectedReportType === "SC") {
 window.WSC_ADMIN_URL = "https://warehouse-stock-reports.tmerry.workers.dev";
 let wscAdminData = null;
 let wscPermissions = null;
-const wscLabels = {ST:"📦 ST – Stock Take",SC:"📋 SC – Stock Count",TR:"🎪 TR – Trade Show",BOM:"🧩 BOM – Bill of Materials",DL:"🚚 DL – Delivery",DATES:"📅 Check Dates"};
+const wscLabels = {BOM:"🧩 BOM – Bill of Materials",ST:"📦 ST – Stock Take",SC:"📋 SC – Stock Count",TR:"🎪 TR – Trade Show",DL:"🚚 DL – Delivery",DATES:"📅 Check Dates"};
 async function wscAdminRequest(action, extra={}) {
   const idToken = await window.getCurrentStaffToken();
   const response = await fetch(window.WSC_ADMIN_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,idToken,...extra})});
@@ -6812,6 +6706,137 @@ async function wscCancelInventoryReport() {
 // Never show module buttons before this signed-in account has been verified.
 let wscPermissionEmail = null;
 let wscPermissionRequest = null;
+// Shared Live QuickBooks UI. Exactly one write request per explicit confirmation.
+const wscLiveQBUI = {busy:false, statuses:new Map(), uncertain:new Set()};
+function wscLiveQBState(result) {
+  if (result?.submitted === true) return 'SUBMITTED';
+  const state=String(result?.qbStatus ?? result?.status ?? '').trim().toUpperCase();
+  return ['','NOT COMMITTED','NOT SUBMITTED'].includes(state) ? 'READY' : state;
+}
+function wscLiveQBAllowed(area) {
+  return wscPermissions?.quickBooks?.[area] === true &&
+    (area === 'BOM' ? wscPermissions?.admin === true : wscPermissions?.functions?.[area] === true);
+}
+function wscLiveQBKey(number) {
+  return 'wsc-live-qb-uncertain:'+String(window.getCurrentStaffEmail?.()||'').toLowerCase()+':'+number;
+}
+function wscLiveQBUncertain(number, value) {
+  const key=wscLiveQBKey(number);
+  if (value === true) {wscLiveQBUI.uncertain.add(key);try{sessionStorage.setItem(key,'1');}catch(_){} }
+  if (value === false) {wscLiveQBUI.uncertain.delete(key);try{sessionStorage.removeItem(key);}catch(_){} }
+  try{return wscLiveQBUI.uncertain.has(key)||sessionStorage.getItem(key)==='1';}catch(_){return wscLiveQBUI.uncertain.has(key);}
+}
+function wscPaintLiveQBButton(button, number, result) {
+  if (!button) return;
+  const area=number.split('-')[0];
+  button.dataset.liveQBReport=number;
+  if (result) wscLiveQBUI.statuses.set(number,result);
+  const status=result||wscLiveQBUI.statuses.get(number);
+  const state=status ? wscLiveQBState(status) : 'UNKNOWN';
+  if (state==='SUBMITTED' || state==='NO_CHANGE') wscLiveQBUncertain(number,false);
+  button.disabled=true;button.style.background='#777';button.style.cursor='not-allowed';
+  if (state==='SUBMITTED'||state==='NO_CHANGE') {
+    button.textContent=status?.noAdjustment ? 'Complete — No Adjustment Needed' : 'Committed to QB';button.style.background='#28a745';
+  } else if (wscLiveQBUI.busy) button.textContent='QuickBooks request in progress…';
+  else if (wscLiveQBUncertain(number)) button.textContent='QB Outcome Needs Checking';
+  else if (state==='UNKNOWN') button.textContent='QB Status Unavailable';
+  else if (state!=='READY') button.textContent=state==='PENDING'?'QB Submission Pending':'QB '+state;
+  else if (!wscLiveQBAllowed(area)) button.textContent='QB Submissions Disabled';
+  else {button.disabled=false;button.textContent=area==='BOM'?'Review Live QB Adjustment':'Commit to QB Live';button.style.background='#c62828';button.style.cursor='pointer';}
+  button.title=button.textContent;
+}
+function wscPaintLiveQBReport(number,result) {
+  if(result)wscLiveQBUI.statuses.set(number,result);
+  document.querySelectorAll('button[data-live-q-b-report],button[id^="qb-"],button[data-tr-q-b-card],#tradeShowCommitQBButton').forEach(button=>{
+    const report=button.dataset.liveQBReport||button.dataset.trQBCard|| (button.id.startsWith('qb-')?button.id.slice(3):button.dataset.reportNumber);
+    if(report===number)wscPaintLiveQBButton(button,number,result);
+  });
+}
+async function wscLiveQBRequest(action, number, extra={}) {
+  const idToken=await window.getCurrentStaffToken();
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),120000);
+  let response,result;
+  try {
+    response=await fetch(window.WSC_ADMIN_URL,{method:'POST',headers:{'Content-Type':'application/json'},
+      signal:controller.signal,body:JSON.stringify({action,reportNumber:number,...extra,idToken})});
+    result=await response.json();
+  } catch(error) {
+    throw new Error(error.name==='AbortError'?'QuickBooks request timed out.': 'QuickBooks response could not be confirmed.');
+  } finally {clearTimeout(timer);}
+  if(!response.ok || result.success!==true || result.error) throw new Error(result.error||result.message||'QuickBooks request could not be confirmed.');
+  return result;
+}
+async function wscReadLiveQBStatus(number) {
+  const area=number.split('-')[0];
+  if(!/^(ST|SC|TR|BOM)-\d{6}$/.test(number))throw new Error('Invalid report number.');
+  if(area==='BOM') {
+    const found=await wscLiveQBRequest('findBOMReports',number,{searchBy:'number'});
+    const rows=(found.reports||[]).filter(r=>r.reportNumber===number);
+    if(rows.length!==1)throw new Error('BOM report status unavailable.');
+    return rows[0];
+  }
+  return wscLiveQBRequest({ST:'getQuickBooksCommitStatus',SC:'getStockCountQuickBooksStatus',TR:'getTradeShowQuickBooksStatus'}[area],number);
+}
+async function wscRefreshLiveQBButton(number) {
+  try {const status=await wscReadLiveQBStatus(number);wscPaintLiveQBReport(number,status);return status;}
+  catch(error){wscLiveQBUI.statuses.delete(number);wscPaintLiveQBReport(number);return null;}
+}
+function wscLiveQBMessage(result,number) {
+  return result.noAdjustment ? number+' is complete. No stock adjustment was needed.' :
+    number+' was accepted by QuickBooks Live.'+(result.adjustmentId?' Adjustment ID: '+result.adjustmentId+'.':'');
+}
+async function wscSubmitLiveQB(number, button) {
+  if(wscLiveQBUI.busy || !/^(ST|SC|TR|BOM)-\d{6}$/.test(number) || button?.disabled)return;
+  const area=number.split('-')[0];
+  wscLiveQBUI.busy=true; if(button)wscPaintLiveQBButton(button,number);
+  let sent=false, outcome=null, notice='';
+  try {
+    wscBOMLoading('Checking QuickBooks Live status…');
+    await wscRefreshPermissions();
+    if(!wscLiveQBAllowed(area))throw new Error(area+' submissions are switched off in Administrator Settings.');
+    const before=await wscReadLiveQBStatus(number);wscPaintLiveQBReport(number,before);
+    const state=wscLiveQBState(before);
+    if(state==='SUBMITTED'||state==='NO_CHANGE') {notice=number+' is already complete.';return;}
+    if(state!=='READY'||wscLiveQBUncertain(number))throw new Error('This report has an existing or uncertain submission. Check its QuickBooks result before submitting again.');
+    let message='Submit '+number+' to QuickBooks Live? Please confirm the report is complete and its quantities are correct.';
+    if(area==='BOM') {
+      wscBOMLoading('Preparing Live BOM adjustment…');
+      const preview=await wscLiveQBRequest('previewBOMQuickBooks',number);
+      const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      message=escape(number)+'<br>Account: '+escape(preview.account)+'<br>'+preview.lineCount+' adjustment lines<br><br>'+
+        preview.items.map(x=>escape(x.sku)+': '+escape(x.previous)+' → '+escape(x.target)).join('<br>')+'<br><br>Submit this adjustment to QuickBooks Live?';
+    }
+    wscBOMLoadingEnd();
+    if(!await window.showWSCConfirm('QuickBooks Live',message))return;
+    wscBOMLoading('Submitting '+number+' to QuickBooks Live…');
+    // Persist ambiguity before sending; neither a timeout nor a refresh permits a blind retry.
+    sent=true;wscLiveQBUncertain(number,true);
+    outcome=await wscLiveQBRequest({ST:'commitStockTakeToQuickBooks',SC:'commitStockCountToQuickBooks',TR:'commitTradeShowToQuickBooks',BOM:'commitBOMQuickBooks'}[area],number,
+      area==='BOM'?{confirmation:'COMMIT '+number}:{});
+    if(wscLiveQBState(outcome)!=='SUBMITTED'&&wscLiveQBState(outcome)!=='NO_CHANGE')throw new Error('QuickBooks acceptance is not yet confirmed.');
+    wscLiveQBUncertain(number,false);wscPaintLiveQBReport(number,outcome);notice=wscLiveQBMessage(outcome,number);
+  } catch(error) {
+    notice=String(error.message||error);
+    if(sent) {
+      wscBOMLoading('Checking the QuickBooks result…');
+      // This is a status read only, never a second submission.
+      const status=await wscRefreshLiveQBButton(number);
+      if(status && ['SUBMITTED','NO_CHANGE'].includes(wscLiveQBState(status))) {outcome=status;notice=wscLiveQBMessage(status,number);}
+      else notice+=' The outcome needs checking; no second submission was sent.';
+    }
+  } finally {
+    wscBOMLoading('Refreshing QuickBooks status…');
+    if(outcome)wscPaintLiveQBReport(number,outcome);
+    else await wscRefreshLiveQBButton(number);
+    wscLiveQBUI.busy=false;wscBOMLoadingEnd();
+    wscPaintPermissions(wscPermissions);
+    if(button)wscPaintLiveQBButton(button,number);
+    if(notice)window.showWSCMessage('QuickBooks Live',notice);
+  }
+}
+// End shared Live QuickBooks UI.
+
 function wscPaintPermissions(permissions) {
   const cog = document.getElementById("wscAdminCog");
   const areas = permissions?.functions || {};
@@ -6819,37 +6844,19 @@ function wscPaintPermissions(permissions) {
     button.style.display = areas[button.dataset.wscArea] === true ? "" : "none";
   });
   if (cog) cog.style.display = permissions?.admin === true ? "block" : "none";
-  document.querySelectorAll('button[id^="qb-ST-"]').forEach(button => {
-    if (button.textContent.trim() === "Committed to QB") {
-      button.disabled = true;
-      button.style.cursor = "not-allowed";
-      return;
-    }
-    if (permissions?.quickBooks?.ST !== true) {
-      button.disabled = true;
-      button.textContent = "QB Submissions Disabled";
-      button.style.background = "#777";
-      button.style.cursor = "not-allowed";
-    } else if (button.textContent.trim() === "QB Submissions Disabled") {
-      button.disabled = false;
-      button.textContent = "Commit to QB";
-      button.style.background = "#dc3545";
-      button.style.cursor = "pointer";
-    }
+  if (!permissions) wscLiveQBUI.statuses.clear();
+  document.querySelectorAll('button[data-live-q-b-report],button[id^="qb-"],button[data-tr-q-b-card]').forEach(button=>{
+    const number=button.dataset.liveQBReport||button.dataset.trQBCard||button.id.slice(3);
+    if(number)wscPaintLiveQBButton(button,number);
   });
   document.querySelectorAll('.wsc-module[data-module]').forEach(module => {
     const area = module.dataset.module;
     if (area !== 'QB') module.style.display = areas[area] === true ? '' : 'none';
   });
   const trButton = document.getElementById("tradeShowCommitQBButton");
-  if (trButton && trButton.textContent.trim() !== "✓ Committed to QB" && trButton.textContent.trim() !== "QB Submission Pending" && trButton.textContent.trim() !== "QB Status Unavailable") {
-    const allowed = permissions?.quickBooks?.TR === true;
-    trButton.disabled = !allowed;
-    trButton.textContent = allowed ? "📤 Commit to QB" : "QB Submissions Disabled";
-    trButton.style.background = allowed ? "#c62828" : "#777";
-  }
-
+  if(trButton?.dataset.reportNumber)wscPaintLiveQBButton(trButton,trButton.dataset.reportNumber);
 }
+
 async function wscRefreshPermissions() {
   const email = String(window.getCurrentStaffEmail?.() || "").trim().toLowerCase();
   if (!email) {
@@ -7376,59 +7383,7 @@ window.openDeliveryPdf = async function(reportNumber) {
 };
   
 window.confirmQuickBooksCommit = function(reportNumber) {
-
-  const existing = document.getElementById("qbConfirmOverlay");
-  if (existing) existing.remove();
-
-  const overlay = document.createElement("div");
-  overlay.id = "qbConfirmOverlay";
-
-  overlay.innerHTML = `
-    <div style="
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,0.55);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      z-index:99999;
-      padding:20px;
-    ">
-      <div style="
-        background:white;
-        border-radius:12px;
-        padding:24px;
-        max-width:480px;
-        width:100%;
-        box-shadow:0 8px 30px rgba(0,0,0,0.3);
-        color:#222;
-      ">
-        <h2 style="margin-top:0;">WSC — QuickBooks Submission</h2>
-
-        <p>You are about to submit <strong>${reportNumber}</strong> to QuickBooks.</p>
-
-        <p>Please confirm that the stock take is complete and all quantities are correct.</p>
-
-        <p><strong>⚠️ This will change the stock quantities in QuickBooks and cannot be submitted twice.</strong></p>
-
-        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:24px;">
-          <button type="button"
-            onclick="document.getElementById('qbConfirmOverlay').remove();"
-            style="padding:10px 16px; border:0; border-radius:6px; cursor:pointer;">
-            Cancel
-          </button>
-
-          <button type="button"
-            onclick="document.getElementById('qbConfirmOverlay').remove(); commitReportToQuickBooks('${reportNumber}');"
-            style="padding:10px 16px; border:0; border-radius:6px; background:#dc3545; color:white; font-weight:bold; cursor:pointer;">
-            Yes, Submit to QB
-          </button>
-        </div>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(overlay);
+  return wscSubmitLiveQB(reportNumber, document.getElementById('qb-'+reportNumber));
 };
 
 window.showWSCMessage = function(title, message) {
@@ -7581,277 +7536,13 @@ window.showWSCConfirm = function(title, message) {
     });
 };
     
-window.commitReportToQuickBooks = async function commitReportToQuickBooks(reportNumber) {
-startGlobeLoading();
-  const submissionReportGlobe = document.querySelector("#reportOptionsScreen .report-globe");
-  if (submissionReportGlobe) {
-    submissionReportGlobe.style.display = "block";
-    submissionReportGlobe.classList.add("spinning");
-  }
-  
-  if (!auth.currentUser) {
-    stopGlobeLoading();
-  if (submissionReportGlobe) {
-    submissionReportGlobe.classList.remove("spinning");
-    submissionReportGlobe.style.display = "none";
-  }
-    window.showWSCMessage("WSC", "Please sign in before committing a report to QuickBooks.");
-    return;
-  }
-
-  if (!String(reportNumber).startsWith("ST-")) {
-    stopGlobeLoading();
-  if (submissionReportGlobe) {
-    submissionReportGlobe.classList.remove("spinning");
-    submissionReportGlobe.style.display = "none";
-  }
-    window.showWSCMessage("WSC", "Only Stock Take (ST) reports can be committed to QuickBooks.");
-    return;
-  }
-try {
-  const idToken = await window.getCurrentStaffToken();
-
-  const response = await fetch(
-    "https://warehouse-stock-reports.tmerry.workers.dev",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        action: "commitStockTakeToQuickBooks",
-        reportNumber: reportNumber,
-        idToken: idToken
-      })
-    }
-  );
-
-  const responseText = await response.text();
-
-  const result = responseText.trim().startsWith("{")
-    ? JSON.parse(responseText)
-    : { success: false, error: responseText };
-
-  if (!response.ok || !result.success) {
-    throw new Error(result.error || "QuickBooks submission failed.");
-  }
-
-  stopGlobeLoading();
-  if (submissionReportGlobe) {
-    submissionReportGlobe.classList.remove("spinning");
-    submissionReportGlobe.style.display = "none";
-  }
-   window.showWSCMessage(
-  "Submitted to QuickBooks",
-  reportNumber + " has been successfully committed to QuickBooks."
-);
-
-const button = document.getElementById("qb-" + reportNumber);
-
-if (button) {
-  button.textContent = "Committed to QB";
-  button.style.background = "#28a745";
-  button.disabled = true;
-  button.style.cursor = "not-allowed";
-  button.title = "Already submitted to QuickBooks";
-  button.onclick = function () {
-    window.showWSCMessage(
-      "Already Submitted",
-      "This stock take has already been committed to QuickBooks."
-    );
-  };
-}
-
-} catch (error) {
-  stopGlobeLoading();
-  if (submissionReportGlobe) {
-    submissionReportGlobe.classList.remove("spinning");
-    submissionReportGlobe.style.display = "none";
-  }
-
-  try {
-    const status = await getQuickBooksCommitStatus(reportNumber);
-
-    if (status.submitted) {
-      window.showWSCMessage(
-        "Submitted to QuickBooks",
-        reportNumber + " has been successfully committed to QuickBooks."
-      );
-
-      await window.updateQuickBooksButton(reportNumber);
-      return;
-    }
-  } catch (statusError) {
-    console.log("Could not verify QuickBooks submission:", statusError);
-  }
-
-  window.showWSCMessage(
-    "QuickBooks Submission Failed",
-    String(error && error.message ? error.message : error)
-  );
-}
-};
-  
-async function getQuickBooksCommitStatus(reportNumber) {
-  const idToken = await window.getCurrentStaffToken();
-
-  const response = await fetch(
-    "https://warehouse-stock-reports.tmerry.workers.dev",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        action: "getQuickBooksCommitStatus",
-        reportNumber: reportNumber,
-        idToken: idToken
-      })
-    }
-  );
-
-  const responseText = await response.text();
-
-  const result = responseText.trim().startsWith("{")
-    ? JSON.parse(responseText)
-    : { success: false, error: responseText };
-
-  if (!response.ok || !result.success) {
-    throw new Error(
-      result.error || "Could not check QuickBooks status."
-    );
-  }
-
-  return result;
-}
-  window.updateQuickBooksButton = async function (reportNumber) {
-  const button = document.getElementById("qb-" + reportNumber);
-
-  if (!button) return;
-
-  try {
-  const status = await getQuickBooksCommitStatus(reportNumber);
-
-  if (status.submitted) {
-    button.textContent = "Committed to QB";
-    button.style.background = "#28a745";
-    button.disabled = true;
-    button.style.cursor = "not-allowed";
-    button.title = "Already submitted to QuickBooks";
-    button.onclick = function() {
-      window.showWSCMessage(
-        "Already Submitted",
-        "This stock take has already been committed to QuickBooks."
-      );
-    };
-  }
-} catch (error) {
-  console.log("Could not load QuickBooks commit status:", error);
-}
-if (wscPermissions) wscPaintPermissions(wscPermissions);
-}
-
-// SC QuickBooks submission requires a verified status and administrator switch.
-window.scQuickBooksSubmitting = false;
-window.readStockCountQuickBooksStatus = async function(reportNumber) {
-  if (!/^SC-\d{6}$/.test(reportNumber)) throw new Error("Invalid SC report number.");
-  const idToken = await window.getCurrentStaffToken();
-  const response = await fetch("https://warehouse-stock-reports.tmerry.workers.dev", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "getStockCountQuickBooksStatus", reportNumber, idToken })
-  });
-  const result = await response.json();
-  if (!response.ok || result.success === false || result.error) {
-    throw new Error(result.error || "SC QuickBooks status unavailable.");
-  }
-  return result;
-};
-
-window.updateStockCountQuickBooksStatus = async function(reportNumber) {
-  const button = document.getElementById("qb-" + reportNumber);
-  if (!button || !/^SC-\d{6}$/.test(reportNumber)) return;
-  button.disabled = true;
-  button.style.background = "#777";
-  button.style.cursor = "not-allowed";
-  button.textContent = "SC — Checking QB Status";
-  try {
-    const result = await window.readStockCountQuickBooksStatus(reportNumber);
-    if (result.submitted === true || String(result.qbStatus || "").toLowerCase() === "submitted") {
-      button.textContent = "Committed to QB";
-      button.style.background = "#28a745";
-      button.title = "Already submitted to QuickBooks";
-    } else if (String(result.qbStatus || "").trim()) {
-      button.textContent = "SC — QB " + result.qbStatus;
-      button.title = "Existing submission status requires manual verification; no retry permitted";
-    } else if (wscPermissions?.quickBooks?.SC === true) {
-      button.disabled = false;
-      button.style.background = "#dc3545";
-      button.style.cursor = "pointer";
-      button.textContent = "Commit to QB";
-      button.title = "Submit " + reportNumber + " to QuickBooks (currently disabled)";
-    } else {
-      button.textContent = "QB Submissions Disabled";
-      button.title = "SC QuickBooks submissions are disabled in Administrator Settings";
-    }
-  } catch (error) {
-    console.warn("SC QuickBooks status check failed:", error.message);
-    button.textContent = "SC — Status Unavailable";
-    button.title = "Could not verify status. Submission is blocked.";
-  }
-};
-
-window.confirmStockCountQuickBooksCommit = async function(reportNumber) {
-  if (!/^SC-\d{6}$/.test(reportNumber) || window.scQuickBooksSubmitting) return;
-  const button = document.getElementById("qb-" + reportNumber);
-  if (!button || button.disabled || wscPermissions?.quickBooks?.SC !== true) return;
-  window.scQuickBooksSubmitting = true;
-  button.disabled = true;
-  button.textContent = "Checking QB Status...";
-  try {
-    const before = await window.readStockCountQuickBooksStatus(reportNumber);
-    if (before.submitted || String(before.qbStatus || "").trim()) {
-      throw new Error("A QuickBooks submission status already exists. Do not retry; verify the record first.");
-    }
-    const approved = await window.showWSCConfirm(
-      "WSC — QuickBooks",
-      "Submit " + reportNumber + " to QuickBooks? This will adjust stock for the counted products. Please confirm the quantities are correct."
-    );
-    if (!approved) return;
-    // Reuse the existing report globe and Home-button loading layout during SC submission.
-    const reportGlobe = document.querySelector("#reportOptionsScreen .report-globe");
-    const reportHomeButton = document.querySelector("#reportOptionsScreen .report-back-button");
-    if (reportGlobe) {
-      reportGlobe.style.display = "block";
-      reportGlobe.classList.add("spinning");
-    }
-    if (reportHomeButton) reportHomeButton.classList.add("loading");
-    button.textContent = "Submitting to QB...";
-    // No automatic retry: an ambiguous response may mean QuickBooks already received the write.
-    const idToken = await window.getCurrentStaffToken();
-    const response = await fetch("https://warehouse-stock-reports.tmerry.workers.dev", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "commitStockCountToQuickBooks", reportNumber, idToken })
-    });
-    const result = await response.json();
-    if (!response.ok || result.success !== true) {
-      throw new Error(result.error || "QuickBooks submission could not be confirmed. Check status before taking any further action.");
-    }
-    window.showWSCMessage("Submitted to QuickBooks", reportNumber + " was submitted to QuickBooks successfully.");
-  } catch (error) {
-    window.showWSCMessage("SC QuickBooks Submission", error.message + " Do not retry until the QuickBooks and session status have been checked.");
-  } finally {
-    const reportGlobe = document.querySelector("#reportOptionsScreen .report-globe");
-    const reportHomeButton = document.querySelector("#reportOptionsScreen .report-back-button");
-    if (reportGlobe) {
-      reportGlobe.classList.remove("spinning");
-      reportGlobe.style.display = "none";
-    }
-    if (reportHomeButton) reportHomeButton.classList.remove("loading");
-    window.scQuickBooksSubmitting = false;
-    await window.updateStockCountQuickBooksStatus(reportNumber);
-  }
+window.commitReportToQuickBooks = window.confirmQuickBooksCommit;
+async function getQuickBooksCommitStatus(reportNumber) { return wscReadLiveQBStatus(reportNumber); }
+window.updateQuickBooksButton = wscRefreshLiveQBButton;
+window.readStockCountQuickBooksStatus = wscReadLiveQBStatus;
+window.updateStockCountQuickBooksStatus = wscRefreshLiveQBButton;
+window.confirmStockCountQuickBooksCommit = function(reportNumber) {
+  return wscSubmitLiveQB(reportNumber, document.getElementById('qb-'+reportNumber));
 };
 
 async function getQuickBooksCommitStatusForST(reportNumber) {
