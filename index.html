@@ -2963,6 +2963,35 @@ async function wscCheckNewInventoryAllowed() {
 }
 
 
+// Reuse the established WSC white-box globe for BOM actions.
+function wscBOMLoading(message) {
+  document.getElementById('wscBOMActionLoading')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'wscBOMActionLoading';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:10020;background:rgba(255,255,255,.48);display:flex;align-items:center;justify-content:center;pointer-events:all';
+  const panel = document.createElement('div');
+  panel.style.cssText = 'display:flex;align-items:center;gap:14px;padding:18px 24px;border-radius:12px;background:white;box-shadow:0 5px 24px rgba(0,0,0,.2);color:#304B70;font-weight:600';
+  const globe = document.createElement('img');
+  globe.src = 'Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png';
+  globe.alt = ''; globe.style.cssText = 'width:54px;height:54px;object-fit:contain;animation:globeSpin 3s linear infinite';
+  const label = document.createElement('span'); label.textContent = message || 'Processing…';
+  panel.append(globe,label);overlay.appendChild(panel);document.body.appendChild(overlay);
+}
+function wscBOMLoadingEnd() { document.getElementById('wscBOMActionLoading')?.remove(); }
+let wscBOMChosenNumber = '';
+async function wscGetNewestCompletedBOM() {
+  const idToken = await window.getCurrentStaffToken();
+  const response = await fetch('https://warehouse-stock-reports.tmerry.workers.dev', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'findBOMReports',searchBy:'date',dateFrom:'2000-01-01',dateTo:'2099-12-31',idToken})
+  });
+  const result = await response.json();
+  if (!response.ok || !result.success) throw new Error(result.error || 'Could not check saved BOM reports');
+  const completed = (result.reports || []).filter(r => /^BOM-\d{6}$/.test(r.reportNumber) &&
+    /^(report only|completed|complete|saved)$/i.test(String(r.status || '').trim()));
+  completed.sort((a,b) => Number(b.reportNumber.slice(4)) - Number(a.reportNumber.slice(4)));
+  return completed.length ? completed[0].reportNumber : '';
+}
 // Optional BOM preview before beginning a Stock Take. Report only, never commits.
 let wscBOMBusy = false;
 function wscShowBOMChoice(button) {
@@ -2973,24 +3002,45 @@ function wscShowBOMChoice(button) {
   const card = document.createElement('div');
   card.style.cssText = 'background:white;border-radius:12px;max-width:420px;width:100%;padding:24px;text-align:center;box-shadow:0 8px 25px #0003';
   const heading = document.createElement('h2'); heading.textContent = 'BOM Stock Check';
-  const info = document.createElement('p'); info.textContent = 'You can check BOM stock before starting a new Stock Take. This saves a numbered, read-only Production report. No QuickBooks stock will change.';
+  const info = document.createElement('p'); info.textContent = 'Check your BOM stock before starting a new Stock Take. A numbered BOM report will be saved and can be linked to your next Stock Take. No QuickBooks stock quantities will be changed.';
   const preview = document.createElement('button'); preview.type='button'; preview.textContent='Check BOM Stock';
   const normal = document.createElement('button'); normal.type='button'; normal.textContent='New Stock Take';
   const cancel = document.createElement('button'); cancel.type='button'; cancel.textContent='Cancel';
   [preview,normal,cancel].forEach(b => {b.style.cssText='display:block;width:100%;margin:10px 0;padding:12px';card.appendChild(b);});
   card.prepend(info); card.prepend(heading); overlay.appendChild(card); document.body.appendChild(overlay);
-  cancel.onclick=()=>overlay.remove();
+  cancel.onclick=()=>{wscBOMLoading('Closing BOM Stock Check…');overlay.remove();wscBOMLoadingEnd();};
   normal.onclick=async()=>{
+    if (wscBOMBusy) return;
+    wscBOMBusy = true;
+    preview.disabled = normal.disabled = cancel.disabled = true;
+    wscBOMLoading('Checking saved BOM reports…');
+    let latest = '';
+    try {
+      latest = await wscGetNewestCompletedBOM();
+    } catch (error) {
+      wscBOMLoadingEnd();
+      window.showWSCMessage('BOM Stock Check', 'Unable to verify the newest completed BOM. No Stock Take has been started.\n\n' + String(error.message || error));
+      preview.disabled = normal.disabled = cancel.disabled = false;
+      wscBOMBusy = false;
+      return;
+    }
+    wscBOMLoadingEnd();
     overlay.remove();
-    const proceed=await window.showWSCConfirm('BOM Stock Check',
-      'We recommend completing a BOM Stock Check before starting a new Stock Take.\n\nContinue without checking BOM stock?');
-    if(proceed)selectStockTakeQuarter(button);
-    else wscShowBOMChoice(button);
+    wscBOMBusy = false;
+    const proceed = await window.showWSCConfirm('BOM Stock Check', latest
+      ? latest + ' has been completed.\n\nDo you want to tie this BOM report to your new Stock Take?\n\nOK = Yes, Cancel = No.'
+      : 'We recommend completing a BOM Stock Check before starting a new Stock Take.\n\nContinue without checking BOM stock?');
+    if (!latest && !proceed) { wscShowBOMChoice(button); return; }
+    wscBOMChosenNumber = latest && proceed ? latest : '';
+    wscBOMLoading('Preparing Stock Take…');
+    try { await selectStockTakeQuarter(button); }
+    finally { wscBOMLoadingEnd(); }
   };
   preview.onclick=async()=>{
     if(wscBOMBusy)return;
     wscBOMBusy=true;preview.disabled=true;normal.disabled=true;cancel.disabled=true;
     const original=preview.textContent;preview.textContent='Preparing BOM report…';
+    wscBOMLoading('Preparing BOM report…');
     try {
       const idToken=await window.getCurrentStaffToken();
       const response=await fetch('https://warehouse-stock-reports.tmerry.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'getBOMReport',idToken})});
@@ -3033,7 +3083,7 @@ function wscShowBOMChoice(button) {
       close.onclick=()=>done.remove();
       panel.append(download,close);done.appendChild(panel);document.body.appendChild(done);
     }catch(error){window.showWSCMessage('BOM Report',String(error.message||error));}
-    finally{wscBOMBusy=false;preview.disabled=false;normal.disabled=false;cancel.disabled=false;preview.textContent=original;}
+    finally{wscBOMLoadingEnd();wscBOMBusy=false;preview.disabled=false;normal.disabled=false;cancel.disabled=false;preview.textContent=original;}
   };
 }
 
@@ -3080,6 +3130,7 @@ async function selectStockTakeQuarter(clickedButton) {
   });
 
   overlay.querySelector("[data-cancel]").onclick = () => {
+    wscBOMChosenNumber = '';
     overlay.remove();
   };
 
@@ -3134,6 +3185,9 @@ if (startLoading) {
 
     localStorage.setItem("activeStockTake", result.reportNumber);
     localStorage.setItem("activeStockTakePeriod", stockTakePeriod);
+    // Preserve the chosen BOM for this specific ST, including across device reloads.
+    localStorage.setItem('wscBOMChoice_' + result.reportNumber, wscBOMChosenNumber || '');
+    wscBOMChosenNumber = '';
 
     console.log("AFTER SAVE activeStockTake =", localStorage.getItem("activeStockTake"));
 
@@ -5221,23 +5275,24 @@ if (!result || result.verificationRequired) {
 }
 
     
-    // The Stock Take is already closed. A failed BOM link must not undo completion.
-    try {
-      const linkChoice = await window.showWSCConfirm('Link BOM Report',
-        'Would you like the latest saved BOM report to be tied to ' + stockTake.reportNumber + '?\n\nYes links it permanently. No keeps the reports separate.');
-      if (linkChoice) {
+    // Honour the BOM choice made at Stock Take creation, not a newer BOM.
+    const chosenBOM = localStorage.getItem('wscBOMChoice_' + stockTake.reportNumber) || '';
+    if (chosenBOM) {
+      wscBOMLoading('Linking selected BOM report…');
+      try {
         const linkToken = await window.getCurrentStaffToken();
         const linkResponse = await fetch('https://warehouse-stock-reports.tmerry.workers.dev', {
           method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({action:'linkLatestBOMToStockTake',reportNumber:stockTake.reportNumber,idToken:linkToken})
+          body:JSON.stringify({action:'linkLatestBOMToStockTake',reportNumber:stockTake.reportNumber,bomReportNumber:chosenBOM,idToken:linkToken})
         });
         const linkResult = await linkResponse.json();
         if (!linkResponse.ok || !linkResult.success) throw new Error(linkResult.error || 'Could not link BOM report');
+        localStorage.removeItem('wscBOMChoice_' + stockTake.reportNumber);
         window.showWSCMessage('BOM Linked', stockTake.reportNumber + ' tied with ' + linkResult.bomReportNumber);
-      }
-    } catch (linkError) {
-      window.showWSCMessage('Stock Take Finished — BOM Link Not Saved',
-        'The Stock Take has finished, but the BOM link was not saved: ' + String(linkError.message || linkError));
+      } catch (linkError) {
+        window.showWSCMessage('Stock Take Finished — BOM Link Not Saved',
+          'The Stock Take has finished, but the BOM link was not saved: ' + String(linkError.message || linkError));
+      } finally { wscBOMLoadingEnd(); }
     }
 
     localStorage.removeItem("activeStockTake");
