@@ -1083,6 +1083,7 @@ function validateTradeShowFields() {
     📧 Email Report
   </button>
 
+  <button type="button" onclick="wscPrintReportPdf(document.getElementById('tradeShowEmailButton').dataset.reportNumber,this)">🖨 Print PDF</button>
   <button
     type="button"
     id="tradeShowCommitQBButton"
@@ -1339,8 +1340,8 @@ function validateTradeShowFields() {
 
   <p id="reportDisplayDates"></p>
 
-  <button onclick="wscPrintSelectedReport(document.getElementById('reportDisplayScreen'))">
-    Print / Save PDF
+  <button onclick="wscPrintReportPdf((document.getElementById('reportDisplayTitle').textContent.match(/(?:ST|SC|TR|DL|BOM)-\d{6}/)||[])[0],this)">
+    Print PDF
   </button>
 
   <div id="reportDisplayContent"></div>
@@ -4296,7 +4297,7 @@ emailPdfButton.onclick = () => {
   window.emailDeliveryPdf(delivery.reportNumber);
 };
       
-item.append(heading, details, viewPdfButton, emailPdfButton);
+item.append(heading, details, viewPdfButton, emailPdfButton, wscMakePrintPdfButton(delivery.reportNumber));
 results.appendChild(item);
     });
 
@@ -4569,7 +4570,7 @@ async function searchTRReports() {
       qb.style.cssText = "width:auto;background:#777;color:white;border:0;border-radius:6px;padding:9px 14px;font-weight:bold;cursor:not-allowed";
       qb.dataset.trQBCard = show.reportNumber;
       qb.onclick = () => wscSubmitLiveQB(show.reportNumber,qb);
-      actions.append(view, email, qb);
+      actions.append(view, email, wscMakePrintPdfButton(show.reportNumber), qb);
       row.append(title, actions);
       card.appendChild(row);
       // Query status without opening the report or making an inventory adjustment.
@@ -5876,58 +5877,65 @@ function wscOpenBOMPdf(result,print){
   if(print)win.addEventListener('load',()=>{try{win.print();}catch(e){}},{once:true});
   setTimeout(()=>URL.revokeObjectURL(url),120000);
 }
-// Print an isolated copy: never include the app's search form or other reports.
-function wscPrintSelectedReport(source) {
-  if(!source)return;
-  const copy=source.cloneNode(true);
-  copy.querySelectorAll('button,input,select,textarea,script,style,iframe').forEach(el=>el.remove());
-  [copy,...copy.querySelectorAll('*')].forEach(el=>{
-    // Screen widths, scroll containers and hidden panels must not clip the paper copy.
-    [...el.attributes].forEach(attr=>{
-      if(['style','class','id','hidden'].includes(attr.name) || attr.name.startsWith('on'))el.removeAttribute(attr.name);
-    });
-  });
-  copy.querySelectorAll('details').forEach(el=>el.open=true);
-  if(copy.tagName==='DETAILS')copy.open=true;
-  const summary=copy.querySelector('summary');
-  let title='WSC Stock Report';
-  if(summary){
-    title=summary.textContent.replace(/\s+/g,' ').trim();
-    const heading=document.createElement('h1');heading.textContent=title;summary.replaceWith(heading);
+// Every report Print action opens the actual server-generated PDF used for email.
+async function wscPrintReportPdf(reportNumber,button){
+  const number=String(reportNumber||'').trim().toUpperCase();
+  if(!/^(ST|SC|TR|DL|BOM)-\d{6}$/.test(number)){
+    window.showWSCMessage('Print PDF','Open a saved report before printing.');return;
   }
-  document.getElementById('wscReportPrintFrame')?.remove();
-  const frame=document.createElement('iframe');frame.id='wscReportPrintFrame';
-  frame.title='Selected report print layout';frame.setAttribute('aria-hidden','true');
-  frame.style.cssText='position:fixed;left:-10000px;top:0;width:1120px;height:800px;border:0;';
-  frame.onload=()=>{
-    const win=frame.contentWindow;
-    if(!win)return;
-    win.document.title=title;
-    win.addEventListener('afterprint',()=>setTimeout(()=>frame.remove(),0),{once:true});
-    // Wait for the isolated document to finish layout before opening print preview.
-    win.requestAnimationFrame(()=>win.requestAnimationFrame(()=>{
-      try{win.focus();win.print();}
-      catch(e){frame.remove();window.showWSCMessage('Print report','Unable to open print preview. Please try again.');}
-    }));
-  };
-  frame.srcdoc='<!doctype html><html><head><meta charset="utf-8"><title>WSC Report</title><style>'+
-    '@page{size:A4 landscape;margin:12mm}body{font:11pt Arial,sans-serif;color:#172b4d;background:white;margin:0}'+
-    'h1,h2{font-size:17pt;margin:0 0 12pt}table{width:100%;border-collapse:collapse;table-layout:fixed}'+
-    'th,td{border:1px solid #bbc4ce;padding:7pt;text-align:left;vertical-align:top;overflow-wrap:anywhere}'+
-    'th{background:#e8edf2;font-weight:bold}thead{display:table-header-group}tr{break-inside:avoid;page-break-inside:avoid}'+
-    'details,div{overflow:visible;max-width:none}summary{display:block}button{display:none}'+
-    '</style></head><body>'+copy.outerHTML+'</body></html>';
-  document.body.append(frame);
+  if(button?.dataset.pdfBusy==='true')return;
+  // Reserve the tab during the click, before awaiting the authenticated PDF request.
+  const viewer=window.open('about:blank','_blank');
+  if(!viewer){window.showWSCMessage('Print PDF','Allow pop-ups for WSC, then press Print PDF again.');return;}
+  viewer.document.title=number+' — PDF';
+  viewer.document.body.textContent='Preparing '+number+' PDF… When it opens, use the PDF viewer’s Print icon if the print dialog does not open automatically.';
+  const oldLabel=button?.textContent;
+  if(button){button.dataset.pdfBusy='true';button.disabled=true;button.textContent='Preparing PDF…';}
+  try{
+    const result=await wscBOMRequest({action:'getReportPdf',reportNumber:number});
+    if(typeof result.pdfBase64!=='string')throw new Error('The server did not return a PDF.');
+    const bytes=atob(result.pdfBase64);
+    if(!bytes.startsWith('%PDF-'))throw new Error('The returned report is not a valid PDF.');
+    if(viewer.closed)return;
+    const array=Uint8Array.from(bytes,c=>c.charCodeAt(0));
+    const url=URL.createObjectURL(new Blob([array],{type:'application/pdf'}));
+    viewer.addEventListener('load',()=>{
+      try{viewer.focus();viewer.print();}catch(e){/* The native PDF viewer still provides Print. */}
+    },{once:true});
+    viewer.location.replace(url);
+    setTimeout(()=>URL.revokeObjectURL(url),600000);
+  }catch(e){
+    if(!viewer.closed)viewer.close();
+    window.showWSCMessage('Print PDF',String(e.message||e));
+  }finally{
+    if(button){button.disabled=false;delete button.dataset.pdfBusy;button.textContent=oldLabel;}
+  }
+}
+function wscMakePrintPdfButton(number){
+  const button=document.createElement('button');button.type='button';button.textContent='🖨 Print PDF';button.className='wscPrintReport';
+  button.style.cssText='width:auto;padding:9px 14px;background:#244b72;color:white;border:0;border-radius:6px;cursor:pointer';
+  button.onclick=e=>{e.preventDefault();e.stopPropagation();wscPrintReportPdf(number,button);};
+  return button;
 }
 function wscAddPrintButtons(container){
-  container.querySelectorAll('details').forEach(details=>{
+  container.querySelectorAll('details[data-report-number]').forEach(details=>{
     const summary=details.querySelector('summary');if(!summary||summary.querySelector('.wscPrintReport'))return;
-    const btn=document.createElement('button');btn.type='button';btn.className='wscPrintReport';btn.textContent='🖨 Print';
-    btn.style.cssText='width:auto;padding:8px 12px;background:#244b72;color:white;border:0;border-radius:6px;cursor:pointer';
-    btn.onclick=e=>{e.preventDefault();e.stopPropagation();wscPrintSelectedReport(details);};
-    summary.appendChild(btn);
+    summary.append(wscMakePrintPdfButton(details.dataset.reportNumber));
   });
 }
+async function wscEmailBOMPdf(number,button){
+  if(button.disabled)return;
+  const recipient=await window.showWSCInput('Email PDF Report','Email '+number+' to:',window.getCurrentStaffEmail?.()||'');
+  if(recipient===null)return;
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient.trim())){window.showWSCMessage('Email PDF','Enter a valid email address.');return;}
+  button.disabled=true;const previous=button.textContent;button.textContent='Emailing PDF…';
+  try{
+    await wscBOMRequest({action:'emailBOMReport',reportNumber:number,recipient:recipient.trim()});
+    window.showWSCMessage('Email PDF','BOM report emailed successfully.');
+  }catch(e){window.showWSCMessage('Email PDF','The email outcome could not be confirmed. Check the recipient’s inbox before sending again. '+String(e.message||e));}
+  finally{button.disabled=false;button.textContent=previous;}
+}
+
 async function wscRunUnifiedReport() {
   const type=document.getElementById('wscReportSelect').value;
   const search=document.getElementById('wscReportSearchBy').value;
@@ -5950,7 +5958,9 @@ async function wscRunUnifiedReport() {
         const note=document.createElement('p');note.textContent='QuickBooks: '+(item.qbStatus||'Not Committed');card.appendChild(note);
         const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
         const open=async print=>{wscUnifiedBusy(true);try{const data=await wscBOMRequest({action:'openBOMReport',reportNumber:item.reportNumber});wscOpenBOMPdf(data,print);}catch(e){window.showWSCMessage('BOM Reports',String(e.message||e));}finally{wscUnifiedBusy(false);}};
-        for(const [label,print] of [['View PDF',false],['Print',true]]){const button=document.createElement('button');button.type='button';button.textContent=label;button.style.width='auto';button.onclick=()=>open(print);actions.appendChild(button);}
+        const viewPdf=document.createElement('button');viewPdf.type='button';viewPdf.textContent='View PDF';viewPdf.style.width='auto';viewPdf.onclick=()=>open(false);
+        const emailPdf=document.createElement('button');emailPdf.type='button';emailPdf.textContent='✉ Email PDF';emailPdf.style.width='auto';emailPdf.onclick=()=>wscEmailBOMPdf(item.reportNumber,emailPdf);
+        actions.append(viewPdf,emailPdf,wscMakePrintPdfButton(item.reportNumber));
         const previewButton=document.createElement('button');previewButton.type='button';previewButton.textContent='Review QB Adjustment';previewButton.style.width='auto';
         wscPaintLiveQBButton(previewButton,item.reportNumber,item);
         previewButton.onclick=async()=>{
@@ -5961,7 +5971,7 @@ async function wscRunUnifiedReport() {
         actions.appendChild(previewButton);
         card.appendChild(actions);target.appendChild(card);
       }
-      document.getElementById('wscReportInfo').textContent='BOM reports can be viewed and printed. Email is not yet supported by the saved BOM report endpoint.';
+      document.getElementById('wscReportInfo').textContent='BOM reports can be viewed, emailed or printed as PDF.';
     }catch(e){window.showWSCMessage('BOM Reports',String(e.message||e));}
     finally{wscUnifiedBusy(false);}
     return;
@@ -6512,7 +6522,7 @@ const isInProgress = !!inProgressStockTake;
   
   return `
 
-  <details style="margin:15px 0; padding:15px; border:1px solid #ddd; border-radius:8px;">
+  <details data-report-number="${escapeHtml(reportNumber)}" style="margin:15px 0; padding:15px; border:1px solid #ddd; border-radius:8px;">
   <summary style="cursor:pointer; font-weight:bold; display:flex; align-items:center; justify-content:space-between; gap:12px;">
 
   <span style="flex:1;">
@@ -6520,7 +6530,7 @@ const isInProgress = !!inProgressStockTake;
   </span>
 
   <span style="display:flex; gap:8px; align-items:center;">
-
+    <button type="button" class="wscPrintReport" onclick="event.preventDefault();event.stopPropagation();wscPrintReportPdf(this.closest('details').dataset.reportNumber,this)" style="width:auto;padding:8px 12px;">🖨 Print PDF</button>
     <button
       type="button"
       onclick="event.preventDefault(); event.stopPropagation(); this.closest('details').open = !this.closest('details').open; this.textContent = this.closest('details').open ? 'Close' : 'View';"
