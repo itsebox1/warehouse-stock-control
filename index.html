@@ -6724,7 +6724,7 @@ if (selectedReportType === "SC") {
 window.WSC_ADMIN_URL = "https://warehouse-stock-reports.tmerry.workers.dev";
 let wscAdminData = null;
 let wscPermissions = null;
-const wscLabels = {ST:"📦 ST – Stock Take",SC:"📋 SC – Stock Count",TR:"🎪 TR – Trade Show",DL:"🚚 DL – Delivery",DATES:"📅 Check Dates"};
+const wscLabels = {ST:"📦 ST – Stock Take",SC:"📋 SC – Stock Count",TR:"🎪 TR – Trade Show",BOM:"🧩 BOM – Bill of Materials",DL:"🚚 DL – Delivery",DATES:"📅 Check Dates"};
 async function wscAdminRequest(action, extra={}) {
   const idToken = await window.getCurrentStaffToken();
   const response = await fetch(window.WSC_ADMIN_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,idToken,...extra})});
@@ -6951,7 +6951,7 @@ function wscRenderAdminStaff(){
 }
 function wscRenderAdminQB(){
   const box=document.getElementById("wscQBToggles");box.replaceChildren();
-  ["ST","SC","TR"].forEach(area=>box.appendChild(wscSwitchRow(wscLabels[area],wscAdminData.quickBooks[area],input=>wscSaveSwitch(input,"QB",area))));
+  ["ST","SC","TR","BOM"].forEach(area=>box.appendChild(wscSwitchRow(wscLabels[area],wscAdminData.quickBooks[area],input=>wscSaveSwitch(input,"QB",area))));
 }
 async function wscSaveSwitch(input,settingType,area,staffEmail){
   const enabled=input.checked;input.disabled=true;
