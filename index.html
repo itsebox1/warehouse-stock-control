@@ -4666,6 +4666,7 @@ async function fetchHomeDashboard() {
       ? { success: false, error: String(error), [key]: [] }
       : { success: true, [key]: Array.isArray(result[key]) ? result[key] : [] };
   }
+  if (result.qbCommitments) lists.getHomeQBCommitments = result.qbCommitments;
   return lists;
 }
 
@@ -4753,13 +4754,24 @@ async function wscLoadOutstandingQB() {
   const list = document.getElementById('wscOutstandingQBList');
   if (!module || !list) return;
   module.hidden = true;
-  const idToken = await window.getCurrentStaffToken();
-  const response = await fetch('https://warehouse-stock-reports.tmerry.workers.dev', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({action:'getHomeQBCommitments',idToken})
-  });
-  const result = await response.json();
-  if (!response.ok || !result.success) throw new Error(result.error || 'Unable to check QB commitments.');
+  list.replaceChildren();
+  let result = wscHomeDashboardLists?.getHomeQBCommitments;
+  if (!result) {
+    // Compatibility with an older backend while the deployment is being updated.
+    const idToken = await window.getCurrentStaffToken();
+    const response = await fetch('https://warehouse-stock-reports.tmerry.workers.dev', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'getHomeQBCommitments',idToken})
+    });
+    result = await response.json();
+    if (!response.ok) result = {success:false,error:result.error || 'Unable to check QB commitments.'};
+  }
+  if (!result.success) {
+    module.hidden=false;
+    module.querySelector('.wsc-module-count').textContent='Report status unavailable';
+    list.textContent='Unable to check outstanding reports. Refresh Home to try again.';
+    throw new Error(result.error || 'Unable to check QB commitments.');
+  }
   const reports = result.reports || [];
   if (!reports.length) return;
   module.hidden = false;
