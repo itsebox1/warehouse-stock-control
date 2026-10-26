@@ -1961,6 +1961,8 @@ async function startScanner() {
 
   try {
     scanner = new Html5Qrcode("reader");
+    const activeScanner=scanner;
+    let decodedHandled=false;
 
     await scanner.start(
       { facingMode: "environment" },
@@ -1970,14 +1972,14 @@ async function startScanner() {
       },
 
       async function(decodedText) {
-        if (lookupInProgress) return;
-
+        if (decodedHandled || lookupInProgress) return;
+        decodedHandled=true;
         try {
-          if (scanner && scanner.isScanning) {
-            await scanner.stop();
-          }
-
-          await lookupProduct(decodedText);
+          const stopCamera=(async()=>{
+            try{if(activeScanner.isScanning)await activeScanner.stop();}
+            catch(e){console.warn('QR camera stop:',e);}
+          })();
+          await Promise.all([stopCamera,lookupProduct(decodedText)]);
 
         } catch (error) {
           result.textContent =
@@ -7788,9 +7790,8 @@ async function wscDatesStartScanner(amend){
     await scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:220,height:220}},async decoded=>{
       if(found || wscDatesBusy)return;
       found=true;
-      await wscDatesStopScanner();
       document.getElementById(isAmend?'wscDatesAmendSku':'wscDatesSku').value=String(decoded).trim();
-      await wscDatesFind(isAmend);
+      await Promise.all([wscDatesStopScanner(),wscDatesFind(isAmend)]);
     },()=>{});
     if(window.wscDatesScanner===scanner)wscDatesMessage('Point the camera at a product QR code.');
     else {try{if(scanner.isScanning)await scanner.stop();await scanner.clear();}catch(e){}}
