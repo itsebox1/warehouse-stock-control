@@ -498,7 +498,9 @@ input[type="reset"]:disabled,
     <button type="button" onclick="wscDatesHome()" style="width:100%;">🏠 Home</button>
     <h2>📅 Check Dates</h2>
     <label for="wscDatesSku">Product SKU</label>
-    <input id="wscDatesSku" type="text" placeholder="Enter SKU" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;margin:8px 0;">
+    <input id="wscDatesSku" type="text" placeholder="Enter SKU" autocomplete="off" aria-controls="wscDatesSuggestions" aria-describedby="wscDatesSuggestionsStatus" oninput="wscDatesSuggest()" onkeydown="wscDatesSuggestionKey(event)" style="width:100%;box-sizing:border-box;padding:12px;margin:8px 0;">
+    <p id="wscDatesSuggestionsStatus" role="status" aria-live="polite" style="font-size:.9em;margin:4px 0;"></p>
+    <div id="wscDatesSuggestions" aria-label="Matching products" hidden style="max-height:320px;overflow-y:auto;border:1px solid #ccd5df;border-radius:8px;margin-bottom:12px;"></div>
     <button id="wscDatesFind" type="button" onclick="wscDatesFind()" style="width:100%;">Find Product</button>
     <button id="wscDatesScanButton" type="button" onclick="wscDatesStartScanner()" style="width:100%;margin-top:10px;">📷 Scan QR Code</button>
     <div id="wscDatesQrReader" style="display:none;width:100%;max-width:420px;margin:12px auto;"></div>
@@ -7914,6 +7916,71 @@ async function wscDatesReadPhoto(input){
   finally{wscDatesSetBusy(false);input.value='';const confirmButton=document.getElementById('wscDatesSave');if(confirmButton)confirmButton.disabled=false;}
 }
 
+// Load only on opening Check Dates. Typing filters this in-memory list.
+let wscDatesProducts = [];
+let wscDatesCatalogueState = 'idle';
+let wscDatesCatalogueGeneration = 0;
+function wscDatesHideSuggestions() {
+  document.getElementById('wscDatesSuggestions').replaceChildren();
+  document.getElementById('wscDatesSuggestions').hidden=true;
+  document.getElementById('wscDatesSuggestionsStatus').textContent='';
+}
+function wscDatesPrefixMatches(products, value) {
+  const prefix=String(value || '').trim().toLowerCase();
+  return prefix.length<3 ? [] : products.filter(p=>p.sku.toLowerCase().startsWith(prefix));
+}
+async function wscDatesLoadCatalogue() {
+  const generation=++wscDatesCatalogueGeneration;
+  wscDatesProducts=[];wscDatesCatalogueState='loading';wscDatesSuggest();
+  try {
+    const data=await wscDatesRequest('getProductDates',{catalogue:true});
+    if(generation!==wscDatesCatalogueGeneration)return;
+    if(!Array.isArray(data.products))throw new Error('Product suggestions unavailable');
+    wscDatesProducts=data.products.filter(p=>p && typeof p.sku==='string' && typeof p.name==='string');
+    wscDatesCatalogueState='ready';
+  } catch(e) {
+    if(generation!==wscDatesCatalogueGeneration)return;
+    wscDatesCatalogueState='error';
+  }
+  wscDatesSuggest();
+}
+function wscDatesSuggest() {
+  const input=document.getElementById('wscDatesSku');
+  const list=document.getElementById('wscDatesSuggestions');
+  const status=document.getElementById('wscDatesSuggestionsStatus');
+  wscDatesHideSuggestions();
+  if(wscDatesBusy)return;
+  if(wscDatesCatalogueState==='loading'){status.textContent='Loading product suggestions… You can still enter a full SKU.';return;}
+  if(wscDatesCatalogueState==='error'){status.textContent='Suggestions unavailable. Enter the full SKU and use Find Product.';return;}
+  if(input.value.trim().length<3){status.textContent='Type at least 3 characters for product suggestions.';return;}
+  const matches=wscDatesPrefixMatches(wscDatesProducts,input.value);
+  status.textContent=matches.length>10 ? 'Showing the first 10 of '+matches.length+' matches. Keep typing to narrow the list.' : matches.length ? matches.length+' matching product(s).' : 'No matching SKUs. Check the code or use Find Product.';
+  matches.slice(0,10).forEach(product=>{
+    const button=document.createElement('button');button.type='button';
+    button.textContent=product.sku+' — '+product.name;
+    button.style.cssText='display:block;width:100%;text-align:left;margin:0;border-radius:0;border-bottom:1px solid #d6dce5;background:white;color:#172b4d;padding:14px;';
+    button.onclick=()=>{
+      if(wscDatesBusy)return;
+      input.value=product.sku;wscDatesHideSuggestions();input.focus();wscDatesFind(false);
+    };
+    button.onkeydown=e=>{
+      if(e.key==='Escape'){e.preventDefault();wscDatesHideSuggestions();input.focus();}
+      if(e.key==='ArrowDown'){e.preventDefault();(button.nextElementSibling || button).focus();}
+      if(e.key==='ArrowUp'){e.preventDefault();(button.previousElementSibling || input).focus();}
+    };
+    list.append(button);
+  });
+  list.hidden=!matches.length;
+}
+function wscDatesSuggestionKey(event) {
+  if(event.key==='Escape'){event.preventDefault();wscDatesHideSuggestions();}
+  if(event.key==='ArrowDown'){
+    const first=document.getElementById('wscDatesSuggestions').firstElementChild;
+    if(first){event.preventDefault();first.focus();}
+  }
+  if(event.key==='Enter'){event.preventDefault();wscDatesFind(false);}
+}
+
 let wscDatesCurrentSku = '';
 let wscDatesBusy = false;
 function wscDatesMessage(text) {
@@ -7943,6 +8010,7 @@ function wscOpenDates() {
   document.getElementById('wscDatesAmendButton').textContent='✏️ Amendments (Admin)';
   document.getElementById('wscDatesResults').replaceChildren();
   wscDatesCurrentSku=''; wscDatesMessage('');
+  wscDatesLoadCatalogue();
 }
 async function wscDatesRequest(action,extra={}) {
   const idToken = await window.getCurrentStaffToken();
@@ -7999,6 +8067,7 @@ async function wscDatesFind(amend) {
   const isAmend=amend===true || (amend!==false && document.getElementById('wscDatesAmendScreen').style.display==='block');
   const sku=document.getElementById(isAmend?'wscDatesAmendSku':'wscDatesSku').value.trim();
   if(!sku){wscDatesMessage('Enter a SKU first.');return;}
+  wscDatesHideSuggestions();
   wscDatesSetBusy(true,'Looking up product…'); wscDatesMessage('Looking up product…');
   try {
     const data=await wscDatesRequest('getProductDates',{sku});
@@ -8009,6 +8078,11 @@ async function wscDatesFind(amend) {
     if(isAmend) document.getElementById('wscDatesAdmin').style.display=admin?'block':'none';
     const container=document.getElementById(isAmend?'wscDatesAmendResults':'wscDatesResults');container.replaceChildren();
     const heading=document.createElement('h3');heading.textContent=data.sku+' — '+data.name;container.append(heading);
+    if(data.notApplicable === true || /LBL$/i.test(String(data.sku).trim())) {
+      const p=document.createElement('p');p.textContent='Not applicable — label product; no expiry date or lot number';container.append(p);
+      if(isAmend)document.getElementById('wscDatesAdmin').style.display='none';
+      wscDatesMessage('');return;
+    }
     if(!data.lots.length){const p=document.createElement('p');p.textContent='Out of Stock';container.append(p);}
     // Oldest expiry first; invalid/missing expiry dates remain at the bottom.
     const sortedLots=[...data.lots].sort((a,b)=>{
