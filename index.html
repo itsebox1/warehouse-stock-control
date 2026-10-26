@@ -1441,7 +1441,9 @@ let deliverySessionRequestAttempted = false;
 let currentDeliveryRequestId =
   sessionStorage.getItem("wscDeliveryRequestId") || null;
 
+let wscDeliveryConfirmationBusy = false;
 async function handleDeliveryConfirmation() {
+  if (wscDeliveryConfirmationBusy) return;
   if (!currentDeliveryReportNumber) {
     await saveDeliveryForReview();
     return;
@@ -1478,12 +1480,18 @@ async function handleDeliveryConfirmation() {
 if (!confirmed) {
   return;
 }
+wscDeliveryConfirmationBusy = true;
+const confirmButton = document.getElementById("deliverySaveReviewButton");
+if (confirmButton) confirmButton.disabled = true;
+wscBOMLoading("Loading delivery...");
+try {
 const savedSuccessfully = await saveDeliveryForReview();
 
 if (savedSuccessfully !== true) {
   return;
 }
 
+wscBOMLoading("Updating dates and Lot numbers...");
 const idToken = await window.getCurrentStaffToken();
 
 if (!idToken) {
@@ -1494,7 +1502,6 @@ if (!idToken) {
   return;
 }
 
-try {
   const response = await fetch(
     "https://warehouse-stock-reports.tmerry.workers.dev",
     {
@@ -1522,6 +1529,7 @@ try {
 
    const finishedReportNumber = currentDeliveryReportNumber;
 
+  wscBOMLoadingEnd();
   await showWelcomeScreen();
 
   const viewPdf = await window.showWSCConfirm(
@@ -1539,13 +1547,17 @@ try {
     "Unable to Finish Delivery",
     error.message || "Please try again."
   );
+} finally {
+  wscBOMLoadingEnd();
+  wscDeliveryConfirmationBusy = false;
+  if (confirmButton) confirmButton.disabled = false;
 }
 }
   
 async function saveDeliveryForReview() {
   const button = document.getElementById("deliverySaveReviewButton");
 
-  if (!button || button.disabled) return;
+  if (!button || (button.disabled && !wscDeliveryConfirmationBusy)) return;
 
   button.disabled = true;
   button.textContent = "⏳ Saving Delivery...";
