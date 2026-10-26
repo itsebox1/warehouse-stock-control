@@ -498,10 +498,8 @@ input[type="reset"]:disabled,
     <button type="button" onclick="wscDatesHome()" style="width:100%;">🏠 Home</button>
     <h2>📅 Check Dates</h2>
     <label for="wscDatesSku">Product SKU</label>
-    <input id="wscDatesSku" type="text" placeholder="Enter SKU" autocomplete="off" aria-controls="wscDatesSuggestions" aria-describedby="wscDatesSuggestionsStatus" oninput="wscDatesSuggest()" onkeydown="wscDatesSuggestionKey(event)" style="width:100%;box-sizing:border-box;padding:12px;margin:8px 0;">
-    <p id="wscDatesSuggestionsStatus" role="status" aria-live="polite" style="font-size:.9em;margin:4px 0;"></p>
-    <div id="wscDatesSuggestions" aria-label="Matching products" hidden style="max-height:320px;overflow-y:auto;border:1px solid #ccd5df;border-radius:8px;margin-bottom:12px;"></div>
-    <button id="wscDatesFind" type="button" onclick="wscDatesFind()" style="width:100%;">Find Product</button>
+    <input id="wscDatesSku" type="text" placeholder="Enter SKU" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;margin:8px 0;">
+    
     <button id="wscDatesScanButton" type="button" onclick="wscDatesStartScanner()" style="width:100%;margin-top:10px;">📷 Scan QR Code</button>
     <div id="wscDatesQrReader" style="display:none;width:100%;max-width:420px;margin:12px auto;"></div>
     <button id="wscDatesStopScanButton" type="button" onclick="wscDatesStopScanner()" style="display:none;width:100%;">Stop Scanning</button>
@@ -514,7 +512,7 @@ input[type="reset"]:disabled,
     <h2>✏️ Check Dates — Amendments</h2>
     <label for="wscDatesAmendSku">Product SKU</label>
     <input id="wscDatesAmendSku" type="text" placeholder="Enter SKU" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;margin:8px 0;">
-    <button id="wscDatesAmendFind" type="button" onclick="wscDatesFind(true)" style="width:100%;">Find Product</button>
+    
     <button id="wscDatesAmendScanButton" type="button" onclick="wscDatesStartScanner(true)" style="width:100%;margin-top:10px;">📷 Scan SKU</button>
     <div id="wscDatesAmendQrReader" style="display:none;width:100%;max-width:420px;margin:12px auto;"></div>
     <button id="wscDatesAmendStopScanButton" type="button" onclick="wscDatesStopScanner()" style="display:none;width:100%;">Stop Scanning</button>
@@ -709,12 +707,7 @@ input[type="reset"]:disabled,
     style="width:100%; max-width:350px; margin-top:8px;"
   >
 
- <button
-  type="button"
-  id="deliveryFindExtraSkuButton"
-  onclick="findDeliveryExtraSku()">
-  🔍 Find Product
-</button>
+ 
 
 <p id="deliverySkuSearchMessage"></p>
     <div id="deliveryExtraProductEntry" style="display:none; margin-top:12px;">
@@ -947,9 +940,7 @@ function validateTradeShowFields() {
   style="width:100%; padding:14px; box-sizing:border-box; font-size:17px;"
 >
 
-<button id="findSkuButton" onclick="findManualSku()">
-  Find Product
-</button>
+
 
   <div id="reader"></div>
   
@@ -1012,13 +1003,7 @@ function validateTradeShowFields() {
     style="width:100%; padding:14px; box-sizing:border-box; font-size:17px;"
   >
 
- <button
-  type="button"
-  id="tradeShowFindProductButton"
-  onclick="findTradeShowManualSku()"
->
-  Find Product
-</button>
+ 
 
   <div id="tradeShowProductDetails"></div>
 
@@ -1784,10 +1769,10 @@ deliveryExtraFoundProduct = null;
 let deliveryReviewProducts = [];
   
   let deliveryExtraFoundProduct = null;
+let wscDeliveryExtraLookupBusy=false;
 async function findDeliveryExtraSku() {
   const input = document.getElementById("deliveryExtraSku");
   const message = document.getElementById("deliverySkuSearchMessage");
-  const button = document.getElementById("deliveryFindExtraSkuButton");
   const entry = document.getElementById("deliveryExtraProductEntry");
   const sku = (input?.value || "").trim().toUpperCase();
 
@@ -1796,11 +1781,11 @@ async function findDeliveryExtraSku() {
     input?.focus();
     return;
   }
-  if (button.disabled) return;
+  if (wscDeliveryExtraLookupBusy) return;
   deliveryExtraFoundProduct = null;
   entry.style.display = "none";
   message.textContent = "Looking up SKU " + sku + "...";
-  button.disabled = true;
+  wscDeliveryExtraLookupBusy = true;
   wscBOMLoading("Finding product " + sku + "...");
   try {
     const product = await lookupDeliveryProduct(sku);
@@ -1815,7 +1800,7 @@ async function findDeliveryExtraSku() {
   } catch (error) {
     message.textContent = "Lookup failed for " + sku + ": " + (error?.message || String(error));
   } finally {
-    button.disabled = false;
+    wscDeliveryExtraLookupBusy = false;
     wscBOMLoadingEnd();
   }
 }
@@ -2748,7 +2733,7 @@ function findTradeShowManualSku() {
     return;
   }
 
-  lookupTradeShowProduct(sku);
+  return lookupTradeShowProduct(sku);
 }  
 function findManualSku() {
   const sku =
@@ -2760,7 +2745,7 @@ function findManualSku() {
     return;
   }
 
-  lookupProduct(sku);
+  return lookupProduct(sku);
 }
 
 async function amendTradeShowProduct(product) {
@@ -7959,70 +7944,130 @@ async function wscDatesReadPhoto(input){
   finally{wscDatesSetBusy(false);input.value='';const confirmButton=document.getElementById('wscDatesSave');if(confirmButton)confirmButton.disabled=false;}
 }
 
-// Load only on opening Check Dates. Typing filters this in-memory list.
-let wscDatesProducts = [];
-let wscDatesCatalogueState = 'idle';
-let wscDatesCatalogueGeneration = 0;
-function wscDatesHideSuggestions() {
-  document.getElementById('wscDatesSuggestions').replaceChildren();
-  document.getElementById('wscDatesSuggestions').hidden=true;
-  document.getElementById('wscDatesSuggestionsStatus').textContent='';
-}
-function wscDatesPrefixMatches(products, value) {
-  const prefix=String(value || '').trim().toLowerCase();
-  return prefix.length<3 ? [] : products.filter(p=>p.sku.toLowerCase().startsWith(prefix));
-}
-async function wscDatesLoadCatalogue() {
-  const generation=++wscDatesCatalogueGeneration;
-  wscDatesProducts=[];wscDatesCatalogueState='loading';wscDatesSuggest();
-  try {
-    const data=await wscDatesRequest('getProductDates',{catalogue:true});
-    if(generation!==wscDatesCatalogueGeneration)return;
-    if(!Array.isArray(data.products))throw new Error('Product suggestions unavailable');
-    wscDatesProducts=data.products.filter(p=>p && typeof p.sku==='string' && typeof p.name==='string');
-    wscDatesCatalogueState='ready';
-  } catch(e) {
-    if(generation!==wscDatesCatalogueGeneration)return;
-    wscDatesCatalogueState='error';
+// Shared SKU suggestions. Catalogue only; live quantities are fetched on selection.
+let wscQuickCatalogue={email:'',products:null,expires:0,promise:null};
+const wscQuickFields={
+  wscDatesSku:()=>wscDatesFind(false),
+  wscDatesAmendSku:()=>wscDatesFind(true),
+  manualSku:()=>findManualSku(),
+  tradeShowManualSku:()=>findTradeShowManualSku(),
+  deliveryExtraSku:()=>findDeliveryExtraSku()
+};
+function wscQuickClearPrevious(input){
+  const id=input.id;
+  if(id==='wscDatesSku'||id==='wscDatesAmendSku'){
+    const amend=id==='wscDatesAmendSku';
+    document.getElementById(amend?'wscDatesAmendResults':'wscDatesResults').replaceChildren();
+    document.getElementById(amend?'wscDatesAmendMessage':'wscDatesMessage').textContent='';
+    wscDatesCurrentSku='';
+    if(amend)document.getElementById('wscDatesAddHeading').textContent='Add Dates';
+  }else if(id==='manualSku'){
+    document.getElementById('productDetails').replaceChildren();
+    document.getElementById('result').textContent='';
+    document.getElementById('nextProductButton').style.display='none';
+  }else if(id==='tradeShowManualSku'){
+    document.getElementById('tradeShowProductDetails').replaceChildren();
+  }else if(id==='deliveryExtraSku'){
+    deliveryExtraFoundProduct=null;
+    document.getElementById('deliveryExtraProductEntry').style.display='none';
+    document.getElementById('deliverySkuSearchMessage').textContent='';
   }
-  wscDatesSuggest();
 }
-function wscDatesSuggest() {
-  const input=document.getElementById('wscDatesSku');
-  const list=document.getElementById('wscDatesSuggestions');
-  const status=document.getElementById('wscDatesSuggestionsStatus');
-  wscDatesHideSuggestions();
-  if(wscDatesBusy)return;
-  if(wscDatesCatalogueState==='loading'){status.textContent='Loading product suggestions… You can still enter a full SKU.';return;}
-  if(wscDatesCatalogueState==='error'){status.textContent='Suggestions unavailable. Enter the full SKU and use Find Product.';return;}
-  if(input.value.trim().length<3){status.textContent='Type at least 3 characters for product suggestions.';return;}
-  const matches=wscDatesPrefixMatches(wscDatesProducts,input.value);
-  status.textContent=matches.length>10 ? 'Showing the first 10 of '+matches.length+' matches. Keep typing to narrow the list.' : matches.length ? matches.length+' matching product(s).' : 'No matching SKUs. Check the code or use Find Product.';
-  matches.slice(0,10).forEach(product=>{
-    const button=document.createElement('button');button.type='button';
-    button.textContent=product.sku+' — '+product.name;
-    button.style.cssText='display:block;width:100%;text-align:left;margin:0;border-radius:0;border-bottom:1px solid #d6dce5;background:white;color:#172b4d;padding:14px;';
-    button.onclick=()=>{
-      if(wscDatesBusy)return;
-      input.value=product.sku;wscDatesHideSuggestions();input.focus();wscDatesFind(false);
-    };
-    button.onkeydown=e=>{
-      if(e.key==='Escape'){e.preventDefault();wscDatesHideSuggestions();input.focus();}
-      if(e.key==='ArrowDown'){e.preventDefault();(button.nextElementSibling || button).focus();}
-      if(e.key==='ArrowUp'){e.preventDefault();(button.previousElementSibling || input).focus();}
-    };
-    list.append(button);
+function wscQuickHide(input){
+  const list=document.getElementById(input.id+'Suggestions');
+  if(list){list.replaceChildren();list.hidden=true;}
+  const status=document.getElementById(input.id+'SuggestionsStatus');
+  if(status)status.textContent='';
+}
+function wscDatesHideSuggestions(){
+  ['wscDatesSku','wscDatesAmendSku'].forEach(id=>wscQuickHide(document.getElementById(id)));
+}
+function wscQuickMatches(products,value){
+  const prefix=String(value||'').trim().toLowerCase();
+  return prefix.length<3?[]:products.filter(p=>p.sku.toLowerCase().startsWith(prefix));
+}
+async function wscQuickGetCatalogue(){
+  const email=String(window.getCurrentStaffEmail?.()||'').toLowerCase();
+  if(!email)throw new Error('Sign in required');
+  if(wscQuickCatalogue.email!==email)wscQuickCatalogue={email,products:null,expires:0,promise:null};
+  const cache=wscQuickCatalogue;
+  if(cache.products && Date.now()<cache.expires)return cache.products;
+  if(!cache.promise){
+    cache.promise=(async()=>{
+      const data=await wscDatesRequest('getLiveProduct',{catalogue:true});
+      if(!Array.isArray(data.products))throw new Error('Suggestions unavailable');
+      cache.products=data.products.filter(p=>p&&typeof p.sku==='string'&&typeof p.name==='string');
+      cache.expires=Date.now()+300000;
+      return cache.products;
+    })().finally(()=>{cache.promise=null;});
+  }
+  return cache.promise;
+}
+async function wscQuickSelect(input,sku){
+  if(input.dataset.quickBusy==='true' || wscDatesBusy || lookupInProgress || wscDeliveryExtraLookupBusy)return;
+  input.dataset.quickBusy='true';input.value=sku;
+  wscQuickDismiss(input);input.disabled=true;
+  try{await wscQuickFields[input.id]();}
+  catch(e){window.showWSCMessage('Product lookup',String(e.message||e));}
+  finally{input.disabled=false;delete input.dataset.quickBusy;wscQuickHide(input);}
+}
+async function wscQuickPrepare(input){
+  if(!input)return;
+  wscQuickInstall(input);
+  const generation=String(Number(input.dataset.quickGeneration||0)+1);
+  input.dataset.quickGeneration=generation;
+  wscQuickHide(input);
+  const status=document.getElementById(input.id+'SuggestionsStatus');
+  const email=String(window.getCurrentStaffEmail?.()||'').toLowerCase();
+  status.textContent='Loading product suggestions…';
+  try{
+    const products=await wscQuickGetCatalogue();
+    if(input.dataset.quickGeneration!==generation || String(window.getCurrentStaffEmail?.()||'').toLowerCase()!==email || input.disabled)return;
+    if(input.value.trim().length<3){status.textContent='Type at least 3 characters, then select a product. Or enter a full SKU and press Enter.';return;}
+    const matches=wscQuickMatches(products,input.value);
+    const list=document.getElementById(input.id+'Suggestions');
+    status.textContent=matches.length>10?'Showing the first 10 of '+matches.length+' matches. Keep typing to narrow the list.':matches.length?matches.length+' matching product(s).':'No matching SKUs. Check the code, or enter a full SKU and press Enter.';
+    matches.slice(0,10).forEach(product=>{
+      const button=document.createElement('button');button.type='button';
+      button.textContent=product.sku+' — '+product.name;
+      button.style.cssText='display:block;width:100%;text-align:left;margin:0;border-radius:0;border-bottom:1px solid #d6dce5;background:white;color:#172b4d;padding:14px;';
+      button.onclick=()=>wscQuickSelect(input,product.sku);
+      button.onkeydown=e=>{
+        if(e.key==='Escape'){e.preventDefault();input.focus();wscQuickDismiss(input);}
+        if(e.key==='ArrowDown'){e.preventDefault();(button.nextElementSibling||button).focus();}
+        if(e.key==='ArrowUp'){e.preventDefault();if(button.previousElementSibling)button.previousElementSibling.focus();else{input.focus();wscQuickDismiss(input);}}
+      };
+      list.append(button);
+    });
+    list.hidden=!matches.length;
+  }catch(e){
+    if(input.dataset.quickGeneration===generation)status.textContent='Suggestions unavailable. Enter the full SKU and press Enter to look it up.';
+  }
+}
+function wscQuickDismiss(input){
+  input.dataset.quickGeneration=String(Number(input.dataset.quickGeneration||0)+1);
+  wscQuickHide(input);
+}
+function wscQuickInstall(input){
+  if(input.dataset.quickInstalled)return;
+  input.dataset.quickInstalled='true';input.autocomplete='off';input.setAttribute('enterkeyhint','search');
+  const status=document.createElement('p');status.id=input.id+'SuggestionsStatus';status.setAttribute('role','status');status.setAttribute('aria-live','polite');status.style.cssText='font-size:.9em;margin:4px 0;';
+  const list=document.createElement('div');list.id=input.id+'Suggestions';list.hidden=true;list.setAttribute('aria-label','Matching products');list.style.cssText='max-height:320px;overflow-y:auto;border:1px solid #ccd5df;border-radius:8px;margin-bottom:12px;';
+  list.addEventListener('pointerdown',e=>{if(e.target.closest('button'))e.preventDefault();});
+  input.after(status,list);input.setAttribute('aria-controls',list.id);input.setAttribute('aria-describedby',status.id);
+  input.addEventListener('focus',()=>wscQuickPrepare(input));
+  input.addEventListener('input',()=>{wscQuickClearPrevious(input);wscQuickPrepare(input);});
+  input.addEventListener('keydown',e=>{
+    if(e.isComposing)return;
+    if(e.key==='Escape'){e.preventDefault();wscQuickDismiss(input);}
+    if(e.key==='ArrowDown' && list.firstElementChild){e.preventDefault();list.firstElementChild.focus();}
+    if(e.key==='Enter'){e.preventDefault();const sku=input.value.trim();if(sku)wscQuickSelect(input,sku);}
   });
-  list.hidden=!matches.length;
+  const blur=e=>{if(e.relatedTarget!==input&&!list.contains(e.relatedTarget))wscQuickDismiss(input);};
+  input.addEventListener('focusout',blur);list.addEventListener('focusout',blur);
 }
-function wscDatesSuggestionKey(event) {
-  if(event.key==='Escape'){event.preventDefault();wscDatesHideSuggestions();}
-  if(event.key==='ArrowDown'){
-    const first=document.getElementById('wscDatesSuggestions').firstElementChild;
-    if(first){event.preventDefault();first.focus();}
-  }
-  if(event.key==='Enter'){event.preventDefault();wscDatesFind(false);}
-}
+function wscQuickInit(){Object.keys(wscQuickFields).forEach(id=>{const input=document.getElementById(id);if(input)wscQuickInstall(input);});}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wscQuickInit,{once:true});else wscQuickInit();
 
 let wscDatesCurrentSku = '';
 let wscDatesBusy = false;
@@ -8053,7 +8098,7 @@ function wscOpenDates() {
   document.getElementById('wscDatesAmendButton').textContent='✏️ Amendments (Admin)';
   document.getElementById('wscDatesResults').replaceChildren();
   wscDatesCurrentSku=''; wscDatesMessage('');
-  wscDatesLoadCatalogue();
+  wscQuickPrepare(document.getElementById("wscDatesSku"));
 }
 async function wscDatesRequest(action,extra={}) {
   const idToken = await window.getCurrentStaffToken();
