@@ -1822,6 +1822,73 @@ async function findDeliveryExtraSku() {
   function lookupDeliveryProduct(sku) {
     return wscAuthenticatedLiveProductLookup_(sku);
   }
+// Shared ST/SC counting calculator. Only a confirmed total can be saved.
+function wscSetupQuantityBuilder() {
+  const rows = document.getElementById('wscQuantityRows');
+  const actual = document.getElementById('actualQtyInput');
+  const save = document.getElementById('saveCountButton');
+  const totalLabel = document.getElementById('wscQuantityTotal');
+  const error = document.getElementById('wscQuantityError');
+  const confirm = document.getElementById('wscConfirmQuantity');
+  let sequence = 0;
+  function calculate() {
+    let total = 0, entered = false, valid = true;
+    rows.querySelectorAll('input').forEach(input => {
+      const value = input.value.trim();
+      if (input.validity && input.validity.badInput) valid = false;
+      if (!value) return;
+      entered = true;
+      const number = Number(value);
+      if (!Number.isSafeInteger(number) || number < 0) valid = false;
+      else total += number;
+    });
+    if (!Number.isSafeInteger(total)) valid = false;
+    return {total, entered, valid};
+  }
+  function update() {
+    actual.value = '';
+    actual.dispatchEvent(new Event('input', {bubbles:true}));
+    save.disabled = true;
+    const state = calculate();
+    totalLabel.textContent = state.valid ? 'Total: ' + state.total : 'Total: —';
+    error.textContent = state.valid ? '' : 'Use whole numbers of zero or more. The total must be a safe whole number.';
+    confirm.disabled = !state.valid || !state.entered;
+  }
+  function addRow(focus) {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:8px;align-items:center;margin:10px 0;';
+    const label = document.createElement('label');
+    const input = document.createElement('input');
+    input.id = 'wscQuantityPart' + (++sequence);
+    label.htmlFor = input.id; label.textContent = 'Qty ' + sequence;
+    input.type = 'number'; input.min = '0'; input.step = '1'; input.inputMode = 'numeric';
+    input.style.cssText = 'flex:1;min-width:0;width:100%;padding:12px;font-size:18px;box-sizing:border-box;';
+    input.addEventListener('input', update);
+    row.append(label,input);
+    if (rows.children.length) {
+      const remove = document.createElement('button');
+      remove.type = 'button'; remove.textContent = 'Remove';
+      remove.setAttribute('aria-label','Remove quantity ' + sequence);
+      remove.style.cssText = 'width:auto;margin:0;padding:10px;font-size:14px;';
+      remove.onclick = () => {row.remove(); update();};
+      row.appendChild(remove);
+    }
+    rows.appendChild(row); update();
+    if (focus) input.focus();
+  }
+  document.getElementById('wscAddQuantity').onclick = () => addRow(true);
+  confirm.onclick = () => {
+    const state = calculate();
+    if (!state.valid || !state.entered) {update();return;}
+    actual.value = String(state.total);
+    actual.dispatchEvent(new Event('input', {bubbles:true}));
+    save.disabled = false;
+    error.textContent = '';
+    totalLabel.textContent = 'Total confirmed: ' + state.total;
+  };
+  addRow(false);
+}
+
 async function lookupProduct(sku) {
   const result = document.getElementById("result");
   const details = document.getElementById("productDetails");
@@ -1859,6 +1926,14 @@ async function lookupProduct(sku) {
           <p><strong>QuickBooks Stock:</strong>
             ${escapeHtml(product.qbStock)}</p>
 
+          <fieldset id="wscQuantityBuilder" style="border:0;padding:0;margin:15px 0;min-width:0;">
+            <legend style="font-weight:bold;">Quantities counted</legend>
+            <div id="wscQuantityRows"></div>
+            <button type="button" id="wscAddQuantity">+ Add quantity</button>
+            <p id="wscQuantityTotal" aria-live="polite">Total: 0</p>
+            <p id="wscQuantityError" role="alert" style="color:#a52222;"></p>
+            <button type="button" id="wscConfirmQuantity">Confirm Total</button>
+          </fieldset>
           <label for="actualQtyInput">
             <strong>New Actual Quantity:</strong>
           </label>
@@ -1866,6 +1941,8 @@ async function lookupProduct(sku) {
           <input
             type="number"
             id="actualQtyInput"
+            readonly
+            placeholder="Confirm the total above"
             min="0"
             step="1"
             style="width:100%;padding:12px;font-size:18px;margin-top:10px;box-sizing:border-box;"
@@ -1936,6 +2013,7 @@ async function lookupProduct(sku) {
       result.textContent = "Product found: " + product.sku;
 
       document.getElementById("saveCountButton").onclick = () => saveProductCount(product);
+      wscSetupQuantityBuilder();
 
     } else {
       details.textContent = "Product not found";
@@ -3405,6 +3483,7 @@ document.getElementById("tradeShowCountingScreen").style.display = "block";
   const button = document.getElementById("saveCountButton");
   const message = document.getElementById("saveMessage");
 
+  if (button.disabled) return;
   const quantity = input.value.trim();
   const notes = (document.getElementById("countNotesInput")?.value || "").trim();
 
@@ -3438,6 +3517,8 @@ window.pendingCountRequest = {
     : localStorage.getItem("activeStockTake")
 };
   button.disabled = true;
+  const quantityBuilder = document.getElementById('wscQuantityBuilder');
+  if (quantityBuilder) quantityBuilder.disabled = true;
   message.textContent = "Saving count...";
   startGlobeLoading();
     
@@ -3493,6 +3574,7 @@ if (document.getElementById("stCountReviewPanel")?.style.display !== "none") ref
     
   } finally {
     button.disabled = false;
+    if (quantityBuilder) quantityBuilder.disabled = false;
     stopGlobeLoading();
   }
 }
