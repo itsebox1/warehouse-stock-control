@@ -938,6 +938,7 @@ function validateTradeShowFields() {
 <input
   type="text"
   id="manualSku"
+  inputmode="numeric"
   placeholder="Enter product SKU"
   style="width:100%; padding:14px; box-sizing:border-box; font-size:17px;"
 >
@@ -1381,10 +1382,9 @@ function wscScrollCountStep(target, searchFocus = false) {
   const scroll = () => {
     if (generation !== wscCountScrollGeneration || !target.isConnected || !target.getClientRects().length) return;
     if (searchFocus && document.activeElement !== target) return;
-    const height = viewport?.height || window.innerHeight;
-    const inset = searchFocus ? Math.min(100, height * 0.22) : 24;
+    const inset = searchFocus ? 12 : 24;
     const top = Math.max(0, window.scrollY + target.getBoundingClientRect().top - (viewport?.offsetTop || 0) - inset);
-    window.scrollTo({top,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+    window.scrollTo({top,behavior:searchFocus || window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
   };
   // iOS keyboard animation can resize the visible viewport after focus/blur.
   const resized = () => { if (Date.now()-started < 900) scroll(); };
