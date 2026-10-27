@@ -455,6 +455,7 @@ input[type="reset"]:disabled,
 </div>
 
 
+  <button id="wscWeeklyBOMButton" data-wsc-area="WEEKLY_BOM" type="button" onclick="wscStartWeeklyBOM(this)" style="display:none;width:100%;margin:15px 0;background:#54799A;color:white;">🧩 Weekly BOM</button>
   <button id="wscDatesHomeButton" data-wsc-area="DATES" type="button" onclick="wscOpenDates()" style="width:100%; margin:30px 0 30px; background:#54799A; color:white;">📅 Check Dates</button>
 
   <div class="wsc-module" data-module="ST"><div class="wsc-module-header">
@@ -3077,6 +3078,22 @@ async function wscGetNewestCompletedBOM() {
 // Optional BOM preview before beginning a Stock Take. Report only, never commits.
 let wscBOMBusy = false;
 let wscPreliminaryBusy = false;
+async function wscStartWeeklyBOM(button) {
+  if (wscBOMBusy || wscLiveQBUI.busy) return;
+  if (!wscPermissions?.functions?.WEEKLY_BOM) {window.showWSCMessage('Weekly BOM','Weekly BOM access is disabled for your account.');return;}
+  wscBOMBusy=true;button.disabled=true;
+  wscBOMLoading('Preparing Weekly BOM from current QuickBooks stock…');
+  try {
+    const result=await wscBOMRequest({action:'getWeeklyBOMReport'});
+    showReportsScreen();
+    document.getElementById('wscReportSelect').value='BOM';wscReportsUpdate();
+    document.getElementById('wscReportSearchBy').value='number';wscReportsUpdateFields();
+    document.getElementById('wscReportNumber').value=result.reportNumber.slice(4);
+    await wscRunUnifiedReport();
+    document.getElementById('wscReportInfo').textContent='Weekly BOM '+result.reportNumber+' — '+result.periodLabel+'. Review the PDF and QB adjustment before committing.';
+  } catch(error) {window.showWSCMessage('Weekly BOM',String(error.message||error)+'\n\nCheck saved BOM reports before generating another report if the response was interrupted.');}
+  finally {wscBOMLoadingEnd();wscBOMBusy=false;button.disabled=false;}
+}
 async function wscPrepareStockTake(button) {
   if (wscPreliminaryBusy || document.getElementById('wscBOMChoice')) return;
   wscPreliminaryBusy = true;
@@ -6868,7 +6885,7 @@ if (["ST","SC"].includes(selectedReportType)) {
 window.WSC_ADMIN_URL = "https://warehouse-stock-reports.tmerry.workers.dev";
 let wscAdminData = null;
 let wscPermissions = null;
-const wscLabels = {BOM:"🧩 BOM – Bill of Materials",ST:"📦 ST – Stock Take",SC:"📋 SC – Stock Count",TR:"🎪 TR – Trade Show",DL:"🚚 DL – Delivery",DATES:"📅 Check Dates"};
+const wscLabels = {WEEKLY_BOM:"🧩 Weekly BOM",BOM:"🧩 BOM – Bill of Materials",ST:"📦 ST – Stock Take",SC:"📋 SC – Stock Count",TR:"🎪 TR – Trade Show",DL:"🚚 DL – Delivery",DATES:"📅 Check Dates"};
 async function wscAdminRequest(action, extra={}) {
   const idToken = await window.getCurrentStaffToken();
   const response = await fetch(window.WSC_ADMIN_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,idToken,...extra})});
@@ -6965,7 +6982,7 @@ function wscLiveQBState(result) {
 }
 function wscLiveQBAllowed(area) {
   return wscPermissions?.quickBooks?.[area] === true &&
-    (area === 'BOM' ? wscPermissions?.admin === true : wscPermissions?.functions?.[area] === true);
+    (area === 'BOM' ? (wscPermissions?.admin === true || wscPermissions?.functions?.WEEKLY_BOM === true) : wscPermissions?.functions?.[area] === true);
 }
 function wscLiveQBKey(number) {
   return 'wsc-live-qb-uncertain:'+String(window.getCurrentStaffEmail?.()||'').toLowerCase()+':'+number;
@@ -7204,7 +7221,7 @@ function wscSwitchRow(label,enabled,onChange,disabled=false){
 function wscRenderAdminStaff(){
   const box=document.getElementById("wscStaffToggles"),email=document.getElementById("wscStaffSelect").value;
   box.replaceChildren();const member=wscAdminData?.staff.find(s=>s.email===email);if(!member)return;
-  ["ST","SC","TR","DL","DATES"].forEach(area=>box.appendChild(wscSwitchRow(wscLabels[area],member.functions[area],input=>wscSaveSwitch(input,"STAFF",area,email))));
+  ["ST","SC","TR","DL","DATES","WEEKLY_BOM"].forEach(area=>box.appendChild(wscSwitchRow(wscLabels[area],member.functions[area],input=>wscSaveSwitch(input,"STAFF",area,email))));
 }
 function wscRenderAdminQB(){
   const box=document.getElementById("wscQBToggles");box.replaceChildren();
