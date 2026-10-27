@@ -1920,6 +1920,9 @@ async function wscLastSkuSave(number, sku) {
   }
 }
 async function lookupProduct(sku) {
+  if (lookupInProgress) return;
+  const countType = stReviewType();
+  const reportNumber = stReviewActiveNumber();
   const markerReport = wscLastSkuReport();
   const result = document.getElementById("result");
   const details = document.getElementById("productDetails");
@@ -1940,9 +1943,43 @@ async function lookupProduct(sku) {
   result.textContent = "Looking up product: " + sku;
 
   try {
-    const product = await wscAuthenticatedLiveProductLookup_(sku);
+    if (!reportNumber) throw new Error('Start or resume a Stock Take or Stock Count before looking up a product.');
+    // Read the current report, not a cached product flag or an earlier session.
+    const [product, review] = await Promise.all([
+      wscAuthenticatedLiveProductLookup_(sku),
+      stReviewRequest(countType === 'SC' ? 'getStockCountReview' : 'getStockTakeReview', {reportNumber})
+    ]);
+    if (stReviewType() !== countType || stReviewActiveNumber() !== reportNumber) return;
+    if (!Array.isArray(review.products)) throw new Error('Unable to check previously counted products. Please try again.');
+    const counted = product && product.sku ? review.products.find(p => String(p.sku).trim().toLowerCase() === String(product.sku).trim().toLowerCase()) : null;
+    if (counted) {
+      const name = countType === 'SC' ? 'stock count' : 'stock take';
+      stopGlobeLoading();
+      const amend = await window.showWSCConfirm(
+        'Product already counted',
+        '<strong>' + escapeHtml(product.sku) + ' already in this ' + name + '</strong><br><br>' +
+        'Report: ' + escapeHtml(reportNumber) + '<br>' +
+        'QB qty (when counted): <strong>' + escapeHtml(counted.qbStock) + '</strong><br>' +
+        'Amended qty (saved): <strong>' + escapeHtml(counted.actualQty) + '</strong>' +
+        (Number(product.qbStock) !== Number(counted.qbStock) ? '<br>Current QB qty: <strong>' + escapeHtml(product.qbStock) + '</strong>' : '') +
+        '<br><br>Amend replaces the saved total. Ignore leaves it unchanged.',
+        {confirmLabel:'Amend', cancelLabel:'Ignore'}
+      );
+      if (stReviewType() !== countType || stReviewActiveNumber() !== reportNumber) return;
+      if (!amend) {
+        resetProductLookup();
+        // Keep the lookup guard until the marker has finished saving.
+        lookupInProgress = true;
+        const search = document.getElementById('manualSku');
+        if (search) { search.value=''; wscQuickDismiss(search); }
+        if (markerReport) await wscLastSkuSave(markerReport, product.sku);
+        return;
+      }
+      startGlobeLoading();
+    }
 
     if (product && product.sku) {
+      product.wscCountContext = {countType,reportNumber};
       productCache.set(sku, product);
       
       details.innerHTML = `
@@ -2045,6 +2082,13 @@ async function lookupProduct(sku) {
 
       document.getElementById("saveCountButton").onclick = () => saveProductCount(product);
       wscSetupQuantityBuilder();
+      if (counted) {
+        const firstQuantity = document.querySelector('#wscQuantityRows input');
+        firstQuantity.value = String(counted.actualQty);
+        firstQuantity.dispatchEvent(new Event('input', {bubbles:true}));
+        document.getElementById('saveCountButton').textContent = 'Save Amendment';
+        document.getElementById('saveMessage').textContent = 'Previously saved: ' + counted.actualQty + '. Enter the revised total, Confirm Total, then Save Amendment.';
+      }
       if (markerReport) await wscLastSkuSave(markerReport, product.sku);
 
     } else {
@@ -3526,6 +3570,10 @@ document.getElementById("tradeShowCountingScreen").style.display = "block";
   const message = document.getElementById("saveMessage");
 
   if (button.disabled) return;
+  if (product.wscCountContext && (product.wscCountContext.countType !== stReviewType() || product.wscCountContext.reportNumber !== stReviewActiveNumber())) {
+    message.textContent = 'The active report has changed. Search for the product again before saving.';
+    return;
+  }
   const quantity = input.value.trim();
   const notes = (document.getElementById("countNotesInput")?.value || "").trim();
 
