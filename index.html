@@ -912,6 +912,7 @@ function validateTradeShowFields() {
   <p id="activeStockTakeNumber"
    style="font-weight:bold; font-size:20px; color:#304B70;">
 </p>
+<p id="wscLastSku" style="display:none;color:#304B70;" aria-live="polite"></p>
   
 <div class="count-type-selector" style="display:none;">
   <label>
@@ -1889,7 +1890,37 @@ function wscSetupQuantityBuilder() {
   addRow(false);
 }
 
+let wscLastSkuGeneration = 0;
+function wscLastSkuReport() {
+  return document.querySelector('input[name="countType"]:checked')?.value === 'ST' ? localStorage.getItem('activeStockTake') : '';
+}
+async function wscLastSkuRefresh() {
+  const generation = ++wscLastSkuGeneration;
+  const number = wscLastSkuReport();
+  const label = document.getElementById('wscLastSku');
+  label.style.display = number ? 'block' : 'none';
+  label.textContent = number ? 'Last SKU scanned - loading…' : '';
+  if (!number) return;
+  try {
+    const result = await wscDatesRequest('getStockTakeProgress', {reportNumber:number});
+    if (generation === wscLastSkuGeneration && wscLastSkuReport() === number) label.textContent = 'Last SKU scanned - ' + (result.lastSku || 'None yet');
+  } catch (error) {
+    if (generation === wscLastSkuGeneration) label.textContent = 'Last SKU scanned - unable to load. Reopen this stock take to retry.';
+  }
+}
+async function wscLastSkuSave(number, sku) {
+  const generation = ++wscLastSkuGeneration;
+  const label = document.getElementById('wscLastSku');
+  if (wscLastSkuReport() === number) { label.style.display='block'; label.textContent='Last SKU scanned - '+sku+' (saving…)'; }
+  try {
+    await wscDatesRequest('setStockTakeProgress',{reportNumber:number,sku});
+    if (generation === wscLastSkuGeneration && wscLastSkuReport() === number) label.textContent='Last SKU scanned - '+sku;
+  } catch (error) {
+    if (generation === wscLastSkuGeneration && wscLastSkuReport() === number) label.textContent='Last SKU scanned - '+sku+' (marker save not confirmed; scan again to retry)';
+  }
+}
 async function lookupProduct(sku) {
+  const markerReport = wscLastSkuReport();
   const result = document.getElementById("result");
   const details = document.getElementById("productDetails");
 
@@ -2014,6 +2045,7 @@ async function lookupProduct(sku) {
 
       document.getElementById("saveCountButton").onclick = () => saveProductCount(product);
       wscSetupQuantityBuilder();
+      if (markerReport) await wscLastSkuSave(markerReport, product.sku);
 
     } else {
       details.textContent = "Product not found";
@@ -3005,9 +3037,19 @@ async function wscPrepareStockTake(button) {
   if (wscPreliminaryBusy || document.getElementById('wscBOMChoice')) return;
   wscPreliminaryBusy = true;
   const oldText = button ? button.textContent : '';
-  if (button) {button.disabled = true; button.textContent = 'Preparing preliminary PDF…';}
-  wscBOMLoading('Reading QuickBooks stock and emailing preliminary PDF…');
+  if (button) button.disabled = true;
   try {
+    const generatePdf = await window.showWSCConfirm(
+      'Preliminary Stock Reports',
+      'Would you like to generate and email the preliminary stock PDFs?<br><br>This sends two reports: zero-quantity products and products with quantities, to tmerry@sensafe.com and nmerry@sensafe.com.<br><br>Choose No to continue without generating or emailing reports.',
+      {confirmLabel:'Yes, generate and email PDFs', cancelLabel:'No, continue without PDFs'}
+    );
+    if (!generatePdf) {
+      wscShowBOMChoice(button);
+      return;
+    }
+    if (button) button.textContent = 'Preparing preliminary PDFs…';
+    wscBOMLoading('Reading QuickBooks stock and emailing preliminary PDFs…');
     // Keep the request ID after a lost response so a manual retry cannot resend email.
     const storageKey = 'wscPendingPreliminaryReport';
     let requestId = sessionStorage.getItem(storageKey);
@@ -5928,6 +5970,7 @@ if (finishButton) {
           ? "Current Stock Take: "
           : "Current Stock Count: ") + reportNumber
       : "";
+  wscLastSkuRefresh();
 }
 
 function openSelectedReports() {
@@ -7637,7 +7680,7 @@ window.showWSCInput = function(title, message, initialValue = "") {
   });
 };
 
-window.showWSCConfirm = function(title, message) {
+window.showWSCConfirm = function(title, message, options = {}) {
     return new Promise((resolve) => {
         const overlay = document.createElement("div");
         overlay.id = "wscConfirmOverlay";
@@ -7690,6 +7733,9 @@ window.showWSCConfirm = function(title, message) {
 
         overlay.appendChild(box);
         document.body.appendChild(overlay);
+
+        if (options.cancelLabel) document.getElementById("wscConfirmCancel").textContent = options.cancelLabel;
+        if (options.confirmLabel) document.getElementById("wscConfirmOK").textContent = options.confirmLabel;
 
         document.getElementById("wscConfirmCancel").onclick = () => {
             overlay.remove();
@@ -8311,7 +8357,7 @@ function wscDatesRenderProduct(data,isAmend){
       return (am===null?Infinity:am)-(bm===null?Infinity:bm);
     });
     sortedLots.forEach(item=>{
-      const line=document.createElement('div');line.style.cssText='background:white;border:1px solid #d6dce5;border-radius:10px;padding:12px;margin:8px 0;';
+      const line=document.createElement('div');line.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:white;border:1px solid #d6dce5;border-radius:10px;padding:12px;margin:8px 0;';
       const remaining=wscDatesExpiryMonthsRemaining(item.expiry);
       if(remaining!==null && remaining<=6){
         line.style.background='#f9d6d6';line.style.borderColor='#b42323';line.style.color='#711717';
@@ -8319,6 +8365,34 @@ function wscDatesRenderProduct(data,isAmend){
         line.style.background='#ffe3b8';line.style.borderColor='#d17c12';line.style.color='#633b08';
       }
       const details=document.createElement('div');details.textContent='Lot: '+item.lot+' | Expiry: '+item.expiry;line.append(details);
+      const qtyArea=document.createElement('div');
+      qtyArea.style.cssText='display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin-top:8px;';
+      const qtyLabel=document.createElement('label');qtyLabel.style.cssText='display:flex;flex-direction:column;gap:4px;';qtyLabel.textContent='Qty (apprx)';
+      const qtyInput=document.createElement('input');qtyInput.type='number';qtyInput.min='0';qtyInput.step='1';qtyInput.inputMode='numeric';qtyInput.placeholder='Unknown';
+      qtyInput.setAttribute('aria-label','Qty (apprx) for lot '+item.lot);
+      qtyInput.style.cssText='width:140px;max-width:100%;padding:10px;box-sizing:border-box;';
+      qtyInput.value=item.approxQty == null ? '' : String(item.approxQty);qtyInput.disabled=!admin;
+      qtyLabel.append(qtyInput);qtyArea.append(qtyLabel);
+      if(admin){
+        const saveQty=document.createElement('button');saveQty.type='button';saveQty.textContent='Save qty';saveQty.style.cssText='width:auto;margin:0;padding:10px 16px;';
+        const qtyStatus=document.createElement('span');qtyStatus.setAttribute('role','status');
+        let expectedQty=item.approxQty == null ? '' : String(item.approxQty);
+        let saving=false;
+        saveQty.onclick=async()=>{
+          if(saving || wscDatesBusy)return;
+          const value=qtyInput.value.trim();
+          if(qtyInput.validity?.badInput || (value!=='' && (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value))))){qtyStatus.textContent='Enter a whole quantity of zero or more.';return;}
+          saving=true;saveQty.disabled=qtyInput.disabled=true;wscDatesSetBusy(true,'Saving approximate quantity…');qtyStatus.textContent='Saving…';
+          try{
+            const result=await wscDatesRequest('setProductDateQuantity',{sku:data.sku,row:item.row,lot:item.lot,expiry:item.expiry,approxQty:value,expectedQty});
+            expectedQty=String(result.approxQty);item.approxQty=result.approxQty;qtyInput.value=expectedQty;qtyStatus.textContent='Saved';
+          }catch(error){qtyStatus.textContent='Not confirmed: '+error.message;}
+          finally{saving=false;saveQty.disabled=qtyInput.disabled=false;wscDatesSetBusy(false);}
+        };
+        qtyInput.addEventListener('input',()=>{qtyStatus.textContent='Unsaved';});
+        qtyArea.append(saveQty,qtyStatus);
+      }
+      line.append(qtyArea);
       if(admin && isAmend){
         const del=document.createElement('button');del.type='button';del.className='wsc-dates-delete';del.textContent='Delete this lot';del.style.cssText='width:auto;margin-top:8px;background:#a32929;display:none;';
         del.onclick=async()=>{
