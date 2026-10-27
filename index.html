@@ -883,7 +883,7 @@ function validateTradeShowFields() {
   <div id="stockTakeSessionsList"></div>
   <br>
 
-  <button id="startStockTakeButton" onclick="wscShowBOMChoice(this)">
+  <button id="startStockTakeButton" onclick="wscPrepareStockTake(this)">
     Start New Stock Take
   </button>
 
@@ -1154,7 +1154,7 @@ function validateTradeShowFields() {
   <!-- ST layout: creation action above report search, preserving its original handler and ID. -->
   <section id="stStartNewSection" style="display:none; margin:25px 0 28px;">
     <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
-    <button id="startNewStockTakeFromReport" onclick="wscShowBOMChoice(this)" style="margin-top:12px; display:none;">➕ Create New Stock Take</button>
+    <button id="startNewStockTakeFromReport" onclick="wscPrepareStockTake(this)" style="margin-top:12px; display:none;">➕ Create New Stock Take</button>
     <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
     <h3>Find Stock Take</h3>
   </section>
@@ -2922,6 +2922,29 @@ async function wscGetNewestCompletedBOM() {
 }
 // Optional BOM preview before beginning a Stock Take. Report only, never commits.
 let wscBOMBusy = false;
+let wscPreliminaryBusy = false;
+async function wscPrepareStockTake(button) {
+  if (wscPreliminaryBusy || document.getElementById('wscBOMChoice')) return;
+  wscPreliminaryBusy = true;
+  const oldText = button ? button.textContent : '';
+  if (button) {button.disabled = true; button.textContent = 'Preparing preliminary PDF…';}
+  wscBOMLoading('Reading QuickBooks stock and emailing preliminary PDF…');
+  try {
+    // Keep the request ID after a lost response so a manual retry cannot resend email.
+    const storageKey = 'wscPendingPreliminaryReport';
+    let requestId = sessionStorage.getItem(storageKey);
+    if (!requestId) {requestId = crypto.randomUUID(); sessionStorage.setItem(storageKey, requestId);}
+    await wscBOMRequest({action:'emailPreliminaryStockReport',requestId});
+    sessionStorage.removeItem(storageKey);
+    wscShowBOMChoice(button);
+  } catch(error) {
+    window.showWSCMessage('Preliminary Stock Report', String(error.message || error) + '\n\nNo Stock Take has been started.');
+  } finally {
+    wscBOMLoadingEnd();
+    if (button) {button.disabled = false; button.textContent = oldText;}
+    wscPreliminaryBusy = false;
+  }
+}
 function wscShowBOMChoice(button) {
   if (document.getElementById('wscBOMChoice')) return;
   const overlay = document.createElement('div');
