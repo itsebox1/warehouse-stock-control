@@ -1370,7 +1370,32 @@ function escapeHtml(value) {
   })[character]);
 }
 
+// Keep each counting step visible while the mobile keyboard opens or closes.
+let wscCountScrollGeneration = 0;
+function wscCancelCountScroll() { wscCountScrollGeneration++; }
+function wscScrollCountStep(target, searchFocus = false) {
+  if (!target) return;
+  const generation = ++wscCountScrollGeneration;
+  const started = Date.now();
+  const viewport = window.visualViewport;
+  const scroll = () => {
+    if (generation !== wscCountScrollGeneration || !target.isConnected || !target.getClientRects().length) return;
+    if (searchFocus && document.activeElement !== target) return;
+    const height = viewport?.height || window.innerHeight;
+    const inset = searchFocus ? Math.min(100, height * 0.22) : 24;
+    const top = Math.max(0, window.scrollY + target.getBoundingClientRect().top - (viewport?.offsetTop || 0) - inset);
+    window.scrollTo({top,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+  };
+  // iOS keyboard animation can resize the visible viewport after focus/blur.
+  const resized = () => { if (Date.now()-started < 900) scroll(); };
+  viewport?.addEventListener('resize',resized);
+  [80,350,700].forEach(delay=>setTimeout(scroll,delay));
+  setTimeout(()=>viewport?.removeEventListener('resize',resized),950);
+}
+window.addEventListener('touchmove',wscCancelCountScroll,{passive:true});
+window.addEventListener('wheel',wscCancelCountScroll,{passive:true});
 function resetProductLookup() {
+  wscCancelCountScroll();
   lookupInProgress = false;
 
   // Clear the previous lookup whenever a counting session opens or resumes.
@@ -1887,6 +1912,8 @@ function wscSetupQuantityBuilder() {
     save.disabled = false;
     error.textContent = '';
     totalLabel.textContent = 'Total confirmed: ' + state.total;
+    document.activeElement?.blur();
+    wscScrollCountStep(totalLabel);
   };
   addRow(false);
 }
@@ -1925,6 +1952,7 @@ async function lookupProduct(sku) {
   const countType = stReviewType();
   const reportNumber = stReviewActiveNumber();
   const markerReport = wscLastSkuReport();
+  let scrollToProduct = false;
   const result = document.getElementById("result");
   const details = document.getElementById("productDetails");
 
@@ -2091,6 +2119,8 @@ async function lookupProduct(sku) {
         document.getElementById('saveMessage').textContent = 'Previously saved: ' + counted.actualQty + '. Enter the revised total, Confirm Total, then Save Amendment.';
       }
       if (markerReport) await wscLastSkuSave(markerReport, product.sku);
+      document.activeElement?.blur();
+      scrollToProduct = true;
 
     } else {
       details.textContent = "Product not found";
@@ -2104,6 +2134,7 @@ async function lookupProduct(sku) {
   } finally {
     lookupInProgress = false;
     stopGlobeLoading();
+    if (scrollToProduct && stReviewType() === countType && stReviewActiveNumber() === reportNumber) wscScrollCountStep(details);
   }
 }
 
@@ -5252,6 +5283,8 @@ item.innerHTML = `
       
       const finish = document.createElement("button");
       finish.textContent = "Finish";
+      finish.style.background = "#c62828";
+      finish.style.color = "#ffffff";
       finish.onclick = () => finishStockTake(stockTake, finish);
 
       row.append(number, period, resume, finish);
@@ -5991,25 +6024,13 @@ if (finishButton) {
       : activeStockTake;
 
   finishButton.style.display =
-    activeSession ? "block" : "none";
+    currentCountType === "SC" && activeSession ? "block" : "none";
 }
    if (finishButton) {
-  finishButton.onclick = () => {
-    if (currentCountType === "SC") {
-      const activeStockCount =
-        localStorage.getItem("activeStockCount");
-
-      finishStockCount(activeStockCount, finishButton);
-    } else if (activeStockTake) {
-      finishStockTake(
-        {
-          reportNumber: activeStockTake,
-          stockTakePeriod: localStorage.getItem("activeStockTakePeriod")
-        },
-        finishButton
-      );
-    }
-  };
+  finishButton.onclick = currentCountType === "SC" ? () => {
+    const activeStockCount = localStorage.getItem("activeStockCount");
+    finishStockCount(activeStockCount, finishButton);
+  } : null;
 }
    
   document.getElementById("reportsScreen").style.display = "none";
@@ -8307,7 +8328,10 @@ function wscQuickInstall(input){
   const list=document.createElement('div');list.id=input.id+'Suggestions';list.hidden=true;list.setAttribute('aria-label','Matching products');list.style.cssText='max-height:320px;overflow-y:auto;border:1px solid #ccd5df;border-radius:8px;margin-bottom:12px;';
   list.addEventListener('pointerdown',e=>{if(e.target.closest('button'))e.preventDefault();});
   input.after(status,list);input.setAttribute('aria-controls',list.id);input.setAttribute('aria-describedby',status.id);
-  input.addEventListener('focus',()=>wscQuickPrepare(input));
+  input.addEventListener('focus',()=>{
+    wscQuickPrepare(input);
+    if(input.id==='manualSku')wscScrollCountStep(input,true);
+  });
   input.addEventListener('input',()=>{wscQuickClearPrevious(input);wscQuickPrepare(input);});
   input.addEventListener('keydown',e=>{
     if(e.isComposing)return;
