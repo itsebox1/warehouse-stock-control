@@ -7784,8 +7784,24 @@ function wscLockForInactivity() {
   dialog.addEventListener('cancel',e=>e.preventDefault());
   const splash=document.createElement('button');splash.type='button';
   splash.style.cssText='width:100%;height:100%;margin:0;border:0;border-radius:0;background:white;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#244b72;';
-  const logo=document.createElement('img');logo.src='its-europe-splash.png';logo.alt='ITS Europe';logo.style.cssText='width:min(85vw,600px);height:auto;';
-  const text=document.createElement('span');text.textContent='Tap or click to unlock';text.style.marginTop='24px';splash.append(logo,text);dialog.append(splash);
+  const style=document.createElement('style');
+  style.textContent=`
+    #wscIdleDialog .wsc-idle-saver{position:relative;overflow:hidden;background:#071421!important;color:#b9cbdc!important;}
+    #wscIdleDialog .wsc-idle-brand{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;max-width:76vw;pointer-events:none;animation:wscIdleDrift 47s ease-in-out infinite alternate;}
+    #wscIdleDialog .wsc-idle-brand img{width:min(68vw,500px);height:auto;opacity:.72;}
+    #wscIdleDialog .wsc-idle-spot{position:absolute;border-radius:50%;pointer-events:none;background:radial-gradient(circle,rgba(58,133,170,.24),rgba(30,80,125,.08) 55%,transparent 72%);animation:wscIdleGlow 19s ease-in-out infinite;opacity:0;}
+    @keyframes wscIdleGlow{0%,100%{opacity:0;transform:translate(-5vw,3vh) scale(.75)}50%{opacity:1;transform:translate(5vw,-4vh) scale(1.2)}}
+    @keyframes wscIdleDrift{0%{transform:translate(-8vw,-12vh)}35%{transform:translate(7vw,-4vh)}70%{transform:translate(-4vw,11vh)}100%{transform:translate(8vw,7vh)}}
+    @media(prefers-reduced-motion:reduce){#wscIdleDialog .wsc-idle-spot{animation:none;opacity:.12}#wscIdleDialog .wsc-idle-brand{animation:none;opacity:.65}}
+  `;
+  dialog.append(style);splash.className='wsc-idle-saver';
+  for(let i=0;i<7;i++){
+    const spot=document.createElement('span');spot.className='wsc-idle-spot';spot.setAttribute('aria-hidden','true');
+    spot.style.cssText='left:'+((i*31+7)%88)+'%;top:'+((i*23+9)%85)+'%;width:'+ (16+i%3*7)+'vmax;height:'+(16+i%3*7)+'vmax;animation-delay:-'+(i*4)+'s;animation-duration:'+(19+i*3)+'s;';splash.append(spot);
+  }
+  const brand=document.createElement('span');brand.className='wsc-idle-brand';
+  const logo=document.createElement('img');logo.src='its-europe-splash.png';logo.alt='ITS Europe';
+  const text=document.createElement('span');text.textContent='Tap or click to unlock';text.style.marginTop='24px';brand.append(logo,text);splash.append(brand);dialog.append(splash);
   wscIdleDialog=dialog;document.body.append(dialog);dialog.showModal();
   splash.onclick=()=>{
     if(refreshAllowed && wscPendingRequests===0 && !(typeof wscLiveQBUI!=='undefined' && wscLiveQBUI.busy)) {
