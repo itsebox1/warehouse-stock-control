@@ -1849,6 +1849,25 @@ async function findDeliveryExtraSku() {
   function lookupDeliveryProduct(sku) {
     return wscAuthenticatedLiveProductLookup_(sku);
   }
+// Switch presentation only: keep the existing quantity and save controls intact.
+function wscSetupCountSections() {
+  const toggle = document.getElementById('wscCountSectionToggle');
+  const counting = document.getElementById('wscCountEntrySection');
+  const saving = document.getElementById('wscCountSaveSection');
+  let countingVisible = true;
+  toggle.onclick = () => {
+    countingVisible = !countingVisible;
+    counting.hidden = !countingVisible;
+    saving.hidden = countingVisible;
+    toggle.textContent = countingVisible ? '▾' : '▸';
+    toggle.setAttribute('aria-expanded', String(countingVisible));
+    const label = countingVisible ? 'Show quantity, notes and Save Count' : 'Show quantities counted';
+    toggle.setAttribute('aria-label', label);
+    toggle.title = label;
+    wscScrollCountStep(document.getElementById('wscCountProductHeading'));
+  };
+}
+
 // Shared ST/SC counting calculator. Only a confirmed total can be saved.
 function wscSetupQuantityBuilder() {
   const rows = document.getElementById('wscQuantityRows');
@@ -2014,14 +2033,29 @@ async function lookupProduct(sku) {
       details.innerHTML = `
         <div style="padding:20px;background:#f3f6fa;border-radius:12px;margin-top:15px;color:#222;">
 
-          <h2>${escapeHtml(product.name)}</h2>
+          <div id="wscCountProductHeading" style="display:flex;gap:10px;align-items:flex-start;">
+            <button id="wscCountSectionToggle" type="button"
+              aria-controls="wscCountEntrySection wscCountSaveSection" aria-expanded="true"
+              aria-label="Show quantity, notes and Save Count" title="Show quantity, notes and Save Count"
+              style="flex:0 0 44px;width:44px;min-height:44px;margin:0;padding:8px;font-size:24px;line-height:1;">▾</button>
+            <h2 style="margin:0;min-width:0;overflow-wrap:anywhere;">${escapeHtml(product.name)}</h2>
+          </div>
 
           <p><strong>SKU:</strong> ${escapeHtml(product.sku)}</p>
 
           <hr>
 
+          <div id="wscCountEntrySection">
           <p><strong>QuickBooks Stock:</strong>
             ${escapeHtml(product.qbStock)}</p>
+
+          <button
+            id="cancelCountButton"
+            type="button"
+            style="width:100%;padding:15px;margin-top:10px;background:#666;color:white;border:none;border-radius:8px;font-size:18px;"
+          >
+            Cancel Count
+          </button>
 
           <fieldset id="wscQuantityBuilder" style="border:0;padding:0;margin:15px 0;min-width:0;">
             <legend style="font-weight:bold;">Quantities counted</legend>
@@ -2031,6 +2065,8 @@ async function lookupProduct(sku) {
             <p id="wscQuantityError" role="alert" style="color:#a52222;"></p>
             <button type="button" id="wscConfirmQuantity">Confirm Total</button>
           </fieldset>
+          </div>
+          <div id="wscCountSaveSection" hidden>
           <label for="actualQtyInput">
             <strong>New Actual Quantity:</strong>
           </label>
@@ -2064,21 +2100,13 @@ async function lookupProduct(sku) {
             Save Count
           </button>
 
-          <button
-            id="cancelCountButton"
-            type="button"
-            style="width:100%;padding:15px;margin-top:10px;background:#666;color:white;border:none;border-radius:8px;font-size:18px;"
-          >
-            Cancel Count
-          </button>
-
-          <p id="saveMessage"></p>
-
           <p><strong>Difference:</strong> <span id="liveDifference"></span></p>
 
           <p><strong>Last Counted:</strong>
             ${escapeHtml(product.lastCounted || "Not counted yet")}</p>
+          </div>
 
+          <p id="saveMessage" role="status" aria-live="polite"></p>
         </div>
       `;
 
@@ -2110,6 +2138,7 @@ async function lookupProduct(sku) {
       result.textContent = "Product found: " + product.sku;
 
       document.getElementById("saveCountButton").onclick = () => saveProductCount(product);
+      wscSetupCountSections();
       wscSetupQuantityBuilder();
       if (counted) {
         const firstQuantity = document.querySelector('#wscQuantityRows input');
