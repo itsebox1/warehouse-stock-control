@@ -8403,6 +8403,7 @@ function wscDatesToggleAmendments(){
   document.getElementById('wscDatesExpiry').value='';
   document.getElementById('wscDatesAmendMessage').textContent='';
   wscDatesCurrentSku='';
+  if(document.getElementById('wscDatesAmendSku').value.trim())void wscDatesFind(true);
 }
 function wscDatesCloseAmendments(){
   if(wscDatesBusy)return;
@@ -8787,6 +8788,7 @@ function wscDatesRenderProduct(data,isAmend){
         line.style.background='#ffe3b8';line.style.borderColor='#d17c12';line.style.color='#633b08';
       }
       const details=document.createElement('div');details.textContent='Lot: '+item.lot+' | Expiry: '+item.expiry;line.append(details);
+      if(admin && isAmend){
       const qtyArea=document.createElement('div');
       qtyArea.style.cssText='display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin-top:8px;';
       const qtyLabel=document.createElement('label');qtyLabel.style.cssText='display:flex;flex-direction:column;gap:4px;';qtyLabel.textContent='Qty (apprx)';
@@ -8815,6 +8817,11 @@ function wscDatesRenderProduct(data,isAmend){
         qtyArea.append(saveQty,qtyStatus);
       }
       line.append(qtyArea);
+      } else {
+        const qtyText=document.createElement('span');
+        qtyText.textContent='Qty (apprx): '+(item.approxQty == null || String(item.approxQty).trim()==='' ? 'Unknown' : String(item.approxQty));
+        line.append(qtyText);
+      }
       if(admin && isAmend){
         const del=document.createElement('button');del.type='button';del.className='wsc-dates-delete';del.textContent='Delete this lot';del.style.cssText='width:auto;margin-top:8px;background:#a32929;display:none;';
         del.onclick=async()=>{
