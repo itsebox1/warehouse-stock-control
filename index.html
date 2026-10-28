@@ -5067,18 +5067,50 @@ async function wscLoadOutstandingQB() {
     item.style.cssText = 'padding:12px;margin:8px 0;border:1px solid #ccc;border-radius:8px';
     const title = document.createElement('strong');
     title.textContent = report.reportNumber + ' — ' + ({ST:'Stock Take',SC:'Stock Count',TR:'Trade Show'}[report.type] || report.type);
-    const button = document.createElement('button');
-    button.type = 'button'; button.textContent = 'Go to Report';
-    button.onclick = () => {
-      if (report.type === 'TR') {
-        localStorage.setItem('activeTradeShow', report.reportNumber);
-        showTradeShowReport();
-      } else {
-        showReportOptions(report.type);
-        // Existing report search remains the route to a closed ST/SC report.
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;margin-top:10px';
+    const review = document.createElement('button');
+    review.type = 'button'; review.textContent = 'Review';
+    review.style.cssText = 'flex:1;min-width:120px;margin:0';
+    review.onclick = async () => {
+      if (wscLiveQBUI.busy || review.disabled) return;
+      review.disabled = true;
+      try {
+        if (report.type === 'TR') {
+          localStorage.setItem('activeTradeShow', report.reportNumber);
+          await showTradeShowReport();
+        } else {
+          showReportOptions(report.type);
+          const prefix = report.type === 'ST' ? 'st' : 'sc';
+          document.querySelector('input[name="'+prefix+'SearchMode"][value="number"]').checked = true;
+          document.getElementById(prefix+'ReportNumber').value = report.reportNumber.replace(/^(ST|SC)-/, '');
+          if (report.type === 'SC') changeSCSearch();
+          updateReportSearchMode();
+          await generateStockReport();
+        }
+      } catch (error) {
+        window.showWSCMessage('Review report', String(error.message || error));
+      } finally { review.disabled = false; }
+    };
+    const commit = document.createElement('button');
+    commit.type = 'button'; commit.textContent = 'Commit to QB';
+    commit.style.cssText = 'flex:1;min-width:120px;margin:0;background:#c62828';
+    commit.disabled = !wscLiveQBAllowed(report.type);
+    commit.onclick = async () => {
+      if (wscLiveQBUI.busy || commit.disabled) return;
+      commit.disabled = true; review.disabled = true;
+      try {
+        // Reuse the full live-status, issue-check and confirmation flow.
+        await wscSubmitLiveQB(report.reportNumber);
+      } finally {
+        commit.disabled = !wscLiveQBAllowed(report.type); review.disabled = false;
+        if (wscHomeDashboardLists) delete wscHomeDashboardLists.getHomeQBCommitments;
+        try { await wscLoadOutstandingQB(); }
+        catch (error) { console.warn('QB dashboard refresh:', error); }
       }
     };
-    item.append(title,button); list.appendChild(item);
+    actions.append(review,commit);
+    item.append(title,actions); list.appendChild(item);
   });
 }
 
