@@ -424,6 +424,11 @@ input[type="reset"]:disabled,
   Forgot PIN?
 </button>
 
+  <button id="changeUserButton" type="button"
+    style="display:block;max-width:300px;width:100%;margin:20px auto 0;">
+    Change User
+  </button>
+
   <p id="pinMessage" style="margin-top:15px;"></p>
 
 </div>
@@ -7076,6 +7081,17 @@ function wscPaintLiveQBButton(button, number, result) {
   else if (!wscLiveQBAllowed(area)) button.textContent='QB Submissions Disabled';
   else {button.disabled=false;button.textContent=area==='BOM'?'Review Live QB Adjustment':'Commit to QB Live';button.style.background='#c62828';button.style.cursor='pointer';}
   button.title=button.textContent;
+  if (['ST','SC'].includes(area) && button.parentElement) {
+    let issuesButton=button.nextElementSibling;
+    if(issuesButton?.dataset.qbIssuesFor!==number) {
+      issuesButton=document.createElement('button');issuesButton.type='button';
+      issuesButton.dataset.qbIssuesFor=number;issuesButton.textContent='Check and Resolve Issues';
+      issuesButton.style.background='#315478';issuesButton.onclick=()=>wscOpenStockQBIssues(number);
+      button.insertAdjacentElement('afterend',issuesButton);
+    }
+    issuesButton.hidden=['SUBMITTED','NO_CHANGE'].includes(state);
+    issuesButton.disabled=wscLiveQBUI.busy || !wscLiveQBAllowed(area);
+  }
 }
 function wscPaintLiveQBReport(number,result) {
   if(result)wscLiveQBUI.statuses.set(number,result);
@@ -7122,7 +7138,7 @@ async function wscSubmitLiveQB(number, button) {
   if(wscLiveQBUI.busy || !/^(ST|SC|TR|BOM)-\d{6}$/.test(number) || button?.disabled)return;
   const area=number.split('-')[0];
   wscLiveQBUI.busy=true; if(button)wscPaintLiveQBButton(button,number);
-  let sent=false, outcome=null, notice='';
+  let sent=false, outcome=null, notice='', issueResult=null;
   try {
     wscBOMLoading('Checking QuickBooks Live status…');
     await wscRefreshPermissions();
@@ -7130,6 +7146,11 @@ async function wscSubmitLiveQB(number, button) {
     const before=await wscReadLiveQBStatus(number);wscPaintLiveQBReport(number,before);
     const state=wscLiveQBState(before);
     if(state==='SUBMITTED'||state==='NO_CHANGE') {notice=number+' is already complete.';return;}
+    if(['ST','SC'].includes(area)) {
+      wscBOMLoading('Checking all report products against QuickBooks Live…');
+      const checked=await wscCheckStockQBIssues(number);
+      if(!checked.ready){issueResult=checked;return;}
+    }
     if(state!=='READY'||wscLiveQBUncertain(number))throw new Error('This report has an existing or uncertain submission. Check its QuickBooks result before submitting again.');
     let message='Submit '+number+' to QuickBooks Live? Please confirm the report is complete and its quantities are correct.';
     if(area==='BOM') {
@@ -7155,7 +7176,15 @@ async function wscSubmitLiveQB(number, button) {
       // This is a status read only, never a second submission.
       const status=await wscRefreshLiveQBButton(number);
       if(status && ['SUBMITTED','NO_CHANGE'].includes(wscLiveQBState(status))) {outcome=status;notice=wscLiveQBMessage(status,number);}
-      else notice+=' The outcome needs checking; no second submission was sent.';
+      else if(['ST','SC'].includes(area)) {
+        try {
+          const checked=await wscCheckStockQBIssues(number);
+          if(checked.noExistingSubmission===true) {
+            notice+=' No QuickBooks submission is recorded. Review the issues and recheck before trying again.';
+            issueResult=checked;
+          } else notice+=' The existing outcome needs checking; no second submission was sent.';
+        } catch(_) {notice+=' The outcome needs checking; no second submission was sent.';}
+      } else notice+=' The outcome needs checking; no second submission was sent.';
     }
   } finally {
     wscBOMLoading('Refreshing QuickBooks status…');
@@ -7164,9 +7193,94 @@ async function wscSubmitLiveQB(number, button) {
     wscLiveQBUI.busy=false;wscBOMLoadingEnd();
     wscPaintPermissions(wscPermissions);
     if(button)wscPaintLiveQBButton(button,number);
-    if(notice)window.showWSCMessage('QuickBooks Live',notice);
+    if(issueResult) {
+      if(notice)issueResult.blockers=[...(issueResult.blockers||[]),notice];
+      if(notice)issueResult.ready=false;
+      await wscOpenStockQBIssues(number,issueResult);
+    } else if(notice)window.showWSCMessage('QuickBooks Live',notice);
   }
 }
+function wscStockQBAction(number) {
+  return number.startsWith('ST-')?'commitStockTakeToQuickBooks':'commitStockCountToQuickBooks';
+}
+async function wscCheckStockQBIssues(number) {
+  const result=await wscLiveQBRequest(wscStockQBAction(number),number,{operation:'checkIssues'});
+  if(result.noExistingSubmission===true) wscLiveQBUncertain(number,false);
+  return result;
+}
+async function wscOpenStockQBIssues(number, initial) {
+  if(wscLiveQBUI.busy || document.getElementById('wscQBIssuesDialog'))return;
+  const dialog=document.createElement('dialog');dialog.id='wscQBIssuesDialog';
+  dialog.style.cssText='width:min(920px,94vw);max-height:90vh;overflow:auto;border:1px solid #bbb;border-radius:16px;padding:20px;color:#263244;background:#fff;box-sizing:border-box';
+  const heading=document.createElement('h2');heading.textContent=number+' — Check and Resolve Issues';dialog.appendChild(heading);
+  const intro=document.createElement('p');intro.textContent='Resolve changed stock using a verified current physical count. Original counts remain in the history. These amendments do not send anything to QuickBooks.';dialog.appendChild(intro);
+  const status=document.createElement('p');status.setAttribute('role','status');status.setAttribute('aria-live','polite');dialog.appendChild(status);
+  const body=document.createElement('div');dialog.appendChild(body);
+  const actions=document.createElement('div');actions.style.cssText='display:flex;gap:12px;flex-wrap:wrap';dialog.appendChild(actions);
+  const makeButton=(label,host,click)=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=click;host.appendChild(b);return b;};
+  let busy=false, checked=null;
+  const close=makeButton('Close',actions,()=>dialog.close());
+  const recheck=makeButton('Recheck All Issues',actions,()=>load());
+  const commit=makeButton('Commit to QB Live',actions,async()=>{dialog.close();await wscSubmitLiveQB(number);});commit.disabled=true;
+  const setBusy=value=>{busy=value;wscLiveQBUI.busy=value;close.disabled=value;recheck.disabled=value;commit.disabled=value||checked?.ready!==true;
+    body.querySelectorAll('button,input,textarea').forEach(el=>el.disabled=value);wscPaintLiveQBReport(number);};
+  dialog.addEventListener('cancel',event=>{if(busy)event.preventDefault();});
+  dialog.addEventListener('close',()=>{dialog.remove();wscPaintLiveQBReport(number);});
+  function render(result) {
+    checked=result;body.replaceChildren();commit.disabled=!result.ready;
+    status.textContent=result.ready?'All '+result.checkedCount+' products checked. No blocking issues found. Commit will check the live quantities again.':
+      (result.issues||[]).length+' product issue(s). '+(result.blockers||[]).length+' report blocker(s).';
+    (result.blockers||[]).forEach(message=>{const p=document.createElement('p');p.style.color='#b71c1c';p.textContent=message;body.appendChild(p);});
+    (result.issues||[]).forEach(issue=>{
+      const card=document.createElement('section');card.style.cssText='border:1px solid #ccc;border-radius:8px;padding:14px;margin:14px 0';body.appendChild(card);
+      const title=document.createElement('h3');title.textContent=issue.sku;card.appendChild(title);
+      const values=document.createElement('p');values.textContent='Saved QB: '+issue.saved+' | Saved actual: '+issue.actual+' | Live QB: '+(issue.live??'Unavailable');card.appendChild(values);
+      const message=document.createElement('p');message.textContent=issue.message;card.appendChild(message);
+      if(!issue.resolvable || result.blockers.length)return;
+      makeButton('Resolve',card,event=>{
+        event.currentTarget.hidden=true;
+        const form=document.createElement('form');card.appendChild(form);
+        const label=document.createElement('label');label.textContent='Verified current physical count';form.appendChild(label);
+        const quantity=document.createElement('input');quantity.type='number';quantity.min='0';quantity.step='1';quantity.required=true;quantity.inputMode='numeric';label.appendChild(quantity);
+        const reasonLabel=document.createElement('label');reasonLabel.textContent='Reason for amendment';form.appendChild(reasonLabel);
+        const reason=document.createElement('textarea');reason.required=true;reason.maxLength=500;reasonLabel.appendChild(reason);
+        const verifyLabel=document.createElement('label');verifyLabel.style.display='block';
+        const verified=document.createElement('input');verified.type='checkbox';verified.required=true;verifyLabel.appendChild(verified);
+        verifyLabel.appendChild(document.createTextNode(' I have verified this count is current, including stock movements since the original count.'));form.appendChild(verifyLabel);
+        const error=document.createElement('p');error.setAttribute('role','alert');form.appendChild(error);
+        const save=document.createElement('button');save.type='submit';save.textContent='Save Amendment and Recheck';form.appendChild(save);
+        let requestId=null, requestPayload=null;
+        form.onsubmit=async event=>{
+          event.preventDefault();if(busy)return;
+          const value=Number(quantity.value), explanation=reason.value.trim();
+          if(quantity.value.trim()==='' || !Number.isSafeInteger(value) || value<0 || !explanation || !verified.checked){error.textContent='Enter a current whole-number count, a reason, and confirm verification.';return;}
+          const details=JSON.stringify([value,explanation]);
+          if(requestPayload!==details){requestId=crypto.randomUUID();requestPayload=details;}
+          setBusy(true);error.textContent='Saving the amendment…';
+          try {
+            await wscLiveQBRequest(wscStockQBAction(number),number,{operation:'resolveIssue',sku:issue.sku,
+              fingerprint:result.fingerprint,live:issue.live,itemId:issue.itemId,quantity:value,reason:explanation,verifiedCurrentCount:true,requestId});
+            checked=null;commit.disabled=true;body.replaceChildren();status.textContent='Amendment saved. Rechecking all products…';
+            render(await wscCheckStockQBIssues(number));
+          } catch(e) {
+            checked=null;commit.disabled=true;status.textContent='Save or recheck could not be confirmed: '+String(e.message||e)+'. Recheck All Issues before continuing.';
+            error.textContent=String(e.message||e);
+          } finally {setBusy(false);}
+        };
+        quantity.focus();
+      });
+    });
+  }
+  async function load() {
+    if(busy)return;checked=null;setBusy(true);body.replaceChildren();status.textContent='Checking every product against QuickBooks Live…';
+    try {render(await wscCheckStockQBIssues(number));}
+    catch(error){status.textContent=String(error.message||error);}
+    finally{setBusy(false);}
+  }
+  document.body.appendChild(dialog);dialog.showModal();
+  if(initial)render(initial);else await load();
+}
+
 // End shared Live QuickBooks UI.
 
 function wscPaintPermissions(permissions) {
@@ -7309,7 +7423,7 @@ async function wscSaveSwitch(input,settingType,area,staffEmail){
 <script type="module">
   // Import the functions you need from the SDKs you need
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 // TODO: Add SDKs for Firebase products that you want to use
   // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -7466,6 +7580,39 @@ pinInput.addEventListener("keydown", (event) => {
   pinInput.value = "";
   pinMessage.textContent = "PIN reset. Enter a new 4-digit PIN.";
   pinInput.focus();
+});
+
+// Change the signed-in staff member without removing this device's PIN.
+const changeUserButton = document.getElementById("changeUserButton");
+changeUserButton.addEventListener("click", async () => {
+  if (changeUserButton.disabled) return;
+  changeUserButton.disabled = true;
+  pinButton.disabled = true;
+  forgotPinButton.disabled = true;
+  document.getElementById("loginButton").disabled = true;
+  pinMessage.textContent = "Signing out…";
+  try {
+    await signOut(auth);
+  } catch (error) {
+    pinMessage.textContent = "Unable to change user: " + (error.message || String(error));
+    changeUserButton.disabled = false;
+    pinButton.disabled = false;
+    forgotPinButton.disabled = false;
+    document.getElementById("loginButton").disabled = false;
+    return;
+  }
+  // Clear local selections only; saved sessions and submission safeguards remain.
+  try {
+    sessionStorage.removeItem(PIN_SESSION_KEY);
+    ['activeStockTake', 'activeStockTakePeriod', 'activeStockCount', 'activeTradeShow']
+      .forEach(key => localStorage.removeItem(key));
+  } finally {
+    document.getElementById("loginEmail").value = "";
+    document.getElementById("loginPassword").value = "";
+    pinInput.value = "";
+    // Discard the previous user's in-memory screens, caches and permissions.
+    window.location.reload();
+  }
 });
 
 // ----- END WSC DEVICE PIN LOCK -----
