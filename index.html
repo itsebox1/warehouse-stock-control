@@ -5258,7 +5258,7 @@ item.innerHTML = `
     <span style="display:flex; gap:8px; align-items:center;">
       <button
         type="button"
-       onclick="event.preventDefault(); event.stopPropagation(); resumeStockTake('${stockTake.reportNumber}', '${stockTake.stockTakePeriod}');"
+       onclick="event.preventDefault(); event.stopPropagation(); wscModuleMainClick('ST');"
         style="width:auto; background:#f0ad4e !important; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
       >In Progress — Resume Stock Take</button>
     </span>
@@ -5753,6 +5753,11 @@ throw new Error("Unable to load stock counts. Please try again.");
       resume.style.fontWeight = "bold";
 
       resume.onclick = () => {
+        // Home opens session management; Resume inside that screen starts counting.
+        if (list.id === "homeStockCountSessions") {
+          wscModuleMainClick('SC');
+          return;
+        }
         const scMode = document.querySelector('input[name="countType"][value="SC"]');
 
 if (scMode) {
