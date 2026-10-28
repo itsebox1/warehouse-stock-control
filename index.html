@@ -3281,6 +3281,13 @@ function wscShowBOMChoice(button) {
 
 async function selectStockTakeQuarter(clickedButton) {
   if (!(await wscCheckNewInventoryAllowed())) return;
+  const period = await wscChooseStockTakeMonth();
+  if (period) return startStockTake(clickedButton, period);
+  wscBOMChosenNumber = '';
+}
+
+function wscChooseStockTakeMonth() {
+  return new Promise(resolve => {
   const overlay = document.createElement("div");
 
   overlay.style.cssText = `
@@ -3317,16 +3324,17 @@ async function selectStockTakeQuarter(clickedButton) {
     button.onclick = () => {
       const period = button.dataset.period;
       overlay.remove();
-      startStockTake(clickedButton, period);
+      resolve(period);
     };
   });
 
   overlay.querySelector("[data-cancel]").onclick = () => {
-    wscBOMChosenNumber = '';
     overlay.remove();
+    resolve(null);
   };
 
   document.body.appendChild(overlay);
+  });
 }
   
   async function startStockTake(clickedButton, stockTakePeriod) {
@@ -5367,11 +5375,13 @@ item.innerHTML = `
   const originalFinishLabel = finish.textContent;
   finish.disabled = true;
   try {
-  const stockTakePeriod = stockTake.stockTakePeriod;
+  let stockTakePeriod = String(stockTake.stockTakePeriod || '').trim();
 
-  if (!stockTakePeriod) {
-    window.showWSCMessage("WSC", "This Stock Take does not have a month assigned.");
-    return;
+  if (!stockTakePeriod || stockTakePeriod === 'undefined' || stockTakePeriod === 'null') {
+    await new Promise(resolve => window.showWSCMessage(
+      "WSC", "This Stock Take does not have a month assigned.", resolve));
+    stockTakePeriod = await wscChooseStockTakeMonth();
+    if (!stockTakePeriod) return;
   }
       
     if (!(await window.showWSCConfirm(
@@ -7708,7 +7718,7 @@ window.confirmQuickBooksCommit = function(reportNumber) {
   return wscSubmitLiveQB(reportNumber, document.getElementById('qb-'+reportNumber));
 };
 
-window.showWSCMessage = function(title, message) {
+window.showWSCMessage = function(title, message, onClose) {
   const overlay = document.createElement("div");
 overlay.id = "wscMessageOverlay";
   overlay.style.cssText = `
@@ -7746,6 +7756,10 @@ box.style.cssText = `
       </button>
     </div>
   `;
+  box.querySelector('button').onclick = () => {
+    overlay.remove();
+    if (typeof onClose === 'function') onClose();
+  };
   overlay.appendChild(box);
 document.body.appendChild(overlay);
 };
