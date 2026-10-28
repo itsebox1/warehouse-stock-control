@@ -7073,7 +7073,7 @@ function wscPaintLiveQBButton(button, number, result) {
   if (state==='SUBMITTED' || state==='NO_CHANGE') wscLiveQBUncertain(number,false);
   button.disabled=true;button.style.background='#777';button.style.cursor='not-allowed';
   if (state==='SUBMITTED'||state==='NO_CHANGE') {
-    button.textContent=status?.noAdjustment ? 'Complete — No Adjustment Needed' : 'Committed to QB';button.style.background='#28a745';
+    button.textContent=status?.manualReviewRequired ? (status.noAdjustment?'Manual review required — no QB adjustment':'Committed — manual review required') : (status?.noAdjustment ? 'Complete — No Adjustment Needed' : 'Committed to QB');button.style.background=status?.manualReviewRequired?'#a65b00':'#28a745';
   } else if (wscLiveQBUI.busy) button.textContent='QuickBooks request in progress…';
   else if (wscLiveQBUncertain(number)) button.textContent='QB Outcome Needs Checking';
   else if (state==='UNKNOWN') button.textContent='QB Status Unavailable';
@@ -7089,7 +7089,10 @@ function wscPaintLiveQBButton(button, number, result) {
       issuesButton.style.background='#315478';issuesButton.onclick=()=>wscOpenStockQBIssues(number);
       button.insertAdjacentElement('afterend',issuesButton);
     }
-    issuesButton.hidden=['SUBMITTED','NO_CHANGE'].includes(state);
+    const review=status?.manualReviewRequired===true;
+    issuesButton.textContent=review?'Outstanding issues / email report':'Check and Resolve Issues';
+    issuesButton.onclick=()=>review?wscOpenStockQBReview(number):wscOpenStockQBIssues(number);
+    issuesButton.hidden=['SUBMITTED','NO_CHANGE'].includes(state)&&!review;
     issuesButton.disabled=wscLiveQBUI.busy || !wscLiveQBAllowed(area);
   }
 }
@@ -7131,6 +7134,9 @@ async function wscRefreshLiveQBButton(number) {
   catch(error){wscLiveQBUI.statuses.delete(number);wscPaintLiveQBReport(number);return null;}
 }
 function wscLiveQBMessage(result,number) {
+  if(result.manualReviewRequired) return number+(result.noAdjustment?' completed without a QB adjustment for verified products.':' committed verified product adjustments to QuickBooks.')+
+    ' '+result.unresolvedCount+' unresolved product(s) were left unchanged. Manual review is required. '+
+    (result.reportEmailState==='SENT'?'The issue report was sent to nmerry@sensafe.com.':'Issue report email status: '+result.reportEmailState+'. '+(result.reportEmailMessage||'Open Outstanding issues / email report to send or check it.'));
   return result.noAdjustment ? number+' is complete. No stock adjustment was needed.' :
     number+' was accepted by QuickBooks Live.'+(result.adjustmentId?' Adjustment ID: '+result.adjustmentId+'.':'');
 }
@@ -7222,14 +7228,18 @@ async function wscOpenStockQBIssues(number, initial) {
   const close=makeButton('Close',actions,()=>dialog.close());
   const recheck=makeButton('Recheck All Issues',actions,()=>load());
   const commit=makeButton('Commit to QB Live',actions,async()=>{dialog.close();await wscSubmitLiveQB(number);});commit.disabled=true;
-  const setBusy=value=>{busy=value;wscLiveQBUI.busy=value;close.disabled=value;recheck.disabled=value;commit.disabled=value||checked?.ready!==true;
+  const partial=makeButton('Commit and report',actions,async()=>{dialog.close();await wscSubmitStockQBPartial(number);});partial.disabled=true;
+  const setBusy=value=>{busy=value;wscLiveQBUI.busy=value;close.disabled=value;recheck.disabled=value;commit.disabled=value||checked?.ready!==true;partial.disabled=value||checked?.partialAllowed!==true;
     body.querySelectorAll('button,input,textarea').forEach(el=>el.disabled=value);wscPaintLiveQBReport(number);};
   dialog.addEventListener('cancel',event=>{if(busy)event.preventDefault();});
   dialog.addEventListener('close',()=>{dialog.remove();wscPaintLiveQBReport(number);});
   function render(result) {
-    checked=result;body.replaceChildren();commit.disabled=!result.ready;
+    checked=result;body.replaceChildren();commit.disabled=!result.ready;partial.disabled=result.partialAllowed!==true;
     status.textContent=result.ready?'All '+result.checkedCount+' products checked. No blocking issues found. Commit will check the live quantities again.':
       (result.issues||[]).length+' product issue(s). '+(result.blockers||[]).length+' report blocker(s).';
+    if(result.partialAllowed) {
+      const hint=document.createElement('p');hint.textContent='If these issues cannot be resolved, Commit and report will submit verified products only, leave unresolved products unchanged, and email nmerry@sensafe.com for manual review.';body.appendChild(hint);
+    }
     (result.blockers||[]).forEach(message=>{const p=document.createElement('p');p.style.color='#b71c1c';p.textContent=message;body.appendChild(p);});
     (result.issues||[]).forEach(issue=>{
       const card=document.createElement('section');card.style.cssText='border:1px solid #ccc;border-radius:8px;padding:14px;margin:14px 0';body.appendChild(card);
@@ -7279,6 +7289,79 @@ async function wscOpenStockQBIssues(number, initial) {
   }
   document.body.appendChild(dialog);dialog.showModal();
   if(initial)render(initial);else await load();
+}
+
+async function wscSubmitStockQBPartial(number) {
+  if(wscLiveQBUI.busy)return;
+  wscLiveQBUI.busy=true;let sent=false,notice='',result=null;
+  try {
+    await wscRefreshPermissions();
+    if(!wscLiveQBAllowed(number.split('-')[0]))throw new Error('QuickBooks submissions are disabled.');
+    wscBOMLoading('Checking products for Commit and report…');
+    const checked=await wscCheckStockQBIssues(number);
+    if(!checked.partialAllowed)throw new Error((checked.blockers||[]).join('\n')||'The outstanding issues have changed. Reopen Check and Resolve Issues.');
+    wscBOMLoadingEnd();
+    const message='Commit '+number+' and report?\n\n'+checked.adjustmentLineCount+' verified product adjustment(s) will be sent to QuickBooks. '+checked.issues.length+' unresolved product(s) will be LEFT UNCHANGED:\n'+
+      checked.issues.map(i=>i.sku).join(', ')+'\n\nTheir details will be emailed to nmerry@sensafe.com for manual review. This report cannot be committed again.';
+    const safeMessage=message.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])).replace(/\n/g,'<br>');
+    if(!await window.showWSCConfirm('Commit and report',safeMessage))return;
+    wscBOMLoading('Committing verified products and preparing the issue report…');
+    sent=true;wscLiveQBUncertain(number,true);
+    result=await wscLiveQBRequest(wscStockQBAction(number),number,{operation:'commitAndReport',partialToken:checked.partialToken,confirmation:'COMMIT AND REPORT '+number});
+    if(!result.submitted)throw new Error('QuickBooks outcome has not been confirmed.');
+    wscLiveQBUncertain(number,false);notice=wscLiveQBMessage(result,number);
+  } catch(error) {
+    notice=String(error.message||error);
+    if(sent) {
+      const status=await wscRefreshLiveQBButton(number);
+      if(status?.submitted){result=status;wscLiveQBUncertain(number,false);notice=wscLiveQBMessage(status,number);}
+      else {
+        try {const checked=await wscCheckStockQBIssues(number);
+          notice+=checked.noExistingSubmission?' No submission is recorded. Recheck the issues before trying again.':' The outcome needs checking. No second adjustment was sent.';
+        } catch(_){notice+=' The outcome needs checking. No second adjustment was sent.';}
+      }
+    }
+  } finally {
+    if(result)wscPaintLiveQBReport(number,result);else await wscRefreshLiveQBButton(number);
+    wscLiveQBUI.busy=false;wscBOMLoadingEnd();wscPaintLiveQBReport(number);
+    if(notice)window.showWSCMessage('Commit and report',notice);
+  }
+}
+async function wscOpenStockQBReview(number) {
+  if(wscLiveQBUI.busy||document.getElementById('wscQBReviewDialog'))return;
+  const dialog=document.createElement('dialog');dialog.id='wscQBReviewDialog';
+  dialog.style.cssText='width:min(900px,94vw);max-height:90vh;overflow:auto;border:1px solid #bbb;border-radius:16px;padding:20px;box-sizing:border-box';
+  const title=document.createElement('h2');title.textContent=number+' — Manual review required';dialog.appendChild(title);
+  const status=document.createElement('p');status.setAttribute('role','status');dialog.appendChild(status);
+  const body=document.createElement('div');dialog.appendChild(body);
+  const send=document.createElement('button');send.type='button';send.textContent='Send issue report';dialog.appendChild(send);
+  const close=document.createElement('button');close.type='button';close.textContent='Close';close.onclick=()=>dialog.close();dialog.appendChild(close);
+  let result=null,busy=false;
+  const setBusy=value=>{busy=value;wscLiveQBUI.busy=value;send.disabled=value||!result?.submitted;close.disabled=value;};
+  const render=data=>{
+    result=data;body.replaceChildren();
+    status.textContent=(!data.submitted?'QuickBooks outcome is not yet confirmed; check the existing submission. ':(data.noAdjustment?'No QuickBooks adjustment was needed for verified products. ':'Verified product adjustments were committed. '))+data.unresolvedCount+' unresolved product(s) were left unchanged. Email status: '+data.reportEmailState+'. '+(data.reportEmailMessage||'');
+    for(const issue of data.issues||[]) {
+      const p=document.createElement('p');p.textContent=issue.sku+' — Saved QB: '+issue.saved+'; saved actual: '+issue.actual+'; Live QB at check: '+(issue.live??'Unavailable')+'. '+issue.message;body.appendChild(p);
+    }
+    send.textContent=data.reportEmailState==='UNSENT'?'Send issue report':'Resend issue report';
+    wscPaintLiveQBReport(number,data);
+  };
+  send.onclick=async()=>{
+    if(busy||!result)return;
+    const resend=result.reportEmailState!=='UNSENT';
+    if(resend&&!window.confirm('Resend the issue report to nmerry@sensafe.com? The earlier email may already have arrived. This will not send another stock adjustment.'))return;
+    setBusy(true);
+    try{render(await wscLiveQBRequest(wscStockQBAction(number),number,{operation:'sendIssueReport',allowResend:resend}));}
+    catch(error){status.textContent='Email could not be confirmed: '+String(error.message||error)+'. Close and reopen this report to check its status. No stock adjustment was sent.';}
+    finally{setBusy(false);}
+  };
+  dialog.addEventListener('cancel',e=>{if(busy)e.preventDefault();});
+  dialog.addEventListener('close',()=>{dialog.remove();wscPaintLiveQBReport(number);});
+  document.body.appendChild(dialog);dialog.showModal();setBusy(true);status.textContent='Loading outstanding issues…';
+  try{render(await wscLiveQBRequest(wscStockQBAction(number),number,{operation:'viewIssueReport'}));}
+  catch(error){status.textContent=String(error.message||error);}
+  finally{setBusy(false);}
 }
 
 // End shared Live QuickBooks UI.
