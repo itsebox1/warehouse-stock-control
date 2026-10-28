@@ -424,11 +424,6 @@ input[type="reset"]:disabled,
   Forgot PIN?
 </button>
 
-  <button id="changeUserButton" type="button"
-    style="display:block;max-width:300px;width:100%;margin:20px auto 0;">
-    Change User
-  </button>
-
   <p id="pinMessage" style="margin-top:15px;"></p>
 
 </div>
@@ -460,7 +455,6 @@ input[type="reset"]:disabled,
 </div>
 
 
-  <button id="wscWeeklyBOMButton" data-wsc-area="WEEKLY_BOM" type="button" onclick="wscStartWeeklyBOM(this)" style="display:none;width:100%;margin:15px 0;background:#54799A;color:white;">🧩 Weekly BOM</button>
   <button id="wscDatesHomeButton" data-wsc-area="DATES" type="button" onclick="wscOpenDates()" style="width:100%; margin:30px 0 30px; background:#54799A; color:white;">📅 Check Dates</button>
 
   <div class="wsc-module" data-module="ST"><div class="wsc-module-header">
@@ -505,7 +499,7 @@ input[type="reset"]:disabled,
     <h2>📅 Check Dates</h2>
     <label for="wscDatesSku">Product SKU</label>
     <input id="wscDatesSku" type="text" placeholder="Enter SKU" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;margin:8px 0;">
-    
+    <button id="wscDatesFind" type="button" onclick="wscDatesFind()" style="width:100%;">Find Product</button>
     <button id="wscDatesScanButton" type="button" onclick="wscDatesStartScanner()" style="width:100%;margin-top:10px;">📷 Scan QR Code</button>
     <div id="wscDatesQrReader" style="display:none;width:100%;max-width:420px;margin:12px auto;"></div>
     <button id="wscDatesStopScanButton" type="button" onclick="wscDatesStopScanner()" style="display:none;width:100%;">Stop Scanning</button>
@@ -518,7 +512,7 @@ input[type="reset"]:disabled,
     <h2>✏️ Check Dates — Amendments</h2>
     <label for="wscDatesAmendSku">Product SKU</label>
     <input id="wscDatesAmendSku" type="text" placeholder="Enter SKU" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;margin:8px 0;">
-    
+    <button id="wscDatesAmendFind" type="button" onclick="wscDatesFind(true)" style="width:100%;">Find Product</button>
     <button id="wscDatesAmendScanButton" type="button" onclick="wscDatesStartScanner(true)" style="width:100%;margin-top:10px;">📷 Scan SKU</button>
     <div id="wscDatesAmendQrReader" style="display:none;width:100%;max-width:420px;margin:12px auto;"></div>
     <button id="wscDatesAmendStopScanButton" type="button" onclick="wscDatesStopScanner()" style="display:none;width:100%;">Stop Scanning</button>
@@ -713,7 +707,12 @@ input[type="reset"]:disabled,
     style="width:100%; max-width:350px; margin-top:8px;"
   >
 
- 
+ <button
+  type="button"
+  id="deliveryFindExtraSkuButton"
+  onclick="findDeliveryExtraSku()">
+  🔍 Find Product
+</button>
 
 <p id="deliverySkuSearchMessage"></p>
     <div id="deliveryExtraProductEntry" style="display:none; margin-top:12px;">
@@ -889,7 +888,7 @@ function validateTradeShowFields() {
   <div id="stockTakeSessionsList"></div>
   <br>
 
-  <button id="startStockTakeButton" onclick="wscPrepareStockTake(this)">
+  <button id="startStockTakeButton" onclick="wscShowBOMChoice(this)">
     Start New Stock Take
   </button>
 
@@ -918,7 +917,6 @@ function validateTradeShowFields() {
   <p id="activeStockTakeNumber"
    style="font-weight:bold; font-size:20px; color:#304B70;">
 </p>
-<p id="wscLastSku" style="display:none;color:#304B70;" aria-live="polite"></p>
   
 <div class="count-type-selector" style="display:none;">
   <label>
@@ -943,12 +941,13 @@ function validateTradeShowFields() {
 <input
   type="text"
   id="manualSku"
-  inputmode="numeric"
   placeholder="Enter product SKU"
   style="width:100%; padding:14px; box-sizing:border-box; font-size:17px;"
 >
 
-
+<button id="findSkuButton" onclick="findManualSku()">
+  Find Product
+</button>
 
   <div id="reader"></div>
   
@@ -1011,7 +1010,13 @@ function validateTradeShowFields() {
     style="width:100%; padding:14px; box-sizing:border-box; font-size:17px;"
   >
 
- 
+ <button
+  type="button"
+  id="tradeShowFindProductButton"
+  onclick="findTradeShowManualSku()"
+>
+  Find Product
+</button>
 
   <div id="tradeShowProductDetails"></div>
 
@@ -1091,7 +1096,6 @@ function validateTradeShowFields() {
     📧 Email Report
   </button>
 
-  <button type="button" onclick="wscPrintReportPdf(document.getElementById('tradeShowEmailButton').dataset.reportNumber,this)">🖨 Print PDF</button>
   <button
     type="button"
     id="tradeShowCommitQBButton"
@@ -1162,7 +1166,7 @@ function validateTradeShowFields() {
   <!-- ST layout: creation action above report search, preserving its original handler and ID. -->
   <section id="stStartNewSection" style="display:none; margin:25px 0 28px;">
     <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
-    <button id="startNewStockTakeFromReport" onclick="wscPrepareStockTake(this)" style="margin-top:12px; display:none;">➕ Create New Stock Take</button>
+    <button id="startNewStockTakeFromReport" onclick="wscShowBOMChoice(this)" style="margin-top:12px; display:none;">➕ Create New Stock Take</button>
     <hr style="margin:28px 0;border:0;border-top:1px solid #ccc;">
     <h3>Find Stock Take</h3>
   </section>
@@ -1348,8 +1352,8 @@ function validateTradeShowFields() {
 
   <p id="reportDisplayDates"></p>
 
-  <button onclick="wscPrintReportPdf((document.getElementById('reportDisplayTitle').textContent.match(/(?:ST|SC|TR|DL|BOM)-\d{6}/)||[])[0],this)">
-    Print PDF
+  <button onclick="window.print()">
+    Print / Save PDF
   </button>
 
   <div id="reportDisplayContent"></div>
@@ -1376,31 +1380,7 @@ function escapeHtml(value) {
   })[character]);
 }
 
-// Keep each counting step visible while the mobile keyboard opens or closes.
-let wscCountScrollGeneration = 0;
-function wscCancelCountScroll() { wscCountScrollGeneration++; }
-function wscScrollCountStep(target, searchFocus = false) {
-  if (!target) return;
-  const generation = ++wscCountScrollGeneration;
-  const started = Date.now();
-  const viewport = window.visualViewport;
-  const scroll = () => {
-    if (generation !== wscCountScrollGeneration || !target.isConnected || !target.getClientRects().length) return;
-    if (searchFocus && document.activeElement !== target) return;
-    const inset = searchFocus ? 12 : 24;
-    const top = Math.max(0, window.scrollY + target.getBoundingClientRect().top - (viewport?.offsetTop || 0) - inset);
-    window.scrollTo({top,behavior:searchFocus || window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
-  };
-  // iOS keyboard animation can resize the visible viewport after focus/blur.
-  const resized = () => { if (Date.now()-started < 900) scroll(); };
-  viewport?.addEventListener('resize',resized);
-  [80,350,700].forEach(delay=>setTimeout(scroll,delay));
-  setTimeout(()=>viewport?.removeEventListener('resize',resized),950);
-}
-window.addEventListener('touchmove',wscCancelCountScroll,{passive:true});
-window.addEventListener('wheel',wscCancelCountScroll,{passive:true});
 function resetProductLookup() {
-  wscCancelCountScroll();
   lookupInProgress = false;
 
   // Clear the previous lookup whenever a counting session opens or resumes.
@@ -1461,9 +1441,7 @@ let deliverySessionRequestAttempted = false;
 let currentDeliveryRequestId =
   sessionStorage.getItem("wscDeliveryRequestId") || null;
 
-let wscDeliveryConfirmationBusy = false;
 async function handleDeliveryConfirmation() {
-  if (wscDeliveryConfirmationBusy) return;
   if (!currentDeliveryReportNumber) {
     await saveDeliveryForReview();
     return;
@@ -1500,18 +1478,12 @@ async function handleDeliveryConfirmation() {
 if (!confirmed) {
   return;
 }
-wscDeliveryConfirmationBusy = true;
-const confirmButton = document.getElementById("deliverySaveReviewButton");
-if (confirmButton) confirmButton.disabled = true;
-wscBOMLoading("Loading delivery...");
-try {
 const savedSuccessfully = await saveDeliveryForReview();
 
 if (savedSuccessfully !== true) {
   return;
 }
 
-wscBOMLoading("Updating dates and Lot numbers...");
 const idToken = await window.getCurrentStaffToken();
 
 if (!idToken) {
@@ -1522,6 +1494,7 @@ if (!idToken) {
   return;
 }
 
+try {
   const response = await fetch(
     "https://warehouse-stock-reports.tmerry.workers.dev",
     {
@@ -1549,7 +1522,6 @@ if (!idToken) {
 
    const finishedReportNumber = currentDeliveryReportNumber;
 
-  wscBOMLoadingEnd();
   await showWelcomeScreen();
 
   const viewPdf = await window.showWSCConfirm(
@@ -1567,17 +1539,13 @@ if (!idToken) {
     "Unable to Finish Delivery",
     error.message || "Please try again."
   );
-} finally {
-  wscBOMLoadingEnd();
-  wscDeliveryConfirmationBusy = false;
-  if (confirmButton) confirmButton.disabled = false;
 }
 }
   
 async function saveDeliveryForReview() {
   const button = document.getElementById("deliverySaveReviewButton");
 
-  if (!button || (button.disabled && !wscDeliveryConfirmationBusy)) return;
+  if (!button || button.disabled) return;
 
   button.disabled = true;
   button.textContent = "⏳ Saving Delivery...";
@@ -1802,42 +1770,37 @@ deliveryExtraFoundProduct = null;
 let deliveryReviewProducts = [];
   
   let deliveryExtraFoundProduct = null;
-let wscDeliveryExtraLookupBusy=false;
 async function findDeliveryExtraSku() {
   const input = document.getElementById("deliveryExtraSku");
-  const message = document.getElementById("deliverySkuSearchMessage");
-  const entry = document.getElementById("deliveryExtraProductEntry");
-  const sku = (input?.value || "").trim().toUpperCase();
+  const message = document.getElementById("deliveryReviewMessage");
+  const sku = input.value.trim().toUpperCase();
 
   if (!sku) {
     message.textContent = "Please enter a SKU.";
-    input?.focus();
     return;
   }
-  if (wscDeliveryExtraLookupBusy) return;
-  deliveryExtraFoundProduct = null;
-  entry.style.display = "none";
+
   message.textContent = "Looking up SKU " + sku + "...";
-  wscDeliveryExtraLookupBusy = true;
-  wscBOMLoading("Finding product " + sku + "...");
+
   try {
     const product = await lookupDeliveryProduct(sku);
+
     if (!product || !product.sku) {
       message.textContent = "Product not found: " + sku;
       return;
     }
+
     deliveryExtraFoundProduct = product;
-    message.textContent = "Product found: " + product.sku + " — " + (product.name || "");
-    entry.style.display = "block";
-    document.getElementById("deliveryExtraQty")?.focus();
+    message.textContent =
+      "Product found: " + product.sku +
+      " — " + product.name;
+    document.getElementById("deliveryExtraProductEntry").style.display = "block";
+
   } catch (error) {
-    message.textContent = "Lookup failed for " + sku + ": " + (error?.message || String(error));
-  } finally {
-    wscDeliveryExtraLookupBusy = false;
-    wscBOMLoadingEnd();
+    message.textContent = "Lookup failed: " + error.message;
   }
 }
-
+  
   async function wscAuthenticatedLiveProductLookup_(sku) {
     const idToken = await window.getCurrentStaffToken();
     if (!idToken) throw new Error('Sign in required for live stock lookup.');
@@ -1854,129 +1817,7 @@ async function findDeliveryExtraSku() {
   function lookupDeliveryProduct(sku) {
     return wscAuthenticatedLiveProductLookup_(sku);
   }
-// Switch presentation only: keep the existing quantity and save controls intact.
-function wscSetupCountSections() {
-  const toggle = document.getElementById('wscCountSectionToggle');
-  const counting = document.getElementById('wscCountEntrySection');
-  const saving = document.getElementById('wscCountSaveSection');
-  let countingVisible = true;
-  toggle.onclick = () => {
-    countingVisible = !countingVisible;
-    counting.hidden = !countingVisible;
-    saving.hidden = countingVisible;
-    toggle.textContent = countingVisible ? '▾' : '▸';
-    toggle.setAttribute('aria-expanded', String(countingVisible));
-    const label = countingVisible ? 'Show quantity, notes and Save Count' : 'Show quantities counted';
-    toggle.setAttribute('aria-label', label);
-    toggle.title = label;
-    wscScrollCountStep(document.getElementById('wscCountProductHeading'));
-  };
-}
-
-// Shared ST/SC counting calculator. Only a confirmed total can be saved.
-function wscSetupQuantityBuilder() {
-  const rows = document.getElementById('wscQuantityRows');
-  const actual = document.getElementById('actualQtyInput');
-  const save = document.getElementById('saveCountButton');
-  const totalLabel = document.getElementById('wscQuantityTotal');
-  const error = document.getElementById('wscQuantityError');
-  const confirm = document.getElementById('wscConfirmQuantity');
-  let sequence = 0;
-  function calculate() {
-    let total = 0, entered = false, valid = true;
-    rows.querySelectorAll('input').forEach(input => {
-      const value = input.value.trim();
-      if (input.validity && input.validity.badInput) valid = false;
-      if (!value) return;
-      entered = true;
-      const number = Number(value);
-      if (!Number.isSafeInteger(number) || number < 0) valid = false;
-      else total += number;
-    });
-    if (!Number.isSafeInteger(total)) valid = false;
-    return {total, entered, valid};
-  }
-  function update() {
-    actual.value = '';
-    actual.dispatchEvent(new Event('input', {bubbles:true}));
-    save.disabled = true;
-    const state = calculate();
-    totalLabel.textContent = state.valid ? 'Total: ' + state.total : 'Total: —';
-    error.textContent = state.valid ? '' : 'Use whole numbers of zero or more. The total must be a safe whole number.';
-    confirm.disabled = !state.valid || !state.entered;
-  }
-  function addRow(focus) {
-    const row = document.createElement('div');
-    row.style.cssText = 'display:flex;gap:8px;align-items:center;margin:10px 0;';
-    const label = document.createElement('label');
-    const input = document.createElement('input');
-    input.id = 'wscQuantityPart' + (++sequence);
-    label.htmlFor = input.id; label.textContent = 'Qty ' + sequence;
-    input.type = 'number'; input.min = '0'; input.step = '1'; input.inputMode = 'numeric';
-    input.style.cssText = 'flex:1;min-width:0;width:100%;padding:12px;font-size:18px;box-sizing:border-box;';
-    input.addEventListener('input', update);
-    row.append(label,input);
-    if (rows.children.length) {
-      const remove = document.createElement('button');
-      remove.type = 'button'; remove.textContent = 'Remove';
-      remove.setAttribute('aria-label','Remove quantity ' + sequence);
-      remove.style.cssText = 'width:auto;margin:0;padding:10px;font-size:14px;';
-      remove.onclick = () => {row.remove(); update();};
-      row.appendChild(remove);
-    }
-    rows.appendChild(row); update();
-    if (focus) input.focus();
-  }
-  document.getElementById('wscAddQuantity').onclick = () => addRow(true);
-  confirm.onclick = () => {
-    const state = calculate();
-    if (!state.valid || !state.entered) {update();return;}
-    actual.value = String(state.total);
-    actual.dispatchEvent(new Event('input', {bubbles:true}));
-    save.disabled = false;
-    error.textContent = '';
-    totalLabel.textContent = 'Total confirmed: ' + state.total;
-    document.activeElement?.blur();
-    wscScrollCountStep(totalLabel);
-  };
-  addRow(false);
-}
-
-let wscLastSkuGeneration = 0;
-function wscLastSkuReport() {
-  return document.querySelector('input[name="countType"]:checked')?.value === 'ST' ? localStorage.getItem('activeStockTake') : '';
-}
-async function wscLastSkuRefresh() {
-  const generation = ++wscLastSkuGeneration;
-  const number = wscLastSkuReport();
-  const label = document.getElementById('wscLastSku');
-  label.style.display = number ? 'block' : 'none';
-  label.textContent = number ? 'Last SKU scanned - loading…' : '';
-  if (!number) return;
-  try {
-    const result = await wscDatesRequest('getStockTakeProgress', {reportNumber:number});
-    if (generation === wscLastSkuGeneration && wscLastSkuReport() === number) label.textContent = 'Last SKU scanned - ' + (result.lastSku || 'None yet');
-  } catch (error) {
-    if (generation === wscLastSkuGeneration) label.textContent = 'Last SKU scanned - unable to load. Reopen this stock take to retry.';
-  }
-}
-async function wscLastSkuSave(number, sku) {
-  const generation = ++wscLastSkuGeneration;
-  const label = document.getElementById('wscLastSku');
-  if (wscLastSkuReport() === number) { label.style.display='block'; label.textContent='Last SKU scanned - '+sku+' (saving…)'; }
-  try {
-    await wscDatesRequest('setStockTakeProgress',{reportNumber:number,sku});
-    if (generation === wscLastSkuGeneration && wscLastSkuReport() === number) label.textContent='Last SKU scanned - '+sku;
-  } catch (error) {
-    if (generation === wscLastSkuGeneration && wscLastSkuReport() === number) label.textContent='Last SKU scanned - '+sku+' (marker save not confirmed; scan again to retry)';
-  }
-}
 async function lookupProduct(sku) {
-  if (lookupInProgress) return;
-  const countType = stReviewType();
-  const reportNumber = stReviewActiveNumber();
-  const markerReport = wscLastSkuReport();
-  let scrollToProduct = false;
   const result = document.getElementById("result");
   const details = document.getElementById("productDetails");
 
@@ -1996,82 +1837,23 @@ async function lookupProduct(sku) {
   result.textContent = "Looking up product: " + sku;
 
   try {
-    if (!reportNumber) throw new Error('Start or resume a Stock Take or Stock Count before looking up a product.');
-    // Read the current report, not a cached product flag or an earlier session.
-    const [product, review] = await Promise.all([
-      wscAuthenticatedLiveProductLookup_(sku),
-      stReviewRequest(countType === 'SC' ? 'getStockCountReview' : 'getStockTakeReview', {reportNumber})
-    ]);
-    if (stReviewType() !== countType || stReviewActiveNumber() !== reportNumber) return;
-    if (!Array.isArray(review.products)) throw new Error('Unable to check previously counted products. Please try again.');
-    const counted = product && product.sku ? review.products.find(p => String(p.sku).trim().toLowerCase() === String(product.sku).trim().toLowerCase()) : null;
-    if (counted) {
-      const name = countType === 'SC' ? 'stock count' : 'stock take';
-      stopGlobeLoading();
-      const amend = await window.showWSCConfirm(
-        'Product already counted',
-        '<strong>' + escapeHtml(product.sku) + ' already in this ' + name + '</strong><br><br>' +
-        'Report: ' + escapeHtml(reportNumber) + '<br>' +
-        'QB qty (when counted): <strong>' + escapeHtml(counted.qbStock) + '</strong><br>' +
-        'Amended qty (saved): <strong>' + escapeHtml(counted.actualQty) + '</strong>' +
-        (Number(product.qbStock) !== Number(counted.qbStock) ? '<br>Current QB qty: <strong>' + escapeHtml(product.qbStock) + '</strong>' : '') +
-        '<br><br>Amend replaces the saved total. Ignore leaves it unchanged.',
-        {confirmLabel:'Amend', cancelLabel:'Ignore'}
-      );
-      if (stReviewType() !== countType || stReviewActiveNumber() !== reportNumber) return;
-      if (!amend) {
-        resetProductLookup();
-        // Keep the lookup guard until the marker has finished saving.
-        lookupInProgress = true;
-        const search = document.getElementById('manualSku');
-        if (search) { search.value=''; wscQuickDismiss(search); }
-        if (markerReport) await wscLastSkuSave(markerReport, product.sku);
-        return;
-      }
-      startGlobeLoading();
-    }
+    const product = await wscAuthenticatedLiveProductLookup_(sku);
 
     if (product && product.sku) {
-      product.wscCountContext = {countType,reportNumber};
       productCache.set(sku, product);
       
       details.innerHTML = `
         <div style="padding:20px;background:#f3f6fa;border-radius:12px;margin-top:15px;color:#222;">
 
-          <div id="wscCountProductHeading" style="display:flex;gap:10px;align-items:flex-start;">
-            <button id="wscCountSectionToggle" type="button"
-              aria-controls="wscCountEntrySection wscCountSaveSection" aria-expanded="true"
-              aria-label="Show quantity, notes and Save Count" title="Show quantity, notes and Save Count"
-              style="flex:0 0 44px;width:44px;min-height:44px;margin:0;padding:8px;font-size:24px;line-height:1;">▾</button>
-            <h2 style="margin:0;min-width:0;overflow-wrap:anywhere;">${escapeHtml(product.name)}</h2>
-          </div>
+          <h2>${escapeHtml(product.name)}</h2>
 
           <p><strong>SKU:</strong> ${escapeHtml(product.sku)}</p>
 
           <hr>
 
-          <div id="wscCountEntrySection">
           <p><strong>QuickBooks Stock:</strong>
             ${escapeHtml(product.qbStock)}</p>
 
-          <button
-            id="cancelCountButton"
-            type="button"
-            style="width:100%;padding:15px;margin-top:10px;background:#666;color:white;border:none;border-radius:8px;font-size:18px;"
-          >
-            Cancel Count
-          </button>
-
-          <fieldset id="wscQuantityBuilder" style="border:0;padding:0;margin:15px 0;min-width:0;">
-            <legend style="font-weight:bold;">Quantities counted</legend>
-            <div id="wscQuantityRows"></div>
-            <button type="button" id="wscAddQuantity">+ Add quantity</button>
-            <p id="wscQuantityTotal" aria-live="polite">Total: 0</p>
-            <p id="wscQuantityError" role="alert" style="color:#a52222;"></p>
-            <button type="button" id="wscConfirmQuantity">Confirm Total</button>
-          </fieldset>
-          </div>
-          <div id="wscCountSaveSection" hidden>
           <label for="actualQtyInput">
             <strong>New Actual Quantity:</strong>
           </label>
@@ -2079,8 +1861,6 @@ async function lookupProduct(sku) {
           <input
             type="number"
             id="actualQtyInput"
-            readonly
-            placeholder="Confirm the total above"
             min="0"
             step="1"
             style="width:100%;padding:12px;font-size:18px;margin-top:10px;box-sizing:border-box;"
@@ -2105,13 +1885,21 @@ async function lookupProduct(sku) {
             Save Count
           </button>
 
+          <button
+            id="cancelCountButton"
+            type="button"
+            style="width:100%;padding:15px;margin-top:10px;background:#666;color:white;border:none;border-radius:8px;font-size:18px;"
+          >
+            Cancel Count
+          </button>
+
+          <p id="saveMessage"></p>
+
           <p><strong>Difference:</strong> <span id="liveDifference"></span></p>
 
           <p><strong>Last Counted:</strong>
             ${escapeHtml(product.lastCounted || "Not counted yet")}</p>
-          </div>
 
-          <p id="saveMessage" role="status" aria-live="polite"></p>
         </div>
       `;
 
@@ -2143,18 +1931,6 @@ async function lookupProduct(sku) {
       result.textContent = "Product found: " + product.sku;
 
       document.getElementById("saveCountButton").onclick = () => saveProductCount(product);
-      wscSetupCountSections();
-      wscSetupQuantityBuilder();
-      if (counted) {
-        const firstQuantity = document.querySelector('#wscQuantityRows input');
-        firstQuantity.value = String(counted.actualQty);
-        firstQuantity.dispatchEvent(new Event('input', {bubbles:true}));
-        document.getElementById('saveCountButton').textContent = 'Save Amendment';
-        document.getElementById('saveMessage').textContent = 'Previously saved: ' + counted.actualQty + '. Enter the revised total, Confirm Total, then Save Amendment.';
-      }
-      if (markerReport) await wscLastSkuSave(markerReport, product.sku);
-      document.activeElement?.blur();
-      scrollToProduct = true;
 
     } else {
       details.textContent = "Product not found";
@@ -2168,7 +1944,6 @@ async function lookupProduct(sku) {
   } finally {
     lookupInProgress = false;
     stopGlobeLoading();
-    if (scrollToProduct && stReviewType() === countType && stReviewActiveNumber() === reportNumber) wscScrollCountStep(details);
   }
 }
 
@@ -2181,8 +1956,6 @@ async function startScanner() {
 
   try {
     scanner = new Html5Qrcode("reader");
-    const activeScanner=scanner;
-    let decodedHandled=false;
 
     await scanner.start(
       { facingMode: "environment" },
@@ -2192,14 +1965,14 @@ async function startScanner() {
       },
 
       async function(decodedText) {
-        if (decodedHandled || lookupInProgress) return;
-        decodedHandled=true;
+        if (lookupInProgress) return;
+
         try {
-          const stopCamera=(async()=>{
-            try{if(activeScanner.isScanning)await activeScanner.stop();}
-            catch(e){console.warn('QR camera stop:',e);}
-          })();
-          await Promise.all([stopCamera,lookupProduct(decodedText)]);
+          if (scanner && scanner.isScanning) {
+            await scanner.stop();
+          }
+
+          await lookupProduct(decodedText);
 
         } catch (error) {
           result.textContent =
@@ -2769,8 +2542,25 @@ table.appendChild(colgroup);
     throw new Error(qbStatus.error || "Unable to check QB status.");
   }
 
-  wscPaintLiveQBButton(qbButton,reportNumber,qbStatus);
-  window.wscSyncTRCardStatus?.(reportNumber,qbButton);
+  const status = String(qbStatus.status || "").trim().toLowerCase();
+
+  if (qbStatus.submitted || status === "submitted") {
+    qbButton.textContent = "✓ Committed to QB";
+    qbButton.style.background = "#28a745";
+    qbButton.disabled = true;
+  } else if (status === "pending") {
+    qbButton.textContent = "QB Submission Pending";
+    qbButton.style.background = "#777";
+    qbButton.disabled = true;
+  } else {
+    qbButton.textContent = "📤 Commit to QB";
+    qbButton.style.background = "#c62828";
+    qbButton.disabled = wscPermissions?.quickBooks?.TR !== true;
+    if (qbButton.disabled) {
+      qbButton.textContent = "QB Submissions Disabled";
+      qbButton.style.background = "#777";
+    }
+  }
 
 } catch (qbError) {
   qbButton.textContent = "QB Status Unavailable";
@@ -2789,8 +2579,70 @@ table.appendChild(colgroup);
   }
 }
 
-document.getElementById("tradeShowCommitQBButton").onclick = function () {
-  return wscSubmitLiveQB(this.dataset.reportNumber, this);
+document.getElementById("tradeShowCommitQBButton").onclick = async function () {
+  const reportNumber = this.dataset.reportNumber;
+
+  if (!reportNumber) {
+    window.showWSCMessage(
+      "QuickBooks Submission",
+      "Please open a Trade Show report first."
+    );
+    return;
+  }
+
+  if (wscPermissions?.quickBooks?.TR !== true) {
+    window.showWSCMessage("QuickBooks Submission", "Trade Show QuickBooks submissions are disabled by the administrator.");
+    return;
+  }
+  const button = this;
+  button.disabled = true;
+  setTRReportLoading(true);
+
+  try {
+    const idToken = await window.getCurrentStaffToken();
+
+    const response = await fetch(
+      "https://warehouse-stock-reports.tmerry.workers.dev",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          action: "commitTradeShowToQuickBooks",
+          reportNumber: reportNumber,
+          idToken: idToken
+        })
+      }
+    );
+
+    const responseText = await response.text();
+
+    const result = responseText.trim().startsWith("{")
+      ? JSON.parse(responseText)
+      : { success: false, error: responseText };
+
+    if (!response.ok || !result.success) {
+      throw new Error(
+        result.error || "QuickBooks submission is unavailable."
+      );
+    }
+
+    window.showWSCMessage(
+      "QuickBooks Submission",
+      "Trade Show " + reportNumber + " was submitted successfully."
+    );
+
+  } catch (error) {
+    window.showWSCMessage(
+      "QuickBooks Submission",
+      String(error.message || error)
+    );
+  } finally {
+    setTRReportLoading(false);
+    // Re-read the actual submission state. Never allow a blind retry.
+    await loadTradeShowReport(reportNumber);
+  }
 };
   
 document.getElementById("tradeShowEmailButton").onclick = async function () {
@@ -2956,7 +2808,7 @@ function findTradeShowManualSku() {
     return;
   }
 
-  return lookupTradeShowProduct(sku);
+  lookupTradeShowProduct(sku);
 }  
 function findManualSku() {
   const sku =
@@ -2968,7 +2820,7 @@ function findManualSku() {
     return;
   }
 
-  return lookupProduct(sku);
+  lookupProduct(sku);
 }
 
 async function amendTradeShowProduct(product) {
@@ -3111,86 +2963,8 @@ async function wscCheckNewInventoryAllowed() {
 }
 
 
-// Reuse the established WSC white-box globe for BOM actions.
-function wscBOMLoading(message) {
-  document.getElementById('wscBOMActionLoading')?.remove();
-  const overlay = document.createElement('div');
-  overlay.id = 'wscBOMActionLoading';
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:10020;background:rgba(255,255,255,.48);display:flex;align-items:center;justify-content:center;pointer-events:all';
-  const panel = document.createElement('div');
-  panel.style.cssText = 'display:flex;align-items:center;gap:14px;padding:18px 24px;border-radius:12px;background:white;box-shadow:0 5px 24px rgba(0,0,0,.2);color:#304B70;font-weight:600';
-  const globe = document.createElement('img');
-  globe.src = 'Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png';
-  globe.alt = ''; globe.style.cssText = 'width:54px;height:54px;object-fit:contain;animation:globeSpin 3s linear infinite';
-  const label = document.createElement('span'); label.textContent = message || 'Processing…';
-  panel.append(globe,label);overlay.appendChild(panel);document.body.appendChild(overlay);
-}
-function wscBOMLoadingEnd() { document.getElementById('wscBOMActionLoading')?.remove(); }
-let wscBOMChosenNumber = '';
-async function wscGetNewestCompletedBOM() {
-  const idToken = await window.getCurrentStaffToken();
-  const response = await fetch('https://warehouse-stock-reports.tmerry.workers.dev', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({action:'findBOMReports',searchBy:'date',dateFrom:'2000-01-01',dateTo:'2099-12-31',idToken})
-  });
-  const result = await response.json();
-  if (!response.ok || !result.success) throw new Error(result.error || 'Could not check saved BOM reports');
-  const completed = (result.reports || []).filter(r => /^BOM-\d{6}$/.test(r.reportNumber) &&
-    /^(report only|completed|complete|saved)$/i.test(String(r.status || '').trim()));
-  completed.sort((a,b) => Number(b.reportNumber.slice(4)) - Number(a.reportNumber.slice(4)));
-  return completed.length ? completed[0].reportNumber : '';
-}
 // Optional BOM preview before beginning a Stock Take. Report only, never commits.
 let wscBOMBusy = false;
-let wscPreliminaryBusy = false;
-async function wscStartWeeklyBOM(button) {
-  if (wscBOMBusy || wscLiveQBUI.busy) return;
-  if (!wscPermissions?.functions?.WEEKLY_BOM) {window.showWSCMessage('Weekly BOM','Weekly BOM access is disabled for your account.');return;}
-  wscBOMBusy=true;button.disabled=true;
-  wscBOMLoading('Preparing Weekly BOM from current QuickBooks stock…');
-  try {
-    const result=await wscBOMRequest({action:'getWeeklyBOMReport'});
-    showReportsScreen();
-    document.getElementById('wscReportSelect').value='BOM';wscReportsUpdate();
-    document.getElementById('wscReportSearchBy').value='number';wscReportsUpdateFields();
-    document.getElementById('wscReportNumber').value=result.reportNumber.slice(4);
-    await wscRunUnifiedReport();
-    document.getElementById('wscReportInfo').textContent='Weekly BOM '+result.reportNumber+' — '+result.periodLabel+'. Review the PDF and QB adjustment before committing.';
-  } catch(error) {window.showWSCMessage('Weekly BOM',String(error.message||error)+'\n\nCheck saved BOM reports before generating another report if the response was interrupted.');}
-  finally {wscBOMLoadingEnd();wscBOMBusy=false;button.disabled=false;}
-}
-async function wscPrepareStockTake(button) {
-  if (wscPreliminaryBusy || document.getElementById('wscBOMChoice')) return;
-  wscPreliminaryBusy = true;
-  const oldText = button ? button.textContent : '';
-  if (button) button.disabled = true;
-  try {
-    const generatePdf = await window.showWSCConfirm(
-      'Preliminary Stock Reports',
-      'Would you like to generate and email the preliminary stock PDFs?<br><br>This sends two reports: zero-quantity products and products with quantities, to tmerry@sensafe.com and nmerry@sensafe.com.<br><br>Choose No to continue without generating or emailing reports.',
-      {confirmLabel:'Yes, generate and email PDFs', cancelLabel:'No, continue without PDFs'}
-    );
-    if (!generatePdf) {
-      wscShowBOMChoice(button);
-      return;
-    }
-    if (button) button.textContent = 'Preparing preliminary PDFs…';
-    wscBOMLoading('Reading QuickBooks stock and emailing preliminary PDFs…');
-    // Keep the request ID after a lost response so a manual retry cannot resend email.
-    const storageKey = 'wscPendingPreliminaryReport';
-    let requestId = sessionStorage.getItem(storageKey);
-    if (!requestId) {requestId = crypto.randomUUID(); sessionStorage.setItem(storageKey, requestId);}
-    await wscBOMRequest({action:'emailPreliminaryStockReport',requestId});
-    sessionStorage.removeItem(storageKey);
-    wscShowBOMChoice(button);
-  } catch(error) {
-    window.showWSCMessage('Preliminary Stock Report', String(error.message || error) + '\n\nNo Stock Take has been started.');
-  } finally {
-    wscBOMLoadingEnd();
-    if (button) {button.disabled = false; button.textContent = oldText;}
-    wscPreliminaryBusy = false;
-  }
-}
 function wscShowBOMChoice(button) {
   if (document.getElementById('wscBOMChoice')) return;
   const overlay = document.createElement('div');
@@ -3199,45 +2973,24 @@ function wscShowBOMChoice(button) {
   const card = document.createElement('div');
   card.style.cssText = 'background:white;border-radius:12px;max-width:420px;width:100%;padding:24px;text-align:center;box-shadow:0 8px 25px #0003';
   const heading = document.createElement('h2'); heading.textContent = 'BOM Stock Check';
-  const info = document.createElement('p'); info.textContent = 'Check your BOM stock before starting a new Stock Take. A numbered BOM report will be saved and can be linked to your next Stock Take. No QuickBooks stock quantities will be changed.';
+  const info = document.createElement('p'); info.textContent = 'You can check BOM stock before starting a new Stock Take. This saves a numbered, read-only Production report. No QuickBooks stock will change.';
   const preview = document.createElement('button'); preview.type='button'; preview.textContent='Check BOM Stock';
   const normal = document.createElement('button'); normal.type='button'; normal.textContent='New Stock Take';
   const cancel = document.createElement('button'); cancel.type='button'; cancel.textContent='Cancel';
   [preview,normal,cancel].forEach(b => {b.style.cssText='display:block;width:100%;margin:10px 0;padding:12px';card.appendChild(b);});
   card.prepend(info); card.prepend(heading); overlay.appendChild(card); document.body.appendChild(overlay);
-  cancel.onclick=()=>{wscBOMLoading('Closing BOM Stock Check…');overlay.remove();wscBOMLoadingEnd();};
+  cancel.onclick=()=>overlay.remove();
   normal.onclick=async()=>{
-    if (wscBOMBusy) return;
-    wscBOMBusy = true;
-    preview.disabled = normal.disabled = cancel.disabled = true;
-    wscBOMLoading('Checking saved BOM reports…');
-    let latest = '';
-    try {
-      latest = await wscGetNewestCompletedBOM();
-    } catch (error) {
-      wscBOMLoadingEnd();
-      window.showWSCMessage('BOM Stock Check', 'Unable to verify the newest completed BOM. No Stock Take has been started.\n\n' + String(error.message || error));
-      preview.disabled = normal.disabled = cancel.disabled = false;
-      wscBOMBusy = false;
-      return;
-    }
-    wscBOMLoadingEnd();
     overlay.remove();
-    wscBOMBusy = false;
-    const proceed = await window.showWSCConfirm('BOM Stock Check', latest
-      ? latest + ' has been completed.\n\nDo you want to tie this BOM report to your new Stock Take?\n\nOK = Yes, Cancel = No.'
-      : 'We recommend completing a BOM Stock Check before starting a new Stock Take.\n\nContinue without checking BOM stock?');
-    if (!latest && !proceed) { wscShowBOMChoice(button); return; }
-    wscBOMChosenNumber = latest && proceed ? latest : '';
-    wscBOMLoading('Preparing Stock Take…');
-    try { await selectStockTakeQuarter(button); }
-    finally { wscBOMLoadingEnd(); }
+    const proceed=await window.showWSCConfirm('BOM Stock Check',
+      'We recommend completing a BOM Stock Check before starting a new Stock Take.\n\nContinue without checking BOM stock?');
+    if(proceed)selectStockTakeQuarter(button);
+    else wscShowBOMChoice(button);
   };
   preview.onclick=async()=>{
     if(wscBOMBusy)return;
     wscBOMBusy=true;preview.disabled=true;normal.disabled=true;cancel.disabled=true;
     const original=preview.textContent;preview.textContent='Preparing BOM report…';
-    wscBOMLoading('Preparing BOM report…');
     try {
       const idToken=await window.getCurrentStaffToken();
       const response=await fetch('https://warehouse-stock-reports.tmerry.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'getBOMReport',idToken})});
@@ -3280,19 +3033,12 @@ function wscShowBOMChoice(button) {
       close.onclick=()=>done.remove();
       panel.append(download,close);done.appendChild(panel);document.body.appendChild(done);
     }catch(error){window.showWSCMessage('BOM Report',String(error.message||error));}
-    finally{wscBOMLoadingEnd();wscBOMBusy=false;preview.disabled=false;normal.disabled=false;cancel.disabled=false;preview.textContent=original;}
+    finally{wscBOMBusy=false;preview.disabled=false;normal.disabled=false;cancel.disabled=false;preview.textContent=original;}
   };
 }
 
 async function selectStockTakeQuarter(clickedButton) {
   if (!(await wscCheckNewInventoryAllowed())) return;
-  const period = await wscChooseStockTakeMonth();
-  if (period) return startStockTake(clickedButton, period);
-  wscBOMChosenNumber = '';
-}
-
-function wscChooseStockTakeMonth() {
-  return new Promise(resolve => {
   const overlay = document.createElement("div");
 
   overlay.style.cssText = `
@@ -3329,17 +3075,15 @@ function wscChooseStockTakeMonth() {
     button.onclick = () => {
       const period = button.dataset.period;
       overlay.remove();
-      resolve(period);
+      startStockTake(clickedButton, period);
     };
   });
 
   overlay.querySelector("[data-cancel]").onclick = () => {
     overlay.remove();
-    resolve(null);
   };
 
   document.body.appendChild(overlay);
-  });
 }
   
   async function startStockTake(clickedButton, stockTakePeriod) {
@@ -3390,9 +3134,6 @@ if (startLoading) {
 
     localStorage.setItem("activeStockTake", result.reportNumber);
     localStorage.setItem("activeStockTakePeriod", stockTakePeriod);
-    // Preserve the chosen BOM for this specific ST, including across device reloads.
-    localStorage.setItem('wscBOMChoice_' + result.reportNumber, wscBOMChosenNumber || '');
-    wscBOMChosenNumber = '';
 
     console.log("AFTER SAVE activeStockTake =", localStorage.getItem("activeStockTake"));
 
@@ -3659,11 +3400,6 @@ document.getElementById("tradeShowCountingScreen").style.display = "block";
   const button = document.getElementById("saveCountButton");
   const message = document.getElementById("saveMessage");
 
-  if (button.disabled) return;
-  if (product.wscCountContext && (product.wscCountContext.countType !== stReviewType() || product.wscCountContext.reportNumber !== stReviewActiveNumber())) {
-    message.textContent = 'The active report has changed. Search for the product again before saving.';
-    return;
-  }
   const quantity = input.value.trim();
   const notes = (document.getElementById("countNotesInput")?.value || "").trim();
 
@@ -3697,8 +3433,6 @@ window.pendingCountRequest = {
     : localStorage.getItem("activeStockTake")
 };
   button.disabled = true;
-  const quantityBuilder = document.getElementById('wscQuantityBuilder');
-  if (quantityBuilder) quantityBuilder.disabled = true;
   message.textContent = "Saving count...";
   startGlobeLoading();
     
@@ -3754,7 +3488,6 @@ if (document.getElementById("stCountReviewPanel")?.style.display !== "none") ref
     
   } finally {
     button.disabled = false;
-    if (quantityBuilder) quantityBuilder.disabled = false;
     stopGlobeLoading();
   }
 }
@@ -4584,7 +4317,7 @@ emailPdfButton.onclick = () => {
   window.emailDeliveryPdf(delivery.reportNumber);
 };
       
-item.append(heading, details, viewPdfButton, emailPdfButton, wscMakePrintPdfButton(delivery.reportNumber));
+item.append(heading, details, viewPdfButton, emailPdfButton);
 results.appendChild(item);
     });
 
@@ -4856,8 +4589,13 @@ async function searchTRReports() {
       qb.textContent = "Checking QB status...";
       qb.style.cssText = "width:auto;background:#777;color:white;border:0;border-radius:6px;padding:9px 14px;font-weight:bold;cursor:not-allowed";
       qb.dataset.trQBCard = show.reportNumber;
-      qb.onclick = () => wscSubmitLiveQB(show.reportNumber,qb);
-      actions.append(view, email, wscMakePrintPdfButton(show.reportNumber), qb);
+      qb.onclick = () => {
+        if (qb.disabled || wscPermissions?.quickBooks?.TR !== true) return;
+        const shared = document.getElementById("tradeShowCommitQBButton");
+        shared.dataset.reportNumber = show.reportNumber;
+        shared.click();
+      };
+      actions.append(view, email, qb);
       row.append(title, actions);
       card.appendChild(row);
       // Query status without opening the report or making an inventory adjustment.
@@ -4870,7 +4608,20 @@ async function searchTRReports() {
           });
           const status = await response.json();
           if (!response.ok || status.success === false) throw new Error("QB status unavailable");
-          wscPaintLiveQBButton(qb,show.reportNumber,status);
+          const value = String(status.status || "").trim().toLowerCase();
+          if (status.submitted || value === "submitted") {
+            qb.textContent = "Committed to QB";
+            qb.style.background = "#28a745";
+          } else if (value === "pending") {
+            qb.textContent = "QB Submission Pending";
+          } else if (wscPermissions?.quickBooks?.TR === true) {
+            qb.textContent = "Commit to QB";
+            qb.style.background = "#c62828";
+            qb.disabled = false;
+            qb.style.cursor = "pointer";
+          } else {
+            qb.textContent = "QB Submissions Disabled";
+          }
         } catch (error) {
           qb.textContent = "QB Status Unavailable";
           qb.disabled = true;
@@ -4951,7 +4702,6 @@ async function fetchHomeDashboard() {
       ? { success: false, error: String(error), [key]: [] }
       : { success: true, [key]: Array.isArray(result[key]) ? result[key] : [] };
   }
-  if (result.qbCommitments) lists.getHomeQBCommitments = result.qbCommitments;
   return lists;
 }
 
@@ -5039,24 +4789,13 @@ async function wscLoadOutstandingQB() {
   const list = document.getElementById('wscOutstandingQBList');
   if (!module || !list) return;
   module.hidden = true;
-  list.replaceChildren();
-  let result = wscHomeDashboardLists?.getHomeQBCommitments;
-  if (!result) {
-    // Compatibility with an older backend while the deployment is being updated.
-    const idToken = await window.getCurrentStaffToken();
-    const response = await fetch('https://warehouse-stock-reports.tmerry.workers.dev', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({action:'getHomeQBCommitments',idToken})
-    });
-    result = await response.json();
-    if (!response.ok) result = {success:false,error:result.error || 'Unable to check QB commitments.'};
-  }
-  if (!result.success) {
-    module.hidden=false;
-    module.querySelector('.wsc-module-count').textContent='Report status unavailable';
-    list.textContent='Unable to check outstanding reports. Refresh Home to try again.';
-    throw new Error(result.error || 'Unable to check QB commitments.');
-  }
+  const idToken = await window.getCurrentStaffToken();
+  const response = await fetch('https://warehouse-stock-reports.tmerry.workers.dev', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'getHomeQBCommitments',idToken})
+  });
+  const result = await response.json();
+  if (!response.ok || !result.success) throw new Error(result.error || 'Unable to check QB commitments.');
   const reports = result.reports || [];
   if (!reports.length) return;
   module.hidden = false;
@@ -5067,50 +4806,18 @@ async function wscLoadOutstandingQB() {
     item.style.cssText = 'padding:12px;margin:8px 0;border:1px solid #ccc;border-radius:8px';
     const title = document.createElement('strong');
     title.textContent = report.reportNumber + ' — ' + ({ST:'Stock Take',SC:'Stock Count',TR:'Trade Show'}[report.type] || report.type);
-    const actions = document.createElement('div');
-    actions.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;margin-top:10px';
-    const review = document.createElement('button');
-    review.type = 'button'; review.textContent = 'Review';
-    review.style.cssText = 'flex:1;min-width:120px;margin:0';
-    review.onclick = async () => {
-      if (wscLiveQBUI.busy || review.disabled) return;
-      review.disabled = true;
-      try {
-        if (report.type === 'TR') {
-          localStorage.setItem('activeTradeShow', report.reportNumber);
-          await showTradeShowReport();
-        } else {
-          showReportOptions(report.type);
-          const prefix = report.type === 'ST' ? 'st' : 'sc';
-          document.querySelector('input[name="'+prefix+'SearchMode"][value="number"]').checked = true;
-          document.getElementById(prefix+'ReportNumber').value = report.reportNumber.replace(/^(ST|SC)-/, '');
-          if (report.type === 'SC') changeSCSearch();
-          updateReportSearchMode();
-          await generateStockReport();
-        }
-      } catch (error) {
-        window.showWSCMessage('Review report', String(error.message || error));
-      } finally { review.disabled = false; }
-    };
-    const commit = document.createElement('button');
-    commit.type = 'button'; commit.textContent = 'Commit to QB';
-    commit.style.cssText = 'flex:1;min-width:120px;margin:0;background:#c62828';
-    commit.disabled = !wscLiveQBAllowed(report.type);
-    commit.onclick = async () => {
-      if (wscLiveQBUI.busy || commit.disabled) return;
-      commit.disabled = true; review.disabled = true;
-      try {
-        // Reuse the full live-status, issue-check and confirmation flow.
-        await wscSubmitLiveQB(report.reportNumber);
-      } finally {
-        commit.disabled = !wscLiveQBAllowed(report.type); review.disabled = false;
-        if (wscHomeDashboardLists) delete wscHomeDashboardLists.getHomeQBCommitments;
-        try { await wscLoadOutstandingQB(); }
-        catch (error) { console.warn('QB dashboard refresh:', error); }
+    const button = document.createElement('button');
+    button.type = 'button'; button.textContent = 'Go to Report';
+    button.onclick = () => {
+      if (report.type === 'TR') {
+        localStorage.setItem('activeTradeShow', report.reportNumber);
+        showTradeShowReport();
+      } else {
+        showReportOptions(report.type);
+        // Existing report search remains the route to a closed ST/SC report.
       }
     };
-    actions.append(review,commit);
-    item.append(title,actions); list.appendChild(item);
+    item.append(title,button); list.appendChild(item);
   });
 }
 
@@ -5303,7 +5010,7 @@ item.innerHTML = `
     <span style="display:flex; gap:8px; align-items:center;">
       <button
         type="button"
-       onclick="event.preventDefault(); event.stopPropagation(); wscModuleMainClick('ST');"
+       onclick="event.preventDefault(); event.stopPropagation(); resumeStockTake('${stockTake.reportNumber}', '${stockTake.stockTakePeriod}');"
         style="width:auto; background:#f0ad4e !important; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
       >In Progress — Resume Stock Take</button>
     </span>
@@ -5357,8 +5064,6 @@ item.innerHTML = `
       
       const finish = document.createElement("button");
       finish.textContent = "Finish";
-      finish.style.background = "#c62828";
-      finish.style.color = "#ffffff";
       finish.onclick = () => finishStockTake(stockTake, finish);
 
       row.append(number, period, resume, finish);
@@ -5412,13 +5117,11 @@ item.innerHTML = `
   const originalFinishLabel = finish.textContent;
   finish.disabled = true;
   try {
-  let stockTakePeriod = String(stockTake.stockTakePeriod || '').trim();
+  const stockTakePeriod = stockTake.stockTakePeriod;
 
-  if (!stockTakePeriod || stockTakePeriod === 'undefined' || stockTakePeriod === 'null') {
-    await new Promise(resolve => window.showWSCMessage(
-      "WSC", "This Stock Take does not have a month assigned.", resolve));
-    stockTakePeriod = await wscChooseStockTakeMonth();
-    if (!stockTakePeriod) return;
+  if (!stockTakePeriod) {
+    window.showWSCMessage("WSC", "This Stock Take does not have a month assigned.");
+    return;
   }
       
     if (!(await window.showWSCConfirm(
@@ -5518,24 +5221,23 @@ if (!result || result.verificationRequired) {
 }
 
     
-    // Honour the BOM choice made at Stock Take creation, not a newer BOM.
-    const chosenBOM = localStorage.getItem('wscBOMChoice_' + stockTake.reportNumber) || '';
-    if (chosenBOM) {
-      wscBOMLoading('Linking selected BOM report…');
-      try {
+    // The Stock Take is already closed. A failed BOM link must not undo completion.
+    try {
+      const linkChoice = await window.showWSCConfirm('Link BOM Report',
+        'Would you like the latest saved BOM report to be tied to ' + stockTake.reportNumber + '?\n\nYes links it permanently. No keeps the reports separate.');
+      if (linkChoice) {
         const linkToken = await window.getCurrentStaffToken();
         const linkResponse = await fetch('https://warehouse-stock-reports.tmerry.workers.dev', {
           method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({action:'linkLatestBOMToStockTake',reportNumber:stockTake.reportNumber,bomReportNumber:chosenBOM,idToken:linkToken})
+          body:JSON.stringify({action:'linkLatestBOMToStockTake',reportNumber:stockTake.reportNumber,idToken:linkToken})
         });
         const linkResult = await linkResponse.json();
         if (!linkResponse.ok || !linkResult.success) throw new Error(linkResult.error || 'Could not link BOM report');
-        localStorage.removeItem('wscBOMChoice_' + stockTake.reportNumber);
         window.showWSCMessage('BOM Linked', stockTake.reportNumber + ' tied with ' + linkResult.bomReportNumber);
-      } catch (linkError) {
-        window.showWSCMessage('Stock Take Finished — BOM Link Not Saved',
-          'The Stock Take has finished, but the BOM link was not saved: ' + String(linkError.message || linkError));
-      } finally { wscBOMLoadingEnd(); }
+      }
+    } catch (linkError) {
+      window.showWSCMessage('Stock Take Finished — BOM Link Not Saved',
+        'The Stock Take has finished, but the BOM link was not saved: ' + String(linkError.message || linkError));
     }
 
     localStorage.removeItem("activeStockTake");
@@ -5800,11 +5502,6 @@ throw new Error("Unable to load stock counts. Please try again.");
       resume.style.fontWeight = "bold";
 
       resume.onclick = () => {
-        // Home opens session management; Resume inside that screen starts counting.
-        if (list.id === "homeStockCountSessions") {
-          wscModuleMainClick('SC');
-          return;
-        }
         const scMode = document.querySelector('input[name="countType"][value="SC"]');
 
 if (scMode) {
@@ -6105,13 +5802,25 @@ if (finishButton) {
       : activeStockTake;
 
   finishButton.style.display =
-    currentCountType === "SC" && activeSession ? "block" : "none";
+    activeSession ? "block" : "none";
 }
    if (finishButton) {
-  finishButton.onclick = currentCountType === "SC" ? () => {
-    const activeStockCount = localStorage.getItem("activeStockCount");
-    finishStockCount(activeStockCount, finishButton);
-  } : null;
+  finishButton.onclick = () => {
+    if (currentCountType === "SC") {
+      const activeStockCount =
+        localStorage.getItem("activeStockCount");
+
+      finishStockCount(activeStockCount, finishButton);
+    } else if (activeStockTake) {
+      finishStockTake(
+        {
+          reportNumber: activeStockTake,
+          stockTakePeriod: localStorage.getItem("activeStockTakePeriod")
+        },
+        finishButton
+      );
+    }
+  };
 }
    
   document.getElementById("reportsScreen").style.display = "none";
@@ -6137,7 +5846,6 @@ if (finishButton) {
           ? "Current Stock Take: "
           : "Current Stock Count: ") + reportNumber
       : "";
-  wscLastSkuRefresh();
 }
 
 function openSelectedReports() {
@@ -6206,65 +5914,15 @@ function wscOpenBOMPdf(result,print){
   if(print)win.addEventListener('load',()=>{try{win.print();}catch(e){}},{once:true});
   setTimeout(()=>URL.revokeObjectURL(url),120000);
 }
-// Every report Print action opens the actual server-generated PDF used for email.
-async function wscPrintReportPdf(reportNumber,button){
-  const number=String(reportNumber||'').trim().toUpperCase();
-  if(!/^(ST|SC|TR|DL|BOM)-\d{6}$/.test(number)){
-    window.showWSCMessage('Print PDF','Open a saved report before printing.');return;
-  }
-  if(button?.dataset.pdfBusy==='true')return;
-  // Reserve the tab during the click, before awaiting the authenticated PDF request.
-  const viewer=window.open('about:blank','_blank');
-  if(!viewer){window.showWSCMessage('Print PDF','Allow pop-ups for WSC, then press Print PDF again.');return;}
-  viewer.document.title=number+' — PDF';
-  viewer.document.body.textContent='Preparing '+number+' PDF… When it opens, use the PDF viewer’s Print icon if the print dialog does not open automatically.';
-  const oldLabel=button?.textContent;
-  if(button){button.dataset.pdfBusy='true';button.disabled=true;button.textContent='Preparing PDF…';}
-  try{
-    const result=await wscBOMRequest({action:'getReportPdf',reportNumber:number});
-    if(typeof result.pdfBase64!=='string')throw new Error('The server did not return a PDF.');
-    const bytes=atob(result.pdfBase64);
-    if(!bytes.startsWith('%PDF-'))throw new Error('The returned report is not a valid PDF.');
-    if(viewer.closed)return;
-    const array=Uint8Array.from(bytes,c=>c.charCodeAt(0));
-    const url=URL.createObjectURL(new Blob([array],{type:'application/pdf'}));
-    viewer.addEventListener('load',()=>{
-      try{viewer.focus();viewer.print();}catch(e){/* The native PDF viewer still provides Print. */}
-    },{once:true});
-    viewer.location.replace(url);
-    setTimeout(()=>URL.revokeObjectURL(url),600000);
-  }catch(e){
-    if(!viewer.closed)viewer.close();
-    window.showWSCMessage('Print PDF',String(e.message||e));
-  }finally{
-    if(button){button.disabled=false;delete button.dataset.pdfBusy;button.textContent=oldLabel;}
-  }
-}
-function wscMakePrintPdfButton(number){
-  const button=document.createElement('button');button.type='button';button.textContent='🖨 Print PDF';button.className='wscPrintReport';
-  button.style.cssText='width:auto;padding:9px 14px;background:#244b72;color:white;border:0;border-radius:6px;cursor:pointer';
-  button.onclick=e=>{e.preventDefault();e.stopPropagation();wscPrintReportPdf(number,button);};
-  return button;
-}
 function wscAddPrintButtons(container){
-  container.querySelectorAll('details[data-report-number]').forEach(details=>{
+  container.querySelectorAll('details').forEach(details=>{
     const summary=details.querySelector('summary');if(!summary||summary.querySelector('.wscPrintReport'))return;
-    summary.append(wscMakePrintPdfButton(details.dataset.reportNumber));
+    const btn=document.createElement('button');btn.type='button';btn.className='wscPrintReport';btn.textContent='🖨 Print';
+    btn.style.cssText='width:auto;padding:8px 12px;background:#244b72;color:white;border:0;border-radius:6px;cursor:pointer';
+    btn.onclick=e=>{e.preventDefault();e.stopPropagation();const wasOpen=details.open;details.open=true;window.print();details.open=wasOpen;};
+    summary.appendChild(btn);
   });
 }
-async function wscEmailBOMPdf(number,button){
-  if(button.disabled)return;
-  const recipient=await window.showWSCInput('Email PDF Report','Email '+number+' to:',window.getCurrentStaffEmail?.()||'');
-  if(recipient===null)return;
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient.trim())){window.showWSCMessage('Email PDF','Enter a valid email address.');return;}
-  button.disabled=true;const previous=button.textContent;button.textContent='Emailing PDF…';
-  try{
-    await wscBOMRequest({action:'emailBOMReport',reportNumber:number,recipient:recipient.trim()});
-    window.showWSCMessage('Email PDF','BOM report emailed successfully.');
-  }catch(e){window.showWSCMessage('Email PDF','The email outcome could not be confirmed. Check the recipient’s inbox before sending again. '+String(e.message||e));}
-  finally{button.disabled=false;button.textContent=previous;}
-}
-
 async function wscRunUnifiedReport() {
   const type=document.getElementById('wscReportSelect').value;
   const search=document.getElementById('wscReportSearchBy').value;
@@ -6287,20 +5945,27 @@ async function wscRunUnifiedReport() {
         const note=document.createElement('p');note.textContent='QuickBooks: '+(item.qbStatus||'Not Committed');card.appendChild(note);
         const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
         const open=async print=>{wscUnifiedBusy(true);try{const data=await wscBOMRequest({action:'openBOMReport',reportNumber:item.reportNumber});wscOpenBOMPdf(data,print);}catch(e){window.showWSCMessage('BOM Reports',String(e.message||e));}finally{wscUnifiedBusy(false);}};
-        const viewPdf=document.createElement('button');viewPdf.type='button';viewPdf.textContent='View PDF';viewPdf.style.width='auto';viewPdf.onclick=()=>open(false);
-        const emailPdf=document.createElement('button');emailPdf.type='button';emailPdf.textContent='✉ Email PDF';emailPdf.style.width='auto';emailPdf.onclick=()=>wscEmailBOMPdf(item.reportNumber,emailPdf);
-        actions.append(viewPdf,emailPdf,wscMakePrintPdfButton(item.reportNumber));
+        for(const [label,print] of [['View PDF',false],['Print',true]]){const button=document.createElement('button');button.type='button';button.textContent=label;button.style.width='auto';button.onclick=()=>open(print);actions.appendChild(button);}
         const previewButton=document.createElement('button');previewButton.type='button';previewButton.textContent='Review QB Adjustment';previewButton.style.width='auto';
-        wscPaintLiveQBButton(previewButton,item.reportNumber,item);
+        previewButton.disabled=(item.qbStatus||'Not Committed')!=='Not Committed';
         previewButton.onclick=async()=>{
-          await wscSubmitLiveQB(item.reportNumber,previewButton);
-          const result=wscLiveQBUI.statuses.get(item.reportNumber);
-          if(result)note.textContent='QuickBooks: '+(result.qbStatus||'Not Committed');
+          wscUnifiedBusy(true);
+          try {
+            const check=await wscBOMRequest({action:'previewBOMQuickBooks',reportNumber:item.reportNumber});
+            const detail=check.items.map(x=>x.sku+': '+x.previous+' → '+x.target+' ('+(x.qtyDiff>0?'+':'')+x.qtyDiff+')').join('\n');
+            const confirmed=await window.showWSCConfirm('BOM QuickBooks (disabled)',
+              item.reportNumber+'\nAccount: WSC-BOM\n'+check.lineCount+' adjustment lines\n\n'+detail+'\n\nQuickBooks Production submissions are currently disabled.');
+            if(!confirmed)return;
+            const result=await wscBOMRequest({action:'commitBOMQuickBooks',reportNumber:item.reportNumber,confirmation:'COMMIT '+item.reportNumber});
+            note.textContent='QuickBooks: '+result.qbStatus;previewButton.disabled=true;
+            window.showWSCMessage('BOM Committed','QuickBooks adjustment '+(result.docNumber||result.adjustmentId)+' submitted.');
+          }catch(e){window.showWSCMessage('BOM QuickBooks',String(e.message||e));}
+          finally{wscUnifiedBusy(false);}
         };
         actions.appendChild(previewButton);
         card.appendChild(actions);target.appendChild(card);
       }
-      document.getElementById('wscReportInfo').textContent='BOM reports can be viewed, emailed or printed as PDF.';
+      document.getElementById('wscReportInfo').textContent='BOM reports can be viewed and printed. Email is not yet supported by the saved BOM report endpoint.';
     }catch(e){window.showWSCMessage('BOM Reports',String(e.message||e));}
     finally{wscUnifiedBusy(false);}
     return;
@@ -6851,7 +6516,7 @@ const isInProgress = !!inProgressStockTake;
   
   return `
 
-  <details data-report-number="${escapeHtml(reportNumber)}" style="margin:15px 0; padding:15px; border:1px solid #ddd; border-radius:8px;">
+  <details style="margin:15px 0; padding:15px; border:1px solid #ddd; border-radius:8px;">
   <summary style="cursor:pointer; font-weight:bold; display:flex; align-items:center; justify-content:space-between; gap:12px;">
 
   <span style="flex:1;">
@@ -6859,7 +6524,7 @@ const isInProgress = !!inProgressStockTake;
   </span>
 
   <span style="display:flex; gap:8px; align-items:center;">
-    <button type="button" class="wscPrintReport" onclick="event.preventDefault();event.stopPropagation();wscPrintReportPdf(this.closest('details').dataset.reportNumber,this)" style="width:auto;padding:8px 12px;">🖨 Print PDF</button>
+
     <button
       type="button"
       onclick="event.preventDefault(); event.stopPropagation(); this.closest('details').open = !this.closest('details').open; this.textContent = this.closest('details').open ? 'Close' : 'View';"
@@ -6958,9 +6623,9 @@ ${committedToQB && emailFailed ? `
 if (wscPermissions) wscPaintPermissions(wscPermissions);
 
 // SC status is checked individually for every report, without report-number exceptions.
-if (["ST","SC"].includes(selectedReportType)) {
+if (selectedReportType === "SC") {
   for (const number of Object.keys(reportGroups)) {
-    void wscRefreshLiveQBButton(number);
+    void window.updateStockCountQuickBooksStatus(number);
   }
 }
 
@@ -6987,7 +6652,7 @@ if (["ST","SC"].includes(selectedReportType)) {
 window.WSC_ADMIN_URL = "https://warehouse-stock-reports.tmerry.workers.dev";
 let wscAdminData = null;
 let wscPermissions = null;
-const wscLabels = {WEEKLY_BOM:"🧩 Weekly BOM",BOM:"🧩 BOM – Bill of Materials",ST:"📦 ST – Stock Take",SC:"📋 SC – Stock Count",TR:"🎪 TR – Trade Show",DL:"🚚 DL – Delivery",DATES:"📅 Check Dates"};
+const wscLabels = {ST:"📦 ST – Stock Take",SC:"📋 SC – Stock Count",TR:"🎪 TR – Trade Show",DL:"🚚 DL – Delivery",DATES:"📅 Check Dates"};
 async function wscAdminRequest(action, extra={}) {
   const idToken = await window.getCurrentStaffToken();
   const response = await fetch(window.WSC_ADMIN_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,idToken,...extra})});
@@ -7075,352 +6740,6 @@ async function wscCancelInventoryReport() {
 // Never show module buttons before this signed-in account has been verified.
 let wscPermissionEmail = null;
 let wscPermissionRequest = null;
-// Shared Live QuickBooks UI. Exactly one write request per explicit confirmation.
-const wscLiveQBUI = {busy:false, statuses:new Map(), uncertain:new Set()};
-function wscLiveQBState(result) {
-  if (result?.submitted === true) return 'SUBMITTED';
-  const state=String(result?.qbStatus ?? result?.status ?? '').trim().toUpperCase();
-  return ['','NOT COMMITTED','NOT SUBMITTED'].includes(state) ? 'READY' : state;
-}
-function wscLiveQBAllowed(area) {
-  return wscPermissions?.quickBooks?.[area] === true &&
-    (area === 'BOM' ? (wscPermissions?.admin === true || wscPermissions?.functions?.WEEKLY_BOM === true) : wscPermissions?.functions?.[area] === true);
-}
-function wscLiveQBKey(number) {
-  return 'wsc-live-qb-uncertain:'+String(window.getCurrentStaffEmail?.()||'').toLowerCase()+':'+number;
-}
-function wscLiveQBUncertain(number, value) {
-  const key=wscLiveQBKey(number);
-  if (value === true) {wscLiveQBUI.uncertain.add(key);try{sessionStorage.setItem(key,'1');}catch(_){} }
-  if (value === false) {wscLiveQBUI.uncertain.delete(key);try{sessionStorage.removeItem(key);}catch(_){} }
-  try{return wscLiveQBUI.uncertain.has(key)||sessionStorage.getItem(key)==='1';}catch(_){return wscLiveQBUI.uncertain.has(key);}
-}
-function wscPaintLiveQBButton(button, number, result) {
-  if (!button) return;
-  const area=number.split('-')[0];
-  button.dataset.liveQBReport=number;
-  if (result) wscLiveQBUI.statuses.set(number,result);
-  const status=result||wscLiveQBUI.statuses.get(number);
-  const state=status ? wscLiveQBState(status) : 'UNKNOWN';
-  if (state==='SUBMITTED' || state==='NO_CHANGE') wscLiveQBUncertain(number,false);
-  button.disabled=true;button.style.background='#777';button.style.cursor='not-allowed';
-  if (state==='SUBMITTED'||state==='NO_CHANGE') {
-    button.textContent=status?.manualReviewRequired ? (status.noAdjustment?'Manual review required — no QB adjustment':'Committed — manual review required') : (status?.noAdjustment ? 'Complete — No Adjustment Needed' : 'Committed to QB');button.style.background=status?.manualReviewRequired?'#a65b00':'#28a745';
-    if(status?.manualReviewResolved)button.textContent='Committed — review resolved';
-    if(status?.manualReviewRequired && wscPermissions?.admin===true && !wscLiveQBUI.busy) {button.disabled=false;button.style.cursor='pointer';}
-  } else if (wscLiveQBUI.busy) button.textContent='QuickBooks request in progress…';
-  else if (wscLiveQBUncertain(number)) button.textContent='QB Outcome Needs Checking';
-  else if (state==='UNKNOWN') button.textContent='QB Status Unavailable';
-  else if (state!=='READY') button.textContent=state==='PENDING'?'QB Submission Pending':'QB '+state;
-  else if (!wscLiveQBAllowed(area)) button.textContent='QB Submissions Disabled';
-  else {button.disabled=false;button.textContent=area==='BOM'?'Review Live QB Adjustment':'Commit to QB Live';button.style.background='#c62828';button.style.cursor='pointer';}
-  button.title=button.textContent;
-  if (['ST','SC'].includes(area) && button.parentElement) {
-    let issuesButton=button.nextElementSibling;
-    if(issuesButton?.dataset.qbIssuesFor!==number) {
-      issuesButton=document.createElement('button');issuesButton.type='button';
-      issuesButton.dataset.qbIssuesFor=number;issuesButton.textContent='Check and Resolve Issues';
-      issuesButton.style.background='#315478';issuesButton.onclick=()=>wscOpenStockQBIssues(number);
-      button.insertAdjacentElement('afterend',issuesButton);
-    }
-    const review=status?.manualReviewRequired===true||status?.manualReviewResolved===true;
-    issuesButton.textContent=review?(status?.manualReviewResolved?'Resolved review / email report':'Outstanding issues / email report'):'Check and Resolve Issues';
-    issuesButton.onclick=()=>review?wscOpenStockQBReview(number):wscOpenStockQBIssues(number);
-    issuesButton.hidden=['SUBMITTED','NO_CHANGE'].includes(state)&&!review;
-    issuesButton.disabled=wscLiveQBUI.busy || !wscLiveQBAllowed(area);
-  }
-}
-function wscPaintLiveQBReport(number,result) {
-  if(result)wscLiveQBUI.statuses.set(number,result);
-  document.querySelectorAll('button[data-live-q-b-report],button[id^="qb-"],button[data-tr-q-b-card],#tradeShowCommitQBButton').forEach(button=>{
-    const report=button.dataset.liveQBReport||button.dataset.trQBCard|| (button.id.startsWith('qb-')?button.id.slice(3):button.dataset.reportNumber);
-    if(report===number)wscPaintLiveQBButton(button,number,result);
-  });
-}
-async function wscLiveQBRequest(action, number, extra={}) {
-  const idToken=await window.getCurrentStaffToken();
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),120000);
-  let response,result;
-  try {
-    response=await fetch(window.WSC_ADMIN_URL,{method:'POST',headers:{'Content-Type':'application/json'},
-      signal:controller.signal,body:JSON.stringify({action,reportNumber:number,...extra,idToken})});
-    result=await response.json();
-  } catch(error) {
-    throw new Error(error.name==='AbortError'?'QuickBooks request timed out.': 'QuickBooks response could not be confirmed.');
-  } finally {clearTimeout(timer);}
-  if(!response.ok || result.success!==true || result.error) throw new Error(result.error||result.message||'QuickBooks request could not be confirmed.');
-  return result;
-}
-async function wscReadLiveQBStatus(number) {
-  const area=number.split('-')[0];
-  if(!/^(ST|SC|TR|BOM)-\d{6}$/.test(number))throw new Error('Invalid report number.');
-  if(area==='BOM') {
-    const found=await wscLiveQBRequest('findBOMReports',number,{searchBy:'number'});
-    const rows=(found.reports||[]).filter(r=>r.reportNumber===number);
-    if(rows.length!==1)throw new Error('BOM report status unavailable.');
-    return rows[0];
-  }
-  return wscLiveQBRequest({ST:'getQuickBooksCommitStatus',SC:'getStockCountQuickBooksStatus',TR:'getTradeShowQuickBooksStatus'}[area],number);
-}
-async function wscRefreshLiveQBButton(number) {
-  try {const status=await wscReadLiveQBStatus(number);wscPaintLiveQBReport(number,status);return status;}
-  catch(error){wscLiveQBUI.statuses.delete(number);wscPaintLiveQBReport(number);return null;}
-}
-function wscLiveQBMessage(result,number) {
-  if(result.manualReviewRequired) return number+(result.noAdjustment?' completed without a QB adjustment for verified products.':' committed verified product adjustments to QuickBooks.')+
-    ' '+result.unresolvedCount+' unresolved product(s) were left unchanged. Manual review is required. '+
-    (result.reportEmailState==='SENT'?'The issue report was sent to nmerry@sensafe.com.':'Issue report email status: '+result.reportEmailState+'. '+(result.reportEmailMessage||'Open Outstanding issues / email report to send or check it.'));
-  return result.noAdjustment ? number+' is complete. No stock adjustment was needed.' :
-    number+' was accepted by QuickBooks Live.'+(result.adjustmentId?' Adjustment ID: '+result.adjustmentId+'.':'');
-}
-async function wscSubmitLiveQB(number, button) {
-  if(wscLiveQBUI.busy || !/^(ST|SC|TR|BOM)-\d{6}$/.test(number) || button?.disabled)return;
-  if(wscLiveQBUI.statuses.get(number)?.manualReviewRequired && wscPermissions?.admin===true)return wscConfirmStockQBReviewResolved(number);
-  const area=number.split('-')[0];
-  wscLiveQBUI.busy=true; if(button)wscPaintLiveQBButton(button,number);
-  let sent=false, outcome=null, notice='', issueResult=null;
-  try {
-    wscBOMLoading('Checking QuickBooks Live status…');
-    await wscRefreshPermissions();
-    if(!wscLiveQBAllowed(area))throw new Error(area+' submissions are switched off in Administrator Settings.');
-    const before=await wscReadLiveQBStatus(number);wscPaintLiveQBReport(number,before);
-    const state=wscLiveQBState(before);
-    if(state==='SUBMITTED'||state==='NO_CHANGE') {notice=number+' is already complete.';return;}
-    if(['ST','SC'].includes(area)) {
-      wscBOMLoading('Checking all report products against QuickBooks Live…');
-      const checked=await wscCheckStockQBIssues(number);
-      if(!checked.ready){issueResult=checked;return;}
-    }
-    if(state!=='READY'||wscLiveQBUncertain(number))throw new Error('This report has an existing or uncertain submission. Check its QuickBooks result before submitting again.');
-    let message='Submit '+number+' to QuickBooks Live? Please confirm the report is complete and its quantities are correct.';
-    if(area==='BOM') {
-      wscBOMLoading('Preparing Live BOM adjustment…');
-      const preview=await wscLiveQBRequest('previewBOMQuickBooks',number);
-      const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-      message=escape(number)+'<br>Account: '+escape(preview.account)+'<br>'+preview.lineCount+' adjustment lines<br><br>'+
-        preview.items.map(x=>escape(x.sku)+': '+escape(x.previous)+' → '+escape(x.target)).join('<br>')+'<br><br>Submit this adjustment to QuickBooks Live?';
-    }
-    wscBOMLoadingEnd();
-    if(!await window.showWSCConfirm('QuickBooks Live',message))return;
-    wscBOMLoading('Submitting '+number+' to QuickBooks Live…');
-    // Persist ambiguity before sending; neither a timeout nor a refresh permits a blind retry.
-    sent=true;wscLiveQBUncertain(number,true);
-    outcome=await wscLiveQBRequest({ST:'commitStockTakeToQuickBooks',SC:'commitStockCountToQuickBooks',TR:'commitTradeShowToQuickBooks',BOM:'commitBOMQuickBooks'}[area],number,
-      area==='BOM'?{confirmation:'COMMIT '+number}:{});
-    if(wscLiveQBState(outcome)!=='SUBMITTED'&&wscLiveQBState(outcome)!=='NO_CHANGE')throw new Error('QuickBooks acceptance is not yet confirmed.');
-    wscLiveQBUncertain(number,false);wscPaintLiveQBReport(number,outcome);notice=wscLiveQBMessage(outcome,number);
-  } catch(error) {
-    notice=String(error.message||error);
-    if(sent) {
-      wscBOMLoading('Checking the QuickBooks result…');
-      // This is a status read only, never a second submission.
-      const status=await wscRefreshLiveQBButton(number);
-      if(status && ['SUBMITTED','NO_CHANGE'].includes(wscLiveQBState(status))) {outcome=status;notice=wscLiveQBMessage(status,number);}
-      else if(['ST','SC'].includes(area)) {
-        try {
-          const checked=await wscCheckStockQBIssues(number);
-          if(checked.noExistingSubmission===true) {
-            notice+=' No QuickBooks submission is recorded. Review the issues and recheck before trying again.';
-            issueResult=checked;
-          } else notice+=' The existing outcome needs checking; no second submission was sent.';
-        } catch(_) {notice+=' The outcome needs checking; no second submission was sent.';}
-      } else notice+=' The outcome needs checking; no second submission was sent.';
-    }
-  } finally {
-    wscBOMLoading('Refreshing QuickBooks status…');
-    if(outcome)wscPaintLiveQBReport(number,outcome);
-    else await wscRefreshLiveQBButton(number);
-    wscLiveQBUI.busy=false;wscBOMLoadingEnd();
-    wscPaintPermissions(wscPermissions);
-    if(button)wscPaintLiveQBButton(button,number);
-    if(issueResult) {
-      if(notice)issueResult.blockers=[...(issueResult.blockers||[]),notice];
-      if(notice)issueResult.ready=false;
-      await wscOpenStockQBIssues(number,issueResult);
-    } else if(notice)window.showWSCMessage('QuickBooks Live',notice);
-  }
-}
-function wscStockQBAction(number) {
-  return number.startsWith('ST-')?'commitStockTakeToQuickBooks':'commitStockCountToQuickBooks';
-}
-async function wscCheckStockQBIssues(number) {
-  const result=await wscLiveQBRequest(wscStockQBAction(number),number,{operation:'checkIssues'});
-  if(result.noExistingSubmission===true) wscLiveQBUncertain(number,false);
-  return result;
-}
-async function wscOpenStockQBIssues(number, initial) {
-  if(wscLiveQBUI.busy || document.getElementById('wscQBIssuesDialog'))return;
-  const dialog=document.createElement('dialog');dialog.id='wscQBIssuesDialog';
-  dialog.style.cssText='width:min(920px,94vw);max-height:90vh;overflow:auto;border:1px solid #bbb;border-radius:16px;padding:20px;color:#263244;background:#fff;box-sizing:border-box';
-  const heading=document.createElement('h2');heading.textContent=number+' — Check and Resolve Issues';dialog.appendChild(heading);
-  const intro=document.createElement('p');intro.textContent='Resolve changed stock using a verified current physical count. Original counts remain in the history. These amendments do not send anything to QuickBooks.';dialog.appendChild(intro);
-  const status=document.createElement('p');status.setAttribute('role','status');status.setAttribute('aria-live','polite');dialog.appendChild(status);
-  const body=document.createElement('div');dialog.appendChild(body);
-  const actions=document.createElement('div');actions.style.cssText='display:flex;gap:12px;flex-wrap:wrap';dialog.appendChild(actions);
-  const makeButton=(label,host,click)=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=click;host.appendChild(b);return b;};
-  let busy=false, checked=null;
-  const close=makeButton('Close',actions,()=>dialog.close());
-  const recheck=makeButton('Recheck All Issues',actions,()=>load());
-  const commit=makeButton('Commit to QB Live',actions,async()=>{dialog.close();await wscSubmitLiveQB(number);});commit.disabled=true;
-  const partial=makeButton('Commit and report',actions,async()=>{dialog.close();await wscSubmitStockQBPartial(number);});partial.disabled=true;
-  const setBusy=value=>{busy=value;wscLiveQBUI.busy=value;close.disabled=value;recheck.disabled=value;commit.disabled=value||checked?.ready!==true;partial.disabled=value||checked?.partialAllowed!==true;
-    body.querySelectorAll('button,input,textarea').forEach(el=>el.disabled=value);wscPaintLiveQBReport(number);};
-  dialog.addEventListener('cancel',event=>{if(busy)event.preventDefault();});
-  dialog.addEventListener('close',()=>{dialog.remove();wscPaintLiveQBReport(number);});
-  function render(result) {
-    checked=result;body.replaceChildren();commit.disabled=!result.ready;partial.disabled=result.partialAllowed!==true;
-    status.textContent=result.ready?'All '+result.checkedCount+' products checked. No blocking issues found. Commit will check the live quantities again.':
-      (result.issues||[]).length+' product issue(s). '+(result.blockers||[]).length+' report blocker(s).';
-    if(result.partialAllowed) {
-      const hint=document.createElement('p');hint.textContent='If these issues cannot be resolved, Commit and report will submit verified products only, leave unresolved products unchanged, and email nmerry@sensafe.com for manual review.';body.appendChild(hint);
-    }
-    (result.blockers||[]).forEach(message=>{const p=document.createElement('p');p.style.color='#b71c1c';p.textContent=message;body.appendChild(p);});
-    (result.issues||[]).forEach(issue=>{
-      const card=document.createElement('section');card.style.cssText='border:1px solid #ccc;border-radius:8px;padding:14px;margin:14px 0';body.appendChild(card);
-      const title=document.createElement('h3');title.textContent=issue.sku;card.appendChild(title);
-      const values=document.createElement('p');values.textContent='Saved QB: '+issue.saved+' | Saved actual: '+issue.actual+' | Live QB: '+(issue.live??'Unavailable');card.appendChild(values);
-      const message=document.createElement('p');message.textContent=issue.message;card.appendChild(message);
-      if(!issue.resolvable || result.blockers.length)return;
-      makeButton('Resolve',card,event=>{
-        event.currentTarget.hidden=true;
-        const form=document.createElement('form');card.appendChild(form);
-        const label=document.createElement('label');label.textContent='Verified current physical count';form.appendChild(label);
-        const quantity=document.createElement('input');quantity.type='number';quantity.min='0';quantity.step='1';quantity.required=true;quantity.inputMode='numeric';label.appendChild(quantity);
-        const reasonLabel=document.createElement('label');reasonLabel.textContent='Reason for amendment';form.appendChild(reasonLabel);
-        const reason=document.createElement('textarea');reason.required=true;reason.maxLength=500;reasonLabel.appendChild(reason);
-        const verifyLabel=document.createElement('label');verifyLabel.style.display='block';
-        const verified=document.createElement('input');verified.type='checkbox';verified.required=true;verifyLabel.appendChild(verified);
-        verifyLabel.appendChild(document.createTextNode(' I have verified this count is current, including stock movements since the original count.'));form.appendChild(verifyLabel);
-        const error=document.createElement('p');error.setAttribute('role','alert');form.appendChild(error);
-        const save=document.createElement('button');save.type='submit';save.textContent='Save Amendment and Recheck';form.appendChild(save);
-        let requestId=null, requestPayload=null;
-        form.onsubmit=async event=>{
-          event.preventDefault();if(busy)return;
-          const value=Number(quantity.value), explanation=reason.value.trim();
-          if(quantity.value.trim()==='' || !Number.isSafeInteger(value) || value<0 || !explanation || !verified.checked){error.textContent='Enter a current whole-number count, a reason, and confirm verification.';return;}
-          const details=JSON.stringify([value,explanation]);
-          if(requestPayload!==details){requestId=crypto.randomUUID();requestPayload=details;}
-          setBusy(true);error.textContent='Saving the amendment…';
-          try {
-            await wscLiveQBRequest(wscStockQBAction(number),number,{operation:'resolveIssue',sku:issue.sku,
-              fingerprint:result.fingerprint,live:issue.live,itemId:issue.itemId,quantity:value,reason:explanation,verifiedCurrentCount:true,requestId});
-            checked=null;commit.disabled=true;body.replaceChildren();status.textContent='Amendment saved. Rechecking all products…';
-            render(await wscCheckStockQBIssues(number));
-          } catch(e) {
-            checked=null;commit.disabled=true;status.textContent='Save or recheck could not be confirmed: '+String(e.message||e)+'. Recheck All Issues before continuing.';
-            error.textContent=String(e.message||e);
-          } finally {setBusy(false);}
-        };
-        quantity.focus();
-      });
-    });
-  }
-  async function load() {
-    if(busy)return;checked=null;setBusy(true);body.replaceChildren();status.textContent='Checking every product against QuickBooks Live…';
-    try {render(await wscCheckStockQBIssues(number));}
-    catch(error){status.textContent=String(error.message||error);}
-    finally{setBusy(false);}
-  }
-  document.body.appendChild(dialog);dialog.showModal();
-  if(initial)render(initial);else await load();
-}
-
-async function wscSubmitStockQBPartial(number) {
-  if(wscLiveQBUI.busy)return;
-  wscLiveQBUI.busy=true;let sent=false,notice='',result=null;
-  try {
-    await wscRefreshPermissions();
-    if(!wscLiveQBAllowed(number.split('-')[0]))throw new Error('QuickBooks submissions are disabled.');
-    wscBOMLoading('Checking products for Commit and report…');
-    const checked=await wscCheckStockQBIssues(number);
-    if(!checked.partialAllowed)throw new Error((checked.blockers||[]).join('\n')||'The outstanding issues have changed. Reopen Check and Resolve Issues.');
-    wscBOMLoadingEnd();
-    const message='Commit '+number+' and report?\n\n'+checked.adjustmentLineCount+' verified product adjustment(s) will be sent to QuickBooks. '+checked.issues.length+' unresolved product(s) will be LEFT UNCHANGED:\n'+
-      checked.issues.map(i=>i.sku).join(', ')+'\n\nTheir details will be emailed to nmerry@sensafe.com for manual review. This report cannot be committed again.';
-    const safeMessage=message.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])).replace(/\n/g,'<br>');
-    if(!await window.showWSCConfirm('Commit and report',safeMessage))return;
-    wscBOMLoading('Committing verified products and preparing the issue report…');
-    sent=true;wscLiveQBUncertain(number,true);
-    result=await wscLiveQBRequest(wscStockQBAction(number),number,{operation:'commitAndReport',partialToken:checked.partialToken,confirmation:'COMMIT AND REPORT '+number});
-    if(!result.submitted)throw new Error('QuickBooks outcome has not been confirmed.');
-    wscLiveQBUncertain(number,false);notice=wscLiveQBMessage(result,number);
-  } catch(error) {
-    notice=String(error.message||error);
-    if(sent) {
-      const status=await wscRefreshLiveQBButton(number);
-      if(status?.submitted){result=status;wscLiveQBUncertain(number,false);notice=wscLiveQBMessage(status,number);}
-      else {
-        try {const checked=await wscCheckStockQBIssues(number);
-          notice+=checked.noExistingSubmission?' No submission is recorded. Recheck the issues before trying again.':' The outcome needs checking. No second adjustment was sent.';
-        } catch(_){notice+=' The outcome needs checking. No second adjustment was sent.';}
-      }
-    }
-  } finally {
-    if(result)wscPaintLiveQBReport(number,result);else await wscRefreshLiveQBButton(number);
-    wscLiveQBUI.busy=false;wscBOMLoadingEnd();wscPaintLiveQBReport(number);
-    if(notice)window.showWSCMessage('Commit and report',notice);
-  }
-}
-async function wscOpenStockQBReview(number) {
-  if(wscLiveQBUI.busy||document.getElementById('wscQBReviewDialog'))return;
-  const dialog=document.createElement('dialog');dialog.id='wscQBReviewDialog';
-  dialog.style.cssText='width:min(900px,94vw);max-height:90vh;overflow:auto;border:1px solid #bbb;border-radius:16px;padding:20px;box-sizing:border-box';
-  const title=document.createElement('h2');title.textContent=number+' — Manual review required';dialog.appendChild(title);
-  const status=document.createElement('p');status.setAttribute('role','status');dialog.appendChild(status);
-  const body=document.createElement('div');dialog.appendChild(body);
-  const send=document.createElement('button');send.type='button';send.textContent='Send issue report';dialog.appendChild(send);
-  const close=document.createElement('button');close.type='button';close.textContent='Close';close.onclick=()=>dialog.close();dialog.appendChild(close);
-  let result=null,busy=false;
-  const setBusy=value=>{busy=value;wscLiveQBUI.busy=value;send.disabled=value||!result?.submitted;close.disabled=value;};
-  const render=data=>{
-    result=data;body.replaceChildren();
-    status.textContent=(!data.submitted?'QuickBooks outcome is not yet confirmed; check the existing submission. ':(data.noAdjustment?'No QuickBooks adjustment was needed for verified products. ':'Verified product adjustments were committed. '))+data.unresolvedCount+' unresolved product(s) were left unchanged. Email status: '+data.reportEmailState+'. '+(data.reportEmailMessage||'');
-    for(const issue of data.issues||[]) {
-      const p=document.createElement('p');p.textContent=issue.sku+' — Saved QB: '+issue.saved+'; saved actual: '+issue.actual+'; Live QB at check: '+(issue.live??'Unavailable')+'. '+issue.message;body.appendChild(p);
-    }
-    if(data.manualReviewResolved)status.textContent='Review resolved by '+data.reviewResolvedBy+' on '+new Date(data.reviewResolvedAt).toLocaleString()+'. Original excluded items are retained below. Email status: '+data.reportEmailState+'.';
-    send.textContent=data.reportEmailState==='UNSENT'?'Send issue report':'Resend issue report';
-    wscPaintLiveQBReport(number,data);
-  };
-  send.onclick=async()=>{
-    if(busy||!result)return;
-    const resend=result.reportEmailState!=='UNSENT';
-    if(resend&&!window.confirm('Resend the issue report to nmerry@sensafe.com? The earlier email may already have arrived. This will not send another stock adjustment.'))return;
-    setBusy(true);
-    try{render(await wscLiveQBRequest(wscStockQBAction(number),number,{operation:'sendIssueReport',allowResend:resend}));}
-    catch(error){status.textContent='Email could not be confirmed: '+String(error.message||error)+'. Close and reopen this report to check its status. No stock adjustment was sent.';}
-    finally{setBusy(false);}
-  };
-  dialog.addEventListener('cancel',e=>{if(busy)e.preventDefault();});
-  dialog.addEventListener('close',()=>{dialog.remove();wscPaintLiveQBReport(number);});
-  document.body.appendChild(dialog);dialog.showModal();setBusy(true);status.textContent='Loading outstanding issues…';
-  try{render(await wscLiveQBRequest(wscStockQBAction(number),number,{operation:'viewIssueReport'}));}
-  catch(error){status.textContent=String(error.message||error);}
-  finally{setBusy(false);}
-}
-
-async function wscConfirmStockQBReviewResolved(number) {
-  if(wscLiveQBUI.busy)return;
-  wscLiveQBUI.busy=true;
-  try {
-    await wscRefreshPermissions();
-    if(wscPermissions?.admin!==true)throw new Error('Only administrators can confirm this review.');
-    const status=await wscReadLiveQBStatus(number);
-    if(status.manualReviewResolved){wscPaintLiveQBReport(number,status);return;}
-    if(!status.submitted||!status.manualReviewRequired)throw new Error('Refresh the report: there is no completed submission awaiting review.');
-    if(!await window.showWSCConfirm('Confirm review resolved','Confirm that all outstanding issues for '+number+' have been reviewed and any required manual QuickBooks corrections are complete?<br><br>This records your confirmation only. It does not change stock or send another adjustment.'))return;
-    const result=await wscLiveQBRequest(wscStockQBAction(number),number,{operation:'confirmReviewResolved',requestId:status.requestId,confirmation:'RESOLVED '+number});
-    wscPaintLiveQBReport(number,result);
-    window.showWSCMessage('Review resolved','Review completion recorded for '+number+'.');
-  } catch(error) {
-    await wscRefreshLiveQBButton(number);
-    window.showWSCMessage('Review confirmation',String(error.message||error));
-  } finally {wscLiveQBUI.busy=false;wscPaintLiveQBReport(number);}
-}
-
-// End shared Live QuickBooks UI.
-
 function wscPaintPermissions(permissions) {
   const cog = document.getElementById("wscAdminCog");
   const areas = permissions?.functions || {};
@@ -7428,19 +6747,37 @@ function wscPaintPermissions(permissions) {
     button.style.display = areas[button.dataset.wscArea] === true ? "" : "none";
   });
   if (cog) cog.style.display = permissions?.admin === true ? "block" : "none";
-  if (!permissions) wscLiveQBUI.statuses.clear();
-  document.querySelectorAll('button[data-live-q-b-report],button[id^="qb-"],button[data-tr-q-b-card]').forEach(button=>{
-    const number=button.dataset.liveQBReport||button.dataset.trQBCard||button.id.slice(3);
-    if(number)wscPaintLiveQBButton(button,number);
+  document.querySelectorAll('button[id^="qb-ST-"]').forEach(button => {
+    if (button.textContent.trim() === "Committed to QB") {
+      button.disabled = true;
+      button.style.cursor = "not-allowed";
+      return;
+    }
+    if (permissions?.quickBooks?.ST !== true) {
+      button.disabled = true;
+      button.textContent = "QB Submissions Disabled";
+      button.style.background = "#777";
+      button.style.cursor = "not-allowed";
+    } else if (button.textContent.trim() === "QB Submissions Disabled") {
+      button.disabled = false;
+      button.textContent = "Commit to QB";
+      button.style.background = "#dc3545";
+      button.style.cursor = "pointer";
+    }
   });
   document.querySelectorAll('.wsc-module[data-module]').forEach(module => {
     const area = module.dataset.module;
     if (area !== 'QB') module.style.display = areas[area] === true ? '' : 'none';
   });
   const trButton = document.getElementById("tradeShowCommitQBButton");
-  if(trButton?.dataset.reportNumber)wscPaintLiveQBButton(trButton,trButton.dataset.reportNumber);
-}
+  if (trButton && trButton.textContent.trim() !== "✓ Committed to QB" && trButton.textContent.trim() !== "QB Submission Pending" && trButton.textContent.trim() !== "QB Status Unavailable") {
+    const allowed = permissions?.quickBooks?.TR === true;
+    trButton.disabled = !allowed;
+    trButton.textContent = allowed ? "📤 Commit to QB" : "QB Submissions Disabled";
+    trButton.style.background = allowed ? "#c62828" : "#777";
+  }
 
+}
 async function wscRefreshPermissions() {
   const email = String(window.getCurrentStaffEmail?.() || "").trim().toLowerCase();
   if (!email) {
@@ -7538,11 +6875,11 @@ function wscSwitchRow(label,enabled,onChange,disabled=false){
 function wscRenderAdminStaff(){
   const box=document.getElementById("wscStaffToggles"),email=document.getElementById("wscStaffSelect").value;
   box.replaceChildren();const member=wscAdminData?.staff.find(s=>s.email===email);if(!member)return;
-  ["ST","SC","TR","DL","DATES","WEEKLY_BOM"].forEach(area=>box.appendChild(wscSwitchRow(wscLabels[area],member.functions[area],input=>wscSaveSwitch(input,"STAFF",area,email))));
+  ["ST","SC","TR","DL","DATES"].forEach(area=>box.appendChild(wscSwitchRow(wscLabels[area],member.functions[area],input=>wscSaveSwitch(input,"STAFF",area,email))));
 }
 function wscRenderAdminQB(){
   const box=document.getElementById("wscQBToggles");box.replaceChildren();
-  ["ST","SC","TR","BOM"].forEach(area=>box.appendChild(wscSwitchRow(wscLabels[area],wscAdminData.quickBooks[area],input=>wscSaveSwitch(input,"QB",area))));
+  ["ST","SC","TR"].forEach(area=>box.appendChild(wscSwitchRow(wscLabels[area],wscAdminData.quickBooks[area],input=>wscSaveSwitch(input,"QB",area))));
 }
 async function wscSaveSwitch(input,settingType,area,staffEmail){
   const enabled=input.checked;input.disabled=true;
@@ -7561,7 +6898,7 @@ async function wscSaveSwitch(input,settingType,area,staffEmail){
 <script type="module">
   // Import the functions you need from the SDKs you need
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+  import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 // TODO: Add SDKs for Firebase products that you want to use
   // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -7718,39 +7055,6 @@ pinInput.addEventListener("keydown", (event) => {
   pinInput.value = "";
   pinMessage.textContent = "PIN reset. Enter a new 4-digit PIN.";
   pinInput.focus();
-});
-
-// Change the signed-in staff member without removing this device's PIN.
-const changeUserButton = document.getElementById("changeUserButton");
-changeUserButton.addEventListener("click", async () => {
-  if (changeUserButton.disabled) return;
-  changeUserButton.disabled = true;
-  pinButton.disabled = true;
-  forgotPinButton.disabled = true;
-  document.getElementById("loginButton").disabled = true;
-  pinMessage.textContent = "Signing out…";
-  try {
-    await signOut(auth);
-  } catch (error) {
-    pinMessage.textContent = "Unable to change user: " + (error.message || String(error));
-    changeUserButton.disabled = false;
-    pinButton.disabled = false;
-    forgotPinButton.disabled = false;
-    document.getElementById("loginButton").disabled = false;
-    return;
-  }
-  // Clear local selections only; saved sessions and submission safeguards remain.
-  try {
-    sessionStorage.removeItem(PIN_SESSION_KEY);
-    ['activeStockTake', 'activeStockTakePeriod', 'activeStockCount', 'activeTradeShow']
-      .forEach(key => localStorage.removeItem(key));
-  } finally {
-    document.getElementById("loginEmail").value = "";
-    document.getElementById("loginPassword").value = "";
-    pinInput.value = "";
-    // Discard the previous user's in-memory screens, caches and permissions.
-    window.location.reload();
-  }
 });
 
 // ----- END WSC DEVICE PIN LOCK -----
@@ -8000,10 +7304,62 @@ window.openDeliveryPdf = async function(reportNumber) {
 };
   
 window.confirmQuickBooksCommit = function(reportNumber) {
-  return wscSubmitLiveQB(reportNumber, document.getElementById('qb-'+reportNumber));
+
+  const existing = document.getElementById("qbConfirmOverlay");
+  if (existing) existing.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "qbConfirmOverlay";
+
+  overlay.innerHTML = `
+    <div style="
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,0.55);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:99999;
+      padding:20px;
+    ">
+      <div style="
+        background:white;
+        border-radius:12px;
+        padding:24px;
+        max-width:480px;
+        width:100%;
+        box-shadow:0 8px 30px rgba(0,0,0,0.3);
+        color:#222;
+      ">
+        <h2 style="margin-top:0;">WSC — QuickBooks Submission</h2>
+
+        <p>You are about to submit <strong>${reportNumber}</strong> to QuickBooks.</p>
+
+        <p>Please confirm that the stock take is complete and all quantities are correct.</p>
+
+        <p><strong>⚠️ This will change the stock quantities in QuickBooks and cannot be submitted twice.</strong></p>
+
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:24px;">
+          <button type="button"
+            onclick="document.getElementById('qbConfirmOverlay').remove();"
+            style="padding:10px 16px; border:0; border-radius:6px; cursor:pointer;">
+            Cancel
+          </button>
+
+          <button type="button"
+            onclick="document.getElementById('qbConfirmOverlay').remove(); commitReportToQuickBooks('${reportNumber}');"
+            style="padding:10px 16px; border:0; border-radius:6px; background:#dc3545; color:white; font-weight:bold; cursor:pointer;">
+            Yes, Submit to QB
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
 };
 
-window.showWSCMessage = function(title, message, onClose) {
+window.showWSCMessage = function(title, message) {
   const overlay = document.createElement("div");
 overlay.id = "wscMessageOverlay";
   overlay.style.cssText = `
@@ -8041,10 +7397,6 @@ box.style.cssText = `
       </button>
     </div>
   `;
-  box.querySelector('button').onclick = () => {
-    overlay.remove();
-    if (typeof onClose === 'function') onClose();
-  };
   overlay.appendChild(box);
 document.body.appendChild(overlay);
 };
@@ -8099,7 +7451,7 @@ window.showWSCInput = function(title, message, initialValue = "") {
   });
 };
 
-window.showWSCConfirm = function(title, message, options = {}) {
+window.showWSCConfirm = function(title, message) {
     return new Promise((resolve) => {
         const overlay = document.createElement("div");
         overlay.id = "wscConfirmOverlay";
@@ -8111,20 +7463,12 @@ window.showWSCConfirm = function(title, message, options = {}) {
             align-items:center;
             justify-content:center;
             z-index:99999;
-            padding:12px;
-            box-sizing:border-box;
+            padding:20px;
         `;
 
         const box = document.createElement("div");
         box.style.cssText = `
             background:white;
-            display:flex;
-            flex-direction:column;
-            box-sizing:border-box;
-            min-height:0;
-            max-height:calc(100vh - 24px);
-            max-height:calc(100dvh - 24px);
-            overflow:hidden;
             border-radius:12px;
             padding:24px;
             max-width:480px;
@@ -8134,10 +7478,10 @@ window.showWSCConfirm = function(title, message, options = {}) {
         `;
 
         box.innerHTML = `
-            <h2 style="margin-top:0;flex-shrink:0;">${title}</h2>
-            <div id="wscConfirmBody" tabindex="0" style="overflow-y:auto;min-height:0;overflow-wrap:anywhere;overscroll-behavior:contain;padding-right:8px;">${message}</div>
+            <h2 style="margin-top:0;">${title}</h2>
+            <p>${message}</p>
 
-            <div style="text-align:right; margin-top:16px;flex-shrink:0;">
+            <div style="text-align:right; margin-top:24px;">
                 <button type="button" id="wscConfirmCancel"
                     style="padding:10px 20px; border:0; border-radius:6px; background:#777; color:white; font-weight:bold; cursor:pointer; margin-right:8px;">
                     Cancel
@@ -8153,9 +7497,6 @@ window.showWSCConfirm = function(title, message, options = {}) {
         overlay.appendChild(box);
         document.body.appendChild(overlay);
 
-        if (options.cancelLabel) document.getElementById("wscConfirmCancel").textContent = options.cancelLabel;
-        if (options.confirmLabel) document.getElementById("wscConfirmOK").textContent = options.confirmLabel;
-
         document.getElementById("wscConfirmCancel").onclick = () => {
             overlay.remove();
             resolve(false);
@@ -8168,13 +7509,277 @@ window.showWSCConfirm = function(title, message, options = {}) {
     });
 };
     
-window.commitReportToQuickBooks = window.confirmQuickBooksCommit;
-async function getQuickBooksCommitStatus(reportNumber) { return wscReadLiveQBStatus(reportNumber); }
-window.updateQuickBooksButton = wscRefreshLiveQBButton;
-window.readStockCountQuickBooksStatus = wscReadLiveQBStatus;
-window.updateStockCountQuickBooksStatus = wscRefreshLiveQBButton;
-window.confirmStockCountQuickBooksCommit = function(reportNumber) {
-  return wscSubmitLiveQB(reportNumber, document.getElementById('qb-'+reportNumber));
+window.commitReportToQuickBooks = async function commitReportToQuickBooks(reportNumber) {
+startGlobeLoading();
+  const submissionReportGlobe = document.querySelector("#reportOptionsScreen .report-globe");
+  if (submissionReportGlobe) {
+    submissionReportGlobe.style.display = "block";
+    submissionReportGlobe.classList.add("spinning");
+  }
+  
+  if (!auth.currentUser) {
+    stopGlobeLoading();
+  if (submissionReportGlobe) {
+    submissionReportGlobe.classList.remove("spinning");
+    submissionReportGlobe.style.display = "none";
+  }
+    window.showWSCMessage("WSC", "Please sign in before committing a report to QuickBooks.");
+    return;
+  }
+
+  if (!String(reportNumber).startsWith("ST-")) {
+    stopGlobeLoading();
+  if (submissionReportGlobe) {
+    submissionReportGlobe.classList.remove("spinning");
+    submissionReportGlobe.style.display = "none";
+  }
+    window.showWSCMessage("WSC", "Only Stock Take (ST) reports can be committed to QuickBooks.");
+    return;
+  }
+try {
+  const idToken = await window.getCurrentStaffToken();
+
+  const response = await fetch(
+    "https://warehouse-stock-reports.tmerry.workers.dev",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action: "commitStockTakeToQuickBooks",
+        reportNumber: reportNumber,
+        idToken: idToken
+      })
+    }
+  );
+
+  const responseText = await response.text();
+
+  const result = responseText.trim().startsWith("{")
+    ? JSON.parse(responseText)
+    : { success: false, error: responseText };
+
+  if (!response.ok || !result.success) {
+    throw new Error(result.error || "QuickBooks submission failed.");
+  }
+
+  stopGlobeLoading();
+  if (submissionReportGlobe) {
+    submissionReportGlobe.classList.remove("spinning");
+    submissionReportGlobe.style.display = "none";
+  }
+   window.showWSCMessage(
+  "Submitted to QuickBooks",
+  reportNumber + " has been successfully committed to QuickBooks."
+);
+
+const button = document.getElementById("qb-" + reportNumber);
+
+if (button) {
+  button.textContent = "Committed to QB";
+  button.style.background = "#28a745";
+  button.disabled = true;
+  button.style.cursor = "not-allowed";
+  button.title = "Already submitted to QuickBooks";
+  button.onclick = function () {
+    window.showWSCMessage(
+      "Already Submitted",
+      "This stock take has already been committed to QuickBooks."
+    );
+  };
+}
+
+} catch (error) {
+  stopGlobeLoading();
+  if (submissionReportGlobe) {
+    submissionReportGlobe.classList.remove("spinning");
+    submissionReportGlobe.style.display = "none";
+  }
+
+  try {
+    const status = await getQuickBooksCommitStatus(reportNumber);
+
+    if (status.submitted) {
+      window.showWSCMessage(
+        "Submitted to QuickBooks",
+        reportNumber + " has been successfully committed to QuickBooks."
+      );
+
+      await window.updateQuickBooksButton(reportNumber);
+      return;
+    }
+  } catch (statusError) {
+    console.log("Could not verify QuickBooks submission:", statusError);
+  }
+
+  window.showWSCMessage(
+    "QuickBooks Submission Failed",
+    String(error && error.message ? error.message : error)
+  );
+}
+};
+  
+async function getQuickBooksCommitStatus(reportNumber) {
+  const idToken = await window.getCurrentStaffToken();
+
+  const response = await fetch(
+    "https://warehouse-stock-reports.tmerry.workers.dev",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        action: "getQuickBooksCommitStatus",
+        reportNumber: reportNumber,
+        idToken: idToken
+      })
+    }
+  );
+
+  const responseText = await response.text();
+
+  const result = responseText.trim().startsWith("{")
+    ? JSON.parse(responseText)
+    : { success: false, error: responseText };
+
+  if (!response.ok || !result.success) {
+    throw new Error(
+      result.error || "Could not check QuickBooks status."
+    );
+  }
+
+  return result;
+}
+  window.updateQuickBooksButton = async function (reportNumber) {
+  const button = document.getElementById("qb-" + reportNumber);
+
+  if (!button) return;
+
+  try {
+  const status = await getQuickBooksCommitStatus(reportNumber);
+
+  if (status.submitted) {
+    button.textContent = "Committed to QB";
+    button.style.background = "#28a745";
+    button.disabled = true;
+    button.style.cursor = "not-allowed";
+    button.title = "Already submitted to QuickBooks";
+    button.onclick = function() {
+      window.showWSCMessage(
+        "Already Submitted",
+        "This stock take has already been committed to QuickBooks."
+      );
+    };
+  }
+} catch (error) {
+  console.log("Could not load QuickBooks commit status:", error);
+}
+if (wscPermissions) wscPaintPermissions(wscPermissions);
+}
+
+// SC QuickBooks submission requires a verified status and administrator switch.
+window.scQuickBooksSubmitting = false;
+window.readStockCountQuickBooksStatus = async function(reportNumber) {
+  if (!/^SC-\d{6}$/.test(reportNumber)) throw new Error("Invalid SC report number.");
+  const idToken = await window.getCurrentStaffToken();
+  const response = await fetch("https://warehouse-stock-reports.tmerry.workers.dev", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "getStockCountQuickBooksStatus", reportNumber, idToken })
+  });
+  const result = await response.json();
+  if (!response.ok || result.success === false || result.error) {
+    throw new Error(result.error || "SC QuickBooks status unavailable.");
+  }
+  return result;
+};
+
+window.updateStockCountQuickBooksStatus = async function(reportNumber) {
+  const button = document.getElementById("qb-" + reportNumber);
+  if (!button || !/^SC-\d{6}$/.test(reportNumber)) return;
+  button.disabled = true;
+  button.style.background = "#777";
+  button.style.cursor = "not-allowed";
+  button.textContent = "SC — Checking QB Status";
+  try {
+    const result = await window.readStockCountQuickBooksStatus(reportNumber);
+    if (result.submitted === true || String(result.qbStatus || "").toLowerCase() === "submitted") {
+      button.textContent = "Committed to QB";
+      button.style.background = "#28a745";
+      button.title = "Already submitted to QuickBooks";
+    } else if (String(result.qbStatus || "").trim()) {
+      button.textContent = "SC — QB " + result.qbStatus;
+      button.title = "Existing submission status requires manual verification; no retry permitted";
+    } else if (wscPermissions?.quickBooks?.SC === true) {
+      button.disabled = false;
+      button.style.background = "#dc3545";
+      button.style.cursor = "pointer";
+      button.textContent = "Commit to QB";
+      button.title = "Submit " + reportNumber + " to QuickBooks (currently disabled)";
+    } else {
+      button.textContent = "QB Submissions Disabled";
+      button.title = "SC QuickBooks submissions are disabled in Administrator Settings";
+    }
+  } catch (error) {
+    console.warn("SC QuickBooks status check failed:", error.message);
+    button.textContent = "SC — Status Unavailable";
+    button.title = "Could not verify status. Submission is blocked.";
+  }
+};
+
+window.confirmStockCountQuickBooksCommit = async function(reportNumber) {
+  if (!/^SC-\d{6}$/.test(reportNumber) || window.scQuickBooksSubmitting) return;
+  const button = document.getElementById("qb-" + reportNumber);
+  if (!button || button.disabled || wscPermissions?.quickBooks?.SC !== true) return;
+  window.scQuickBooksSubmitting = true;
+  button.disabled = true;
+  button.textContent = "Checking QB Status...";
+  try {
+    const before = await window.readStockCountQuickBooksStatus(reportNumber);
+    if (before.submitted || String(before.qbStatus || "").trim()) {
+      throw new Error("A QuickBooks submission status already exists. Do not retry; verify the record first.");
+    }
+    const approved = await window.showWSCConfirm(
+      "WSC — QuickBooks",
+      "Submit " + reportNumber + " to QuickBooks? This will adjust stock for the counted products. Please confirm the quantities are correct."
+    );
+    if (!approved) return;
+    // Reuse the existing report globe and Home-button loading layout during SC submission.
+    const reportGlobe = document.querySelector("#reportOptionsScreen .report-globe");
+    const reportHomeButton = document.querySelector("#reportOptionsScreen .report-back-button");
+    if (reportGlobe) {
+      reportGlobe.style.display = "block";
+      reportGlobe.classList.add("spinning");
+    }
+    if (reportHomeButton) reportHomeButton.classList.add("loading");
+    button.textContent = "Submitting to QB...";
+    // No automatic retry: an ambiguous response may mean QuickBooks already received the write.
+    const idToken = await window.getCurrentStaffToken();
+    const response = await fetch("https://warehouse-stock-reports.tmerry.workers.dev", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "commitStockCountToQuickBooks", reportNumber, idToken })
+    });
+    const result = await response.json();
+    if (!response.ok || result.success !== true) {
+      throw new Error(result.error || "QuickBooks submission could not be confirmed. Check status before taking any further action.");
+    }
+    window.showWSCMessage("Submitted to QuickBooks", reportNumber + " was submitted to QuickBooks successfully.");
+  } catch (error) {
+    window.showWSCMessage("SC QuickBooks Submission", error.message + " Do not retry until the QuickBooks and session status have been checked.");
+  } finally {
+    const reportGlobe = document.querySelector("#reportOptionsScreen .report-globe");
+    const reportHomeButton = document.querySelector("#reportOptionsScreen .report-back-button");
+    if (reportGlobe) {
+      reportGlobe.classList.remove("spinning");
+      reportGlobe.style.display = "none";
+    }
+    if (reportHomeButton) reportHomeButton.classList.remove("loading");
+    window.scQuickBooksSubmitting = false;
+    await window.updateStockCountQuickBooksStatus(reportNumber);
+  }
 };
 
 async function getQuickBooksCommitStatusForST(reportNumber) {
@@ -8380,8 +7985,9 @@ async function wscDatesStartScanner(amend){
     await scanner.start({facingMode:'environment'},{fps:10,qrbox:{width:220,height:220}},async decoded=>{
       if(found || wscDatesBusy)return;
       found=true;
+      await wscDatesStopScanner();
       document.getElementById(isAmend?'wscDatesAmendSku':'wscDatesSku').value=String(decoded).trim();
-      await Promise.all([wscDatesStopScanner(),wscDatesFind(isAmend)]);
+      await wscDatesFind(isAmend);
     },()=>{});
     if(window.wscDatesScanner===scanner)wscDatesMessage('Point the camera at a product QR code.');
     else {try{if(scanner.isScanning)await scanner.stop();await scanner.clear();}catch(e){}}
@@ -8403,20 +8009,14 @@ function wscDatesToggleAmendments(){
   document.getElementById('wscDatesExpiry').value='';
   document.getElementById('wscDatesAmendMessage').textContent='';
   wscDatesCurrentSku='';
-  if(document.getElementById('wscDatesAmendSku').value.trim())void wscDatesFind(true);
 }
 function wscDatesCloseAmendments(){
   if(wscDatesBusy)return;
   wscDatesStopScanner();
   document.getElementById('wscDatesAmendScreen').style.display='none';
   document.getElementById('wscDatesScreen').style.display='block';
-  const input=document.getElementById('wscDatesSku');
-  input.value='';
-  wscQuickDismiss(input);
-  wscQuickDismiss(document.getElementById('wscDatesAmendSku'));
-  document.getElementById('wscDatesResults').replaceChildren();
-  document.getElementById('wscDatesMessage').textContent='';
-  wscDatesCurrentSku='';
+  document.getElementById('wscDatesSku').value=document.getElementById('wscDatesAmendSku').value;
+  if(document.getElementById('wscDatesSku').value.trim())wscDatesFind(false);
 }
 function wscDatesConfirmDelete(lot,expiry){
   return new Promise(resolve=>{
@@ -8551,134 +8151,6 @@ async function wscDatesReadPhoto(input){
   finally{wscDatesSetBusy(false);input.value='';const confirmButton=document.getElementById('wscDatesSave');if(confirmButton)confirmButton.disabled=false;}
 }
 
-// Shared SKU suggestions. Catalogue only; live quantities are fetched on selection.
-let wscQuickCatalogue={email:'',products:null,expires:0,promise:null};
-const wscQuickFields={
-  wscDatesSku:()=>wscDatesFind(false),
-  wscDatesAmendSku:()=>wscDatesFind(true),
-  manualSku:()=>findManualSku(),
-  tradeShowManualSku:()=>findTradeShowManualSku(),
-  deliveryExtraSku:()=>findDeliveryExtraSku()
-};
-function wscQuickClearPrevious(input){
-  const id=input.id;
-  if(id==='wscDatesSku'||id==='wscDatesAmendSku'){
-    const amend=id==='wscDatesAmendSku';
-    document.getElementById(amend?'wscDatesAmendResults':'wscDatesResults').replaceChildren();
-    document.getElementById(amend?'wscDatesAmendMessage':'wscDatesMessage').textContent='';
-    wscDatesCurrentSku='';
-    if(amend)document.getElementById('wscDatesAddHeading').textContent='Add Dates';
-  }else if(id==='manualSku'){
-    document.getElementById('productDetails').replaceChildren();
-    document.getElementById('result').textContent='';
-    document.getElementById('nextProductButton').style.display='none';
-  }else if(id==='tradeShowManualSku'){
-    document.getElementById('tradeShowProductDetails').replaceChildren();
-  }else if(id==='deliveryExtraSku'){
-    deliveryExtraFoundProduct=null;
-    document.getElementById('deliveryExtraProductEntry').style.display='none';
-    document.getElementById('deliverySkuSearchMessage').textContent='';
-  }
-}
-function wscQuickHide(input){
-  const list=document.getElementById(input.id+'Suggestions');
-  if(list){list.replaceChildren();list.hidden=true;}
-  const status=document.getElementById(input.id+'SuggestionsStatus');
-  if(status)status.textContent='';
-}
-function wscDatesHideSuggestions(){
-  ['wscDatesSku','wscDatesAmendSku'].forEach(id=>wscQuickHide(document.getElementById(id)));
-}
-function wscQuickMatches(products,value){
-  const prefix=String(value||'').trim().toLowerCase();
-  return prefix.length<3?[]:products.filter(p=>p.sku.toLowerCase().startsWith(prefix));
-}
-async function wscQuickGetCatalogue(){
-  const email=String(window.getCurrentStaffEmail?.()||'').toLowerCase();
-  if(!email)throw new Error('Sign in required');
-  if(wscQuickCatalogue.email!==email)wscQuickCatalogue={email,products:null,expires:0,promise:null};
-  const cache=wscQuickCatalogue;
-  if(cache.products && Date.now()<cache.expires)return cache.products;
-  if(!cache.promise){
-    cache.promise=(async()=>{
-      const data=await wscDatesRequest('getLiveProduct',{catalogue:true});
-      if(!Array.isArray(data.products))throw new Error('Suggestions unavailable');
-      cache.products=data.products.filter(p=>p&&typeof p.sku==='string'&&typeof p.name==='string');
-      cache.expires=Date.now()+300000;
-      return cache.products;
-    })().finally(()=>{cache.promise=null;});
-  }
-  return cache.promise;
-}
-async function wscQuickSelect(input,sku){
-  if(input.dataset.quickBusy==='true' || wscDatesBusy || lookupInProgress || wscDeliveryExtraLookupBusy)return;
-  input.dataset.quickBusy='true';input.value=sku;
-  wscQuickDismiss(input);input.disabled=true;
-  try{await wscQuickFields[input.id]();}
-  catch(e){window.showWSCMessage('Product lookup',String(e.message||e));}
-  finally{input.disabled=false;delete input.dataset.quickBusy;wscQuickHide(input);}
-}
-async function wscQuickPrepare(input){
-  if(!input)return;
-  wscQuickInstall(input);
-  const generation=String(Number(input.dataset.quickGeneration||0)+1);
-  input.dataset.quickGeneration=generation;
-  wscQuickHide(input);
-  const status=document.getElementById(input.id+'SuggestionsStatus');
-  const email=String(window.getCurrentStaffEmail?.()||'').toLowerCase();
-  status.textContent='Loading product suggestions…';
-  try{
-    const products=await wscQuickGetCatalogue();
-    if(input.dataset.quickGeneration!==generation || String(window.getCurrentStaffEmail?.()||'').toLowerCase()!==email || input.disabled)return;
-    if(input.value.trim().length<3){status.textContent='Type at least 3 characters, then select a product. Or enter a full SKU and press Enter.';return;}
-    const matches=wscQuickMatches(products,input.value);
-    const list=document.getElementById(input.id+'Suggestions');
-    status.textContent=matches.length>10?'Showing the first 10 of '+matches.length+' matches. Keep typing to narrow the list.':matches.length?matches.length+' matching product(s).':'No matching SKUs. Check the code, or enter a full SKU and press Enter.';
-    matches.slice(0,10).forEach(product=>{
-      const button=document.createElement('button');button.type='button';
-      button.textContent=product.sku+' — '+product.name;
-      button.style.cssText='display:block;width:100%;text-align:left;margin:0;border-radius:0;border-bottom:1px solid #d6dce5;background:white;color:#172b4d;padding:14px;';
-      button.onclick=()=>wscQuickSelect(input,product.sku);
-      button.onkeydown=e=>{
-        if(e.key==='Escape'){e.preventDefault();input.focus();wscQuickDismiss(input);}
-        if(e.key==='ArrowDown'){e.preventDefault();(button.nextElementSibling||button).focus();}
-        if(e.key==='ArrowUp'){e.preventDefault();if(button.previousElementSibling)button.previousElementSibling.focus();else{input.focus();wscQuickDismiss(input);}}
-      };
-      list.append(button);
-    });
-    list.hidden=!matches.length;
-  }catch(e){
-    if(input.dataset.quickGeneration===generation)status.textContent='Suggestions unavailable. Enter the full SKU and press Enter to look it up.';
-  }
-}
-function wscQuickDismiss(input){
-  input.dataset.quickGeneration=String(Number(input.dataset.quickGeneration||0)+1);
-  wscQuickHide(input);
-}
-function wscQuickInstall(input){
-  if(input.dataset.quickInstalled)return;
-  input.dataset.quickInstalled='true';input.autocomplete='off';input.setAttribute('enterkeyhint','search');
-  const status=document.createElement('p');status.id=input.id+'SuggestionsStatus';status.setAttribute('role','status');status.setAttribute('aria-live','polite');status.style.cssText='font-size:.9em;margin:4px 0;';
-  const list=document.createElement('div');list.id=input.id+'Suggestions';list.hidden=true;list.setAttribute('aria-label','Matching products');list.style.cssText='max-height:320px;overflow-y:auto;border:1px solid #ccd5df;border-radius:8px;margin-bottom:12px;';
-  list.addEventListener('pointerdown',e=>{if(e.target.closest('button'))e.preventDefault();});
-  input.after(status,list);input.setAttribute('aria-controls',list.id);input.setAttribute('aria-describedby',status.id);
-  input.addEventListener('focus',()=>{
-    wscQuickPrepare(input);
-    if(input.id==='manualSku')wscScrollCountStep(input,true);
-  });
-  input.addEventListener('input',()=>{wscQuickClearPrevious(input);wscQuickPrepare(input);});
-  input.addEventListener('keydown',e=>{
-    if(e.isComposing)return;
-    if(e.key==='Escape'){e.preventDefault();wscQuickDismiss(input);}
-    if(e.key==='ArrowDown' && list.firstElementChild){e.preventDefault();list.firstElementChild.focus();}
-    if(e.key==='Enter'){e.preventDefault();const sku=input.value.trim();if(sku)wscQuickSelect(input,sku);}
-  });
-  const blur=e=>{if(e.relatedTarget!==input&&!list.contains(e.relatedTarget))wscQuickDismiss(input);};
-  input.addEventListener('focusout',blur);list.addEventListener('focusout',blur);
-}
-function wscQuickInit(){Object.keys(wscQuickFields).forEach(id=>{const input=document.getElementById(id);if(input)wscQuickInstall(input);});}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wscQuickInit,{once:true});else wscQuickInit();
-
 let wscDatesCurrentSku = '';
 let wscDatesBusy = false;
 function wscDatesMessage(text) {
@@ -8708,7 +8180,6 @@ function wscOpenDates() {
   document.getElementById('wscDatesAmendButton').textContent='✏️ Amendments (Admin)';
   document.getElementById('wscDatesResults').replaceChildren();
   wscDatesCurrentSku=''; wscDatesMessage('');
-  wscQuickPrepare(document.getElementById("wscDatesSku"));
 }
 async function wscDatesRequest(action,extra={}) {
   const idToken = await window.getCurrentStaffToken();
@@ -8760,7 +8231,14 @@ function wscDatesExpiryMonthsRemaining(value){
   const today=new Date();
   return month-(today.getFullYear()*12+today.getMonth());
 }
-function wscDatesRenderProduct(data,isAmend){
+async function wscDatesFind(amend) {
+  if(wscDatesBusy)return;
+  const isAmend=amend===true || (amend!==false && document.getElementById('wscDatesAmendScreen').style.display==='block');
+  const sku=document.getElementById(isAmend?'wscDatesAmendSku':'wscDatesSku').value.trim();
+  if(!sku){wscDatesMessage('Enter a SKU first.');return;}
+  wscDatesSetBusy(true,'Looking up product…'); wscDatesMessage('Looking up product…');
+  try {
+    const data=await wscDatesRequest('getProductDates',{sku});
     wscDatesCurrentSku=data.sku;
     if(isAmend)document.getElementById('wscDatesAddHeading').textContent='Add Dates for '+data.sku;
     const admin=data.canAmend === true && wscPermissions?.admin === true;
@@ -8768,11 +8246,6 @@ function wscDatesRenderProduct(data,isAmend){
     if(isAmend) document.getElementById('wscDatesAdmin').style.display=admin?'block':'none';
     const container=document.getElementById(isAmend?'wscDatesAmendResults':'wscDatesResults');container.replaceChildren();
     const heading=document.createElement('h3');heading.textContent=data.sku+' — '+data.name;container.append(heading);
-    if(data.notApplicable === true || /LBL$/i.test(String(data.sku).trim())) {
-      const p=document.createElement('p');p.textContent='Not applicable — '+(data.notApplicableType==='kit'?'kit':'label')+' product; no expiry date or lot number';container.append(p);
-      if(isAmend)document.getElementById('wscDatesAdmin').style.display='none';
-      wscDatesMessage('');return;
-    }
     if(!data.lots.length){const p=document.createElement('p');p.textContent='Out of Stock';container.append(p);}
     // Oldest expiry first; invalid/missing expiry dates remain at the bottom.
     const sortedLots=[...data.lots].sort((a,b)=>{
@@ -8780,7 +8253,7 @@ function wscDatesRenderProduct(data,isAmend){
       return (am===null?Infinity:am)-(bm===null?Infinity:bm);
     });
     sortedLots.forEach(item=>{
-      const line=document.createElement('div');line.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:white;border:1px solid #d6dce5;border-radius:10px;padding:12px;margin:8px 0;';
+      const line=document.createElement('div');line.style.cssText='background:white;border:1px solid #d6dce5;border-radius:10px;padding:12px;margin:8px 0;';
       const remaining=wscDatesExpiryMonthsRemaining(item.expiry);
       if(remaining!==null && remaining<=6){
         line.style.background='#f9d6d6';line.style.borderColor='#b42323';line.style.color='#711717';
@@ -8788,40 +8261,6 @@ function wscDatesRenderProduct(data,isAmend){
         line.style.background='#ffe3b8';line.style.borderColor='#d17c12';line.style.color='#633b08';
       }
       const details=document.createElement('div');details.textContent='Lot: '+item.lot+' | Expiry: '+item.expiry;line.append(details);
-      if(admin && isAmend){
-      const qtyArea=document.createElement('div');
-      qtyArea.style.cssText='display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin-top:8px;';
-      const qtyLabel=document.createElement('label');qtyLabel.style.cssText='display:flex;flex-direction:column;gap:4px;';qtyLabel.textContent='Qty (apprx)';
-      const qtyInput=document.createElement('input');qtyInput.type='number';qtyInput.min='0';qtyInput.step='1';qtyInput.inputMode='numeric';qtyInput.placeholder='Unknown';
-      qtyInput.setAttribute('aria-label','Qty (apprx) for lot '+item.lot);
-      qtyInput.style.cssText='width:140px;max-width:100%;padding:10px;box-sizing:border-box;';
-      qtyInput.value=item.approxQty == null ? '' : String(item.approxQty);qtyInput.disabled=!admin;
-      qtyLabel.append(qtyInput);qtyArea.append(qtyLabel);
-      if(admin){
-        const saveQty=document.createElement('button');saveQty.type='button';saveQty.textContent='Save qty';saveQty.style.cssText='width:auto;margin:0;padding:10px 16px;';
-        const qtyStatus=document.createElement('span');qtyStatus.setAttribute('role','status');
-        let expectedQty=item.approxQty == null ? '' : String(item.approxQty);
-        let saving=false;
-        saveQty.onclick=async()=>{
-          if(saving || wscDatesBusy)return;
-          const value=qtyInput.value.trim();
-          if(qtyInput.validity?.badInput || (value!=='' && (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value))))){qtyStatus.textContent='Enter a whole quantity of zero or more.';return;}
-          saving=true;saveQty.disabled=qtyInput.disabled=true;wscDatesSetBusy(true,'Saving approximate quantity…');qtyStatus.textContent='Saving…';
-          try{
-            const result=await wscDatesRequest('setProductDateQuantity',{sku:data.sku,row:item.row,lot:item.lot,expiry:item.expiry,approxQty:value,expectedQty});
-            expectedQty=String(result.approxQty);item.approxQty=result.approxQty;qtyInput.value=expectedQty;qtyStatus.textContent='Saved';
-          }catch(error){qtyStatus.textContent='Not confirmed: '+error.message;}
-          finally{saving=false;saveQty.disabled=qtyInput.disabled=false;wscDatesSetBusy(false);}
-        };
-        qtyInput.addEventListener('input',()=>{qtyStatus.textContent='Unsaved';});
-        qtyArea.append(saveQty,qtyStatus);
-      }
-      line.append(qtyArea);
-      } else {
-        const qtyText=document.createElement('span');
-        qtyText.textContent='Qty (apprx): '+(item.approxQty == null || String(item.approxQty).trim()==='' ? 'Unknown' : String(item.approxQty));
-        line.append(qtyText);
-      }
       if(admin && isAmend){
         const del=document.createElement('button');del.type='button';del.className='wsc-dates-delete';del.textContent='Delete this lot';del.style.cssText='width:auto;margin-top:8px;background:#a32929;display:none;';
         del.onclick=async()=>{
@@ -8838,17 +8277,6 @@ function wscDatesRenderProduct(data,isAmend){
     });
     wscDatesRenderDeleteButtons(isAmend);
     wscDatesMessage(data.lots.length+' lot(s) recorded.');
-}
-async function wscDatesFind(amend) {
-  if(wscDatesBusy)return;
-  const isAmend=amend===true || (amend!==false && document.getElementById('wscDatesAmendScreen').style.display==='block');
-  const sku=document.getElementById(isAmend?'wscDatesAmendSku':'wscDatesSku').value.trim();
-  if(!sku){wscDatesMessage('Enter a SKU first.');return;}
-  wscDatesHideSuggestions();
-  wscDatesSetBusy(true,'Looking up product…'); wscDatesMessage('Looking up product…');
-  try {
-    const data=await wscDatesRequest('getProductDates',{sku});
-    wscDatesRenderProduct(data,isAmend);
   } catch(e) {
     wscDatesCurrentSku='';document.getElementById(isAmend?'wscDatesAmendResults':'wscDatesResults').replaceChildren();
     if(isAmend){document.getElementById('wscDatesAdmin').style.display='block';document.getElementById('wscDatesAddHeading').textContent='Add Dates';}wscDatesRefreshAdminButton();wscDatesMessage(e.message);
@@ -8863,21 +8291,19 @@ async function wscDatesSave(){
   if(!lot||!expiry){wscDatesMessage('Enter both lot and expiry.');return;}
   const enteredSku=document.getElementById('wscDatesAmendSku').value.trim();
   if(!enteredSku){wscDatesMessage('Enter or scan a product SKU before confirming. Your lot and expiry have been kept.');document.getElementById('wscDatesAmendSku').focus();return;}
-  wscDatesSetBusy(true,'Saving lot…');wscDatesMessage('Saving lot…');
+  wscDatesSetBusy(true,'Checking and saving lot…');wscDatesMessage('Checking product before saving…');
   try{
-    // The server verifies the currently entered SKU, admin permission and duplicates.
-    const result=await wscDatesRequest('addProductDate',{sku:enteredSku,lot,expiry});
+    // Always verify the SKU currently shown in the input; a previous lookup may
+    // belong to another product. Never silently save against an old selection.
+    const verified=await wscDatesRequest('getProductDates',{sku:enteredSku});
+    if(verified.canAmend!==true)throw new Error('Administrator permission required.');
+    const sku=verified.sku;
+    if(!sku)throw new Error('Product not found. Check the SKU.');
+    const result=await wscDatesRequest('addProductDate',{sku,lot,expiry});
     document.getElementById('wscDatesLot').value='';document.getElementById('wscDatesExpiry').value='';
-    wscDatesShowLotSuggestion('');
-    const preview=document.getElementById('wscDatesPhotoPreview');
-    preview.removeAttribute('src');preview.style.display='none';
-    document.getElementById('wscDatesPhotoStatus').textContent='';
-    if(result.product)wscDatesRenderProduct(result.product,true);
-    else document.getElementById('wscDatesAmendResults').replaceChildren();
     wscDatesMessage(result.alreadyExists?'This lot and expiry are already recorded.':'Lot saved.');
-  }catch(e){
-    wscDatesMessage('Save was not confirmed: '+(e.message||String(e))+'. Your entries have been kept.');
-  }finally{wscDatesSetBusy(false);}
+  }catch(e){wscDatesMessage('Could not save: '+(e.message||String(e)));wscDatesSetBusy(false);return;}
+  wscDatesSetBusy(false);await wscDatesFind(true);
 }
 
 // PWA registration; deliberately does not cache index.html or app data.
