@@ -7106,6 +7106,8 @@ function wscPaintLiveQBButton(button, number, result) {
   button.disabled=true;button.style.background='#777';button.style.cursor='not-allowed';
   if (state==='SUBMITTED'||state==='NO_CHANGE') {
     button.textContent=status?.manualReviewRequired ? (status.noAdjustment?'Manual review required — no QB adjustment':'Committed — manual review required') : (status?.noAdjustment ? 'Complete — No Adjustment Needed' : 'Committed to QB');button.style.background=status?.manualReviewRequired?'#a65b00':'#28a745';
+    if(status?.manualReviewResolved)button.textContent='Committed — review resolved';
+    if(status?.manualReviewRequired && wscPermissions?.admin===true && !wscLiveQBUI.busy) {button.disabled=false;button.style.cursor='pointer';}
   } else if (wscLiveQBUI.busy) button.textContent='QuickBooks request in progress…';
   else if (wscLiveQBUncertain(number)) button.textContent='QB Outcome Needs Checking';
   else if (state==='UNKNOWN') button.textContent='QB Status Unavailable';
@@ -7121,8 +7123,8 @@ function wscPaintLiveQBButton(button, number, result) {
       issuesButton.style.background='#315478';issuesButton.onclick=()=>wscOpenStockQBIssues(number);
       button.insertAdjacentElement('afterend',issuesButton);
     }
-    const review=status?.manualReviewRequired===true;
-    issuesButton.textContent=review?'Outstanding issues / email report':'Check and Resolve Issues';
+    const review=status?.manualReviewRequired===true||status?.manualReviewResolved===true;
+    issuesButton.textContent=review?(status?.manualReviewResolved?'Resolved review / email report':'Outstanding issues / email report'):'Check and Resolve Issues';
     issuesButton.onclick=()=>review?wscOpenStockQBReview(number):wscOpenStockQBIssues(number);
     issuesButton.hidden=['SUBMITTED','NO_CHANGE'].includes(state)&&!review;
     issuesButton.disabled=wscLiveQBUI.busy || !wscLiveQBAllowed(area);
@@ -7174,6 +7176,7 @@ function wscLiveQBMessage(result,number) {
 }
 async function wscSubmitLiveQB(number, button) {
   if(wscLiveQBUI.busy || !/^(ST|SC|TR|BOM)-\d{6}$/.test(number) || button?.disabled)return;
+  if(wscLiveQBUI.statuses.get(number)?.manualReviewRequired && wscPermissions?.admin===true)return wscConfirmStockQBReviewResolved(number);
   const area=number.split('-')[0];
   wscLiveQBUI.busy=true; if(button)wscPaintLiveQBButton(button,number);
   let sent=false, outcome=null, notice='', issueResult=null;
@@ -7376,6 +7379,7 @@ async function wscOpenStockQBReview(number) {
     for(const issue of data.issues||[]) {
       const p=document.createElement('p');p.textContent=issue.sku+' — Saved QB: '+issue.saved+'; saved actual: '+issue.actual+'; Live QB at check: '+(issue.live??'Unavailable')+'. '+issue.message;body.appendChild(p);
     }
+    if(data.manualReviewResolved)status.textContent='Review resolved by '+data.reviewResolvedBy+' on '+new Date(data.reviewResolvedAt).toLocaleString()+'. Original excluded items are retained below. Email status: '+data.reportEmailState+'.';
     send.textContent=data.reportEmailState==='UNSENT'?'Send issue report':'Resend issue report';
     wscPaintLiveQBReport(number,data);
   };
@@ -7394,6 +7398,25 @@ async function wscOpenStockQBReview(number) {
   try{render(await wscLiveQBRequest(wscStockQBAction(number),number,{operation:'viewIssueReport'}));}
   catch(error){status.textContent=String(error.message||error);}
   finally{setBusy(false);}
+}
+
+async function wscConfirmStockQBReviewResolved(number) {
+  if(wscLiveQBUI.busy)return;
+  wscLiveQBUI.busy=true;
+  try {
+    await wscRefreshPermissions();
+    if(wscPermissions?.admin!==true)throw new Error('Only administrators can confirm this review.');
+    const status=await wscReadLiveQBStatus(number);
+    if(status.manualReviewResolved){wscPaintLiveQBReport(number,status);return;}
+    if(!status.submitted||!status.manualReviewRequired)throw new Error('Refresh the report: there is no completed submission awaiting review.');
+    if(!await window.showWSCConfirm('Confirm review resolved','Confirm that all outstanding issues for '+number+' have been reviewed and any required manual QuickBooks corrections are complete?<br><br>This records your confirmation only. It does not change stock or send another adjustment.'))return;
+    const result=await wscLiveQBRequest(wscStockQBAction(number),number,{operation:'confirmReviewResolved',requestId:status.requestId,confirmation:'RESOLVED '+number});
+    wscPaintLiveQBReport(number,result);
+    window.showWSCMessage('Review resolved','Review completion recorded for '+number+'.');
+  } catch(error) {
+    await wscRefreshLiveQBButton(number);
+    window.showWSCMessage('Review confirmation',String(error.message||error));
+  } finally {wscLiveQBUI.busy=false;wscPaintLiveQBReport(number);}
 }
 
 // End shared Live QuickBooks UI.
