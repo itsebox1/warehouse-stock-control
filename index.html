@@ -1738,6 +1738,7 @@ async function saveDeliveryForReview() {
     });
 
     const productsResult = await readDeliveryResponse(productsResponse);
+    if(productsResult.warning) window.showWSCMessage("Delivery saved",productsResult.warning);
 
     sessionStorage.removeItem("wscDeliveryRequestId");
 
@@ -3969,140 +3970,95 @@ async function updateQuarterlyStockTakeAlert() {
   }
 }
 
+function deliveryExpiryMonth(value) {
+  const text=String(value||'').trim();let year,month,m;
+  if((m=text.match(/^(\d{1,2})[-/](\d{2}|20\d{2})$/))){month=+m[1];year=+m[2];if(year<100)year+=2000;}
+  else if((m=text.match(/^(20\d{2})-(\d{2})-(\d{2})$/))){year=+m[1];month=+m[2];const d=+m[3];if(d<1||d>new Date(Date.UTC(year,month,0)).getUTCDate())return null;}
+  else if((m=text.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),\s*(\d{4})$/i))){
+    month=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(m[1].toLowerCase())+1;year=+m[3];
+    if(+m[2]<1||+m[2]>new Date(Date.UTC(year,month,0)).getUTCDate())return null;
+  }else return null;
+  return month>=1&&month<=12&&year>=2000&&year<=2100?year*12+month-1:null;
+}
   function parseDeliveryInvoiceProducts(invoiceText) {
-  const rows = findDeliveryInvoiceRows(invoiceText);
-  const products = [];
-  let previousEnd = 0;
-
-  for (const row of rows) {
-    if (!isDeliverySku(row.sku)) {
-  throw new Error(
-    "Invalid SKU found on supplier invoice: " + row.sku
-  );
-}
-    const lineText = getDeliveryInvoiceLineText(
-      invoiceText,
-      row,
-      previousEnd
-    );
-
-    const description = parseDeliveryProductDescription(
-      lineText,
-      row.sku
-    );
-
-    if (!description) {
-      throw new Error(
-        "Could not identify the description for SKU " + row.sku
-      );
-    }
-
-    products.push({
-      sku: row.sku,
-      productName: description,
-      invoicedQty: row.invoicedQty,
-      lot: parseDeliveryLot(lineText),
-      expiry: parseDeliveryProductExpiry(lineText)
-    });
-
-    previousEnd = row.end;
-  }
-
-    for (const product of products) {
-  if (!product.productName.trim()) {
-    throw new Error(
-      "Missing product description for SKU " + product.sku
-    );
-  }
-}
-  if (!products.length) {
-    throw new Error("No invoice product lines were found.");
-  }
-
+  const rows=findDeliveryInvoiceRows(invoiceText);let previousEnd=0;
+  const products=rows.map(row=>{
+    const text=getDeliveryInvoiceLineText(invoiceText,row,previousEnd);previousEnd=row.end;
+    const prefix=text.match(/^(\d{5,8}(?:-[A-Z0-9]+)*)\s+-\s+/i);
+    const product={sku:row.sku,productName:parseDeliveryProductDescription(text,row.sku),
+      invoicedQty:row.invoicedQty,lot:parseDeliveryLot(text),expiry:parseDeliveryProductExpiry(text)};
+    const issues=[];
+    if(!isDeliverySku(row.sku))issues.push('Check Item SKU: '+row.sku);
+    if(prefix && prefix[1]!==row.sku)issues.push('Description SKU '+prefix[1]+' differs from Item SKU '+row.sku+'. Confirm the correct SKU.');
+    if(!product.productName)issues.push('Product description missing');
+    if(!product.lot)issues.push('Lot number missing');
+    if(!product.expiry)issues.push('Expiry date missing or unreadable');
+    const month=deliveryExpiryMonth(product.expiry);
+    if(month!==null && (month-(new Date().getFullYear()*12+new Date().getMonth()))<0)issues.push('Printed expiry is in the past: '+product.expiry+'. Check against the bottle.');
+    product.invoiceIssues=issues;return product;
+  });
+  if(!products.length)throw new Error('No invoice product lines were found.');
   return products;
 }
-  function getDeliveryInvoiceLineText(invoiceText, row, previousEnd = 0) {
-  const textBeforeRow = invoiceText.slice(
-    previousEnd,
-    row.start
-  );
-
-  const escapedSku = row.sku.replace(
-    /[.*+?^${}()|[\]\\]/g,
-    "\\$&"
-  );
-
-  const productStartPattern = new RegExp(
-    "(?:^|\\s)" + escapedSku + "\\s+(?:-\\s*)?",
-    "gi"
-  );
-
-  let match;
-  let lastMatch = null;
-
-  while ((match = productStartPattern.exec(textBeforeRow)) !== null) {
-    lastMatch = match;
-  }
-
-  if (!lastMatch) {
-    throw new Error(
-      "Could not locate the description for SKU " + row.sku
-    );
-  }
-
-  return textBeforeRow.slice(lastMatch.index).trim();
+function getDeliveryInvoiceLineText(invoiceText,row,previousEnd=0) {
+  let text=invoiceText.slice(previousEnd,row.start);
+  const headers=Array.from(text.matchAll(/Description\s+Class\s+Item\s+Qty\s+Unit Price\s+Amount/gi));
+  if(headers.length){const h=headers[headers.length-1];text=text.slice(h.index+h[0].length);}
+  const starts=Array.from(text.matchAll(/\b\d{5,8}(?:-[A-Z0-9]+)*\s+-\s+/gi));
+  if(starts.length)text=text.slice(starts[starts.length-1].index);
+  return text.replace(/^\s*PO\s+\S+\s*/i,'').trim();
 }
-  function parseDeliveryProductExpiry(text) {
-  const match = String(text).match(
-    /\bExpDate:\s*([A-Za-z]{3}\s+\d{1,2},\s*\d{4})/i
-  );
-
-  return match ? parseDeliveryExpiry(match[1]) : "";
+function parseDeliveryLot(text) {
+  const m=String(text).match(/\bLot\s*#?\s*[:;]?\s*([A-Z0-9-]+)/i);return m?m[1]:'';
 }
-  function parseDeliveryLot(text) {
-  const match = String(text).match(
-    /\bLot#:\s*([A-Z0-9-]+)/i
-  );
-
-  return match ? match[1] : "";
+function parseDeliveryProductExpiry(text) {
+  const labelled=String(text).match(/\bExp(?:iry|Date)?\s*[:;]?\s*(.+)$/i);
+  const tail=labelled?labelled[1]:String(text).replace(/^.*?\bLot\s*#?\s*[:;]?\s*[A-Z0-9-]+\s*/i,'');
+  return parseDeliveryExpiry(tail);
 }
-  function parseDeliveryProductDescription(text, sku) {
-  const escapedSku = sku.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-  const pattern = new RegExp(
-    "(?:^|\\s)" + escapedSku + "\\s*(?:-\\s*)?(.+)$",
-    "i"
-  );
-
-  const match = String(text).match(pattern);
-
-  if (!match) return "";
-
-  return match[1]
-    .replace(/\s+Lot#:.*/i, "")
-    .replace(/\s+ExpDate:.*/i, "")
-    .trim();
+function parseDeliveryExpiry(value) {
+  const text=String(value).trim();
+  const english=text.match(/\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},\s*\d{4}\b/i);
+  if(english)return english[0];
+  const numeric=text.match(/\b(?:20\d{2}-\d{2}-\d{2}|\d{2}[-/]20\d{2}|\d{2}[-/]\d{2})\b/);
+  return numeric && deliveryExpiryMonth(numeric[0])!==null ? numeric[0] : '';
 }
-  function findDeliveryInvoiceRows(invoiceText) {
-  const rowPattern =
-    /\b(WATER|POOL\/SPA)\s+(\d{6}(?:-[A-Z0-9]+)*)\s+([\d,]+)\s+([\d,]+\.\d{2})\s+([\d,]+\.\d{2})\b/gi;
-
-  return Array.from(
-    invoiceText.matchAll(rowPattern),
-    match => ({
-      sku: match[2],
-      invoicedQty: parseDeliveryQuantity(match[3]),
-      start: match.index,
-      end: match.index + match[0].length
-    })
-  );
+function parseDeliveryProductDescription(text) {
+  return String(text).replace(/^\d{5,8}(?:-[A-Z0-9]+)*\s+-\s+/i,'').replace(/\s+Lot\s*#?.*$/i,'').replace(/\s+Exp(?:iry|Date)?\s*[:;].*$/i,'').trim();
 }
-  function parseDeliveryExpiry(value) {
-  const match = String(value).match(
-    /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{1,2},\s*\d{4}/i
-  );
-
-  return match ? match[0] : "";
+function findDeliveryInvoiceRows(invoiceText) {
+  const pattern=/\b(WATER|POOL\/SPA)\s+(\d{5,8}(?:-[A-Z0-9]+)*)\s+([\d,]+)\s+([\d,]+\.\d{2})\s+([\d,]+\.\d{2})\b/gi;
+  return Array.from(invoiceText.matchAll(pattern),m=>({sku:m[2],invoicedQty:parseDeliveryQuantity(m[3]),start:m.index,end:m.index+m[0].length}));
+}
+function reviewDeliveryInvoiceIssues(products) {
+  const queried=products.filter(p=>p.invoiceIssues.length);
+  if(!queried.length)return Promise.resolve(true);
+  return new Promise(resolve=>{
+    const dialog=document.createElement('dialog');dialog.style.cssText='width:min(720px,90vw);max-height:85vh;overflow:auto;border:0;border-radius:12px;padding:24px';
+    const title=document.createElement('h2');title.textContent='Review invoice details';dialog.append(title);
+    const note=document.createElement('p');note.textContent='Check the details below. Lot and expiry may be left blank. Missing details will be emailed to Terry as a PDF after the delivery is saved.';dialog.append(note);
+    const fields=queried.map(p=>{
+      const box=document.createElement('fieldset');box.style.marginBottom='16px';
+      const heading=document.createElement('legend');heading.textContent=p.sku+' — '+p.productName;box.append(heading);
+      const reason=document.createElement('p');reason.textContent=p.invoiceIssues.join(' ');box.append(reason);
+      const inputs={};
+      ['sku','productName','lot','expiry'].forEach((key,i)=>{
+        const label=document.createElement('label');label.textContent=['SKU','Product description','Lot number (optional)','Expiry date (optional)'][i];
+        const input=document.createElement('input');input.value=p[key];input.style.cssText='display:block;width:100%;box-sizing:border-box;margin:6px 0 12px';label.append(input);box.append(label);inputs[key]=input;
+      });dialog.append(box);return {p,inputs};
+    });
+    const error=document.createElement('p');error.style.color='red';dialog.append(error);
+    const close=ok=>{dialog.close();dialog.remove();resolve(ok);};
+    const amend=document.createElement('button');amend.textContent='Amend and Continue';amend.onclick=()=>{
+      for(const {inputs} of fields){
+        if(!isDeliverySku(inputs.sku.value)||!inputs.productName.value.trim()){error.textContent='Enter a valid six-digit SKU (with any suffix) and product description.';return;}
+        if(inputs.expiry.value.trim() && deliveryExpiryMonth(inputs.expiry.value.trim())===null){error.textContent='Enter an expiry such as 05-27, 05-2027 or 2027-05-31, or leave it blank.';return;}
+      }
+      fields.forEach(({p,inputs})=>Object.keys(inputs).forEach(k=>p[k]=inputs[k].value.trim()));close(true);
+    };dialog.append(amend);
+    const cancel=document.createElement('button');cancel.textContent='Cancel import';cancel.onclick=()=>close(false);dialog.append(cancel);
+    dialog.addEventListener('cancel',e=>{e.preventDefault();close(false);});document.body.append(dialog);dialog.showModal();
+  });
 }
   function isDeliverySku(value) {
   return /^\d{6}(?:-[A-Z0-9]+)*$/i.test(
@@ -4206,6 +4162,7 @@ async function updateQuarterlyStockTakeAlert() {
     const invoiceText = await extractDeliveryPdfText(file);
     const invoiceHeader = parseDeliveryInvoiceHeader(invoiceText);
     const invoiceProducts = parseDeliveryInvoiceProducts(invoiceText);
+    if(!await reviewDeliveryInvoiceIssues(invoiceProducts)){message.textContent="Invoice import cancelled.";return;}
     deliveryReviewProducts = invoiceProducts.map(product => ({
   ...product,
   actualQty: null,
