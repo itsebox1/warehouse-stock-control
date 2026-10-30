@@ -8858,7 +8858,9 @@ function wscDatesRenderProduct(data,isAmend){
     sortedLots.forEach(item=>{
       const line=document.createElement('div');line.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:white;border:1px solid #d6dce5;border-radius:10px;padding:12px;margin:8px 0;';
       const remaining=wscDatesExpiryMonthsRemaining(item.expiry);
-      if(remaining!==null && remaining<=6){
+      if(String(item.expiry || '').trim().toLowerCase()==='change'){
+        line.style.color='#b42323';line.style.fontWeight='700';
+      }else if(remaining!==null && remaining<=6){
         line.style.background='#f9d6d6';line.style.borderColor='#b42323';line.style.color='#711717';
       }else if(remaining!==null && remaining<=10){
         line.style.background='#ffe3b8';line.style.borderColor='#d17c12';line.style.color='#633b08';
