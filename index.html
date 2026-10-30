@@ -8836,6 +8836,26 @@ function wscDatesExpiryMonthsRemaining(value){
   const today=new Date();
   return month-(today.getFullYear()*12+today.getMonth());
 }
+// Update only expiry presentation, preserving unsaved quantity edits.
+function wscDatesUpdateExpiryLine(line){
+  const expiry=line.dataset.wscExpiry;
+  const remaining=wscDatesExpiryMonthsRemaining(expiry);
+  const legacyChange=expiry.toLowerCase()==='change';
+  const needsChange=legacyChange || (remaining!==null && remaining<=10);
+  const urgent=legacyChange || (remaining!==null && remaining<=6);
+  line.style.background=urgent?'#f9d6d6':needsChange?'#ffe3b8':'white';
+  line.style.borderColor=urgent?'#b42323':needsChange?'#d17c12':'#d6dce5';
+  line.style.color=urgent?'#b42323':needsChange?'#a34d00':'';
+  line.style.fontWeight=needsChange?'700':'';
+  const label=legacyChange?'Change date (expiry not recorded)':needsChange?'Change date ('+expiry+')':expiry;
+  line.querySelector('[data-wsc-expiry-details]').textContent='Lot: '+line.dataset.wscLot+' | Expiry: '+label;
+}
+function wscDatesRefreshExpiryLabels(){
+  document.querySelectorAll('[data-wsc-expiry]').forEach(wscDatesUpdateExpiryLine);
+}
+setInterval(wscDatesRefreshExpiryLabels,60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)wscDatesRefreshExpiryLabels();});
+window.addEventListener('focus',wscDatesRefreshExpiryLabels);
 function wscDatesRenderProduct(data,isAmend){
     wscDatesCurrentSku=data.sku;
     if(isAmend)document.getElementById('wscDatesAddHeading').textContent='Add Dates for '+data.sku;
@@ -8857,15 +8877,10 @@ function wscDatesRenderProduct(data,isAmend){
     });
     sortedLots.forEach(item=>{
       const line=document.createElement('div');line.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:white;border:1px solid #d6dce5;border-radius:10px;padding:12px;margin:8px 0;';
-      const remaining=wscDatesExpiryMonthsRemaining(item.expiry);
-      if(String(item.expiry || '').trim().toLowerCase()==='change'){
-        line.style.color='#b42323';line.style.fontWeight='700';
-      }else if(remaining!==null && remaining<=6){
-        line.style.background='#f9d6d6';line.style.borderColor='#b42323';line.style.color='#711717';
-      }else if(remaining!==null && remaining<=10){
-        line.style.background='#ffe3b8';line.style.borderColor='#d17c12';line.style.color='#633b08';
-      }
-      const details=document.createElement('div');details.textContent='Lot: '+item.lot+' | Expiry: '+item.expiry;line.append(details);
+      line.dataset.wscExpiry=String(item.expiry || '').trim();
+      line.dataset.wscLot=String(item.lot || '');
+      const details=document.createElement('div');details.dataset.wscExpiryDetails='';line.append(details);
+      wscDatesUpdateExpiryLine(line);
       if(admin && isAmend){
       const qtyArea=document.createElement('div');
       qtyArea.style.cssText='display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin-top:8px;';
