@@ -535,7 +535,7 @@ input[type="reset"]:disabled,
       <input id="wscDatesLot" type="text" placeholder="e.g. 0127603-KK" style="width:100%;box-sizing:border-box;padding:10px;margin:6px 0 12px;">
       <div id="wscDatesLotSuggestion" role="status" aria-live="polite" style="display:none;margin:-4px 0 14px;padding:12px;border:1px solid #e4c37a;background:#fff7e5;border-radius:10px;color:#473300;"></div>
       <label for="wscDatesExpiry">Expiry (as printed)</label>
-      <input id="wscDatesExpiry" type="text" placeholder="e.g. 02-2028" style="width:100%;box-sizing:border-box;padding:10px;margin:6px 0 12px;">
+      <input id="wscDatesExpiry" type="text" placeholder="e.g. 05-27, 05-2027 or 2027-05-31" style="width:100%;box-sizing:border-box;padding:10px;margin:6px 0 12px;">
       <button id="wscDatesSave" type="button" onclick="wscDatesSave()" style="width:100%;">Confirm</button>
     </section>
   </section>
@@ -8525,6 +8525,20 @@ function wscDatesLoadOCR(){
   }).catch(e=>{wscDatesOcrScriptPromise=null;throw e;});
   return wscDatesOcrScriptPromise;
 }
+function wscDatesNormaliseBottleExpiry(value){
+  const text=String(value||'').trim().replace(/[‐‑–—]/g,'-').toUpperCase().replace(/[OQ]/g,'0');
+  let match,month,year;
+  if((match=text.match(/^(20\d{2})\s*[-/.]\s*(\d{1,2})\s*[-/.]\s*(\d{1,2})$/))){
+    year=Number(match[1]);month=Number(match[2]);
+    const day=Number(match[3]);
+    if(month<1 || month>12 || day<1 || day>new Date(Date.UTC(year,month,0)).getUTCDate())return '';
+  }else if((match=text.match(/^(\d{1,2})\s*[-/.]\s*(20\d{2}|\d{2})$/))){
+    month=Number(match[1]);year=Number(match[2]);
+    if(year<100)year+=2000;
+    if(month<1 || month>12)return '';
+  }else return '';
+  return String(month).padStart(2,'0')+'-'+String(year).slice(-2);
+}
 function wscDatesExtractText(text){
   const lines=String(text||'').toUpperCase().replace(/[‐‑–—]/g,'-').split(/[\r\n]+/).map(x=>x.trim()).filter(Boolean);
   let lot='',expiry='';
@@ -8538,8 +8552,8 @@ function wscDatesExtractText(text){
     }
     if(/\bEXP\b|\bEXPIRY\b/.test(line)){
       const value=line.replace(/^.*?\bEXP(?:IRY)?\b\s*[:.]?\s*/,'').trim() || lines[i+1]||'';
-      const match=value.replace(/[OQ]/g,'0').match(/^([01]?\d)\s*[-/.]\s*(20\d{2})$/);
-      if(match&&Number(match[1])>=1&&Number(match[1])<=12)expiry=match[1].padStart(2,'0')+'-'+match[2];
+      const parsedExpiry=wscDatesNormaliseBottleExpiry(value);
+      if(parsedExpiry)expiry=parsedExpiry;
     }
   }
   return {lot,expiry};
