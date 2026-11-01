@@ -3294,6 +3294,8 @@ async function selectStockTakeQuarter(clickedButton) {
 }
 
 function wscChooseStockTakeMonth() {
+  // Month selection needs user input; the preparation overlay must not block it.
+  wscBOMLoadingEnd();
   return new Promise(resolve => {
   const overlay = document.createElement("div");
 
