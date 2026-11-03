@@ -644,12 +644,21 @@ input[type="reset"]:disabled,
     <input type="radio" name="deliverySearchMode" value="date" onchange="changeDeliverySearch()">
     Invoice Date
   </label>
+  <label style="display:block; margin:12px 0;">
+    <input type="radio" name="deliverySearchMode" value="dateRange" onchange="changeDeliverySearch()">
+    Date Range
+  </label>
 </div>
 
-<div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:10px 0 16px;">
+<div id="deliverySingleSearch" style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:10px 0 16px;">
   <label id="deliverySearchValueLabel" for="deliverySearchValue" style="margin:0;">DL Number:</label>
   <strong id="deliverySearchPrefix">DL-</strong>
   <input type="text" id="deliverySearchValue" placeholder="000001" style="width:190px;max-width:100%;padding:6px 9px;box-sizing:border-box;margin:0;">
+</div>
+
+<div id="deliveryRangeSearch" hidden>
+  <label>From <input type="date" id="deliveryRangeFrom"></label>
+  <label>To <input type="date" id="deliveryRangeTo"></label>
 </div>
 
 <button type="button" id="deliverySearchButton">
@@ -4442,6 +4451,11 @@ document.getElementById("deliveryReviewMessage").textContent = "";
 function changeDeliverySearch() {
   const selected = document.querySelector('input[name="deliverySearchMode"]:checked');
   if (!selected) return;
+  const rangeSelected = selected.value === "dateRange";
+  document.getElementById("deliverySingleSearch").style.display = rangeSelected ? "none" : "flex";
+  document.getElementById("deliveryRangeSearch").hidden = !rangeSelected;
+  document.getElementById("deliverySearchResults").replaceChildren();
+  if (rangeSelected) return;
   const input = document.getElementById("deliverySearchValue");
   const label = document.getElementById("deliverySearchValueLabel");
   const config = {
@@ -4463,7 +4477,16 @@ async function searchDeliveries(searchOverride = null) {
   const button = document.getElementById("deliverySearchButton");
   const results = document.getElementById("deliverySearchResults");
   const searchType = searchOverride ? searchOverride.searchType : document.querySelector('input[name="deliverySearchMode"]:checked').value;
-  const rawDeliverySearchValue = searchOverride ? searchOverride.searchValue : document.getElementById("deliverySearchValue").value.trim();
+  let rawDeliverySearchValue = searchOverride ? searchOverride.searchValue : document.getElementById("deliverySearchValue").value.trim();
+  if (!searchOverride && searchType === "dateRange") {
+    const from = document.getElementById("deliveryRangeFrom").value;
+    const to = document.getElementById("deliveryRangeTo").value;
+    if (!from || !to || from > to) {
+      results.textContent = "Choose both invoice dates. To must be on or after From.";
+      return;
+    }
+    rawDeliverySearchValue = from + "|" + to;
+  }
   const searchValue = searchType === "number" && rawDeliverySearchValue ? ("DL-" + rawDeliverySearchValue.replace(/^DL-/i, "")) : rawDeliverySearchValue;
 
   if (!searchValue) {
@@ -4558,7 +4581,7 @@ results.appendChild(item);
 }
 
 document.getElementById("deliverySearchButton")
-  .addEventListener("click", searchDeliveries);
+  .addEventListener("click", () => searchDeliveries());
 
 async function resumeDelivery(reportNumber) {
   try {
