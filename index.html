@@ -717,6 +717,8 @@ input[type="reset"]:disabled,
   </button>
 </div>
 
+<div id="deliveryInvoiceSkuSuggestions" hidden aria-live="polite" style="margin:-5px 0 15px;max-height:240px;overflow-y:auto;border:1px solid #ccd3dc;border-radius:8px;background:white;"></div>
+
   <div style="margin:15px 0;">
   <label for="deliveryExtraSku">
     <strong>Add Product Not on Invoice:</strong>
@@ -1441,6 +1443,7 @@ function resetProductLookup() {
 function findDeliveryInvoiceSku() {
   const searchInput = document.getElementById("deliveryInvoiceSkuSearch");
   const sku = searchInput.value.trim().toUpperCase();
+  document.getElementById("deliveryInvoiceSkuSuggestions").hidden = true;
 
   if (!sku) {
     searchInput.focus();
@@ -1472,6 +1475,45 @@ function findDeliveryInvoiceSku() {
 
   match.focus({ preventScroll: true });
 }
+
+function updateDeliveryInvoiceSkuSuggestions() {
+  const input = document.getElementById("deliveryInvoiceSkuSearch");
+  const list = document.getElementById("deliveryInvoiceSkuSuggestions");
+  const query = input.value.trim().toUpperCase();
+  list.replaceChildren();
+  list.hidden = true;
+  if (query.length < 3) return;
+
+  const seen = new Set();
+  const matches = deliveryReviewProducts.filter(product => {
+    const sku = String(product.sku || "").trim();
+    const key = sku.toUpperCase();
+    if (product.notOnInvoice || !key.startsWith(query) || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  if (!matches.length) {
+    list.textContent = "No matching products on this invoice.";
+    list.style.padding = "10px";
+  } else {
+    list.style.padding = "0";
+    matches.forEach(product => {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.style.cssText = "display:block;width:100%;margin:0;padding:11px 12px;border:0;border-bottom:1px solid #e2e6eb;border-radius:0;background:white;color:#203247;text-align:left;";
+      option.textContent = String(product.sku || "") + (product.productName ? " — " + product.productName : "");
+      option.addEventListener("click", () => {
+        input.value = String(product.sku || "").trim();
+        list.hidden = true;
+        findDeliveryInvoiceSku();
+      });
+      list.appendChild(option);
+    });
+  }
+  list.hidden = false;
+}
+
+document.getElementById("deliveryInvoiceSkuSearch").addEventListener("input", updateDeliveryInvoiceSkuSuggestions);
 
 let currentDeliveryReportNumber = null;
 let deliverySessionRequestAttempted = false;
@@ -4445,6 +4487,8 @@ function updateDeliveryConfirmationButton() {
 }
   
   function showDeliveryReview() {
+    document.getElementById("deliveryInvoiceSkuSearch").value = "";
+    document.getElementById("deliveryInvoiceSkuSuggestions").hidden = true;
     document.getElementById("deliveryInvoiceNumber").textContent = "";
 document.getElementById("deliveryInvoiceDate").textContent = "";
 document.getElementById("deliveryReviewProducts").innerHTML =
