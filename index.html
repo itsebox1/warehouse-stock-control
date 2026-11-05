@@ -779,7 +779,7 @@ onclick="addDeliveryExtraProduct()">
   </p>
 
   <p>
-    <strong>Total Missing Quantity:</strong>
+    <strong>Total Difference:</strong>
     <span id="deliveryTotalMissing">0</span>
   </p>
 </div>
@@ -4301,14 +4301,14 @@ message.style.color = "black";
     totalActual += actual;
 
    if (value !== "" && invoiced > 0) {
-  totalMissing += Math.max(0, invoiced - actual);
+  totalMissing += actual - invoiced;
 }
   });
 
   document.getElementById("deliveryTotalInvoiced").textContent = totalInvoiced;
   document.getElementById("deliveryTotalActual").textContent = totalActual;
   document.getElementById("deliveryTotalMissing").textContent =
-    allCounted ? totalMissing : "Incomplete";
+    allCounted ? (totalMissing > 0 ? "+" : "") + totalMissing : "Incomplete";
 
   document.getElementById("deliveryReviewTotals").style.display = "block";
     const confirmButton = document.getElementById("deliverySaveReviewButton");
@@ -4445,18 +4445,23 @@ row.appendChild(lineNumber);
 input.validity.valid &&
     actual >= 0
   ) {
-    missing = invoiced - actual;
+    missing = actual - invoiced;
   }
 
  missingText.textContent = line.notOnInvoice
   ? "Extra Received: " + (actual === null ? "—" : actual)
   : missing === null
-    ? "Missing Qty: —"
-    : "Missing Qty: " + missing;
+    ? "Difference: —"
+    : "Difference: " + (missing > 0 ? "+" : "") + missing;
 });
 
 const missingText = document.createElement("p");
-missingText.textContent = "Missing Qty: —";
+const savedActual = input.value.trim() === "" ? null : Number(input.value);
+const savedDifference = savedActual === null ? null : savedActual - Number(line.quantity);
+missingText.textContent = line.notOnInvoice
+  ? "Extra Received: " + (savedActual === null ? "—" : savedActual)
+  : savedDifference === null ? "Difference: —"
+  : "Difference: " + (savedDifference > 0 ? "+" : "") + savedDifference;
 
       row.appendChild(details);
       const invoiceQty = document.createElement("p");
