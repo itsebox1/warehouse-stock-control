@@ -4482,6 +4482,7 @@ const confirmLine = document.createElement("button");
 confirmLine.type = "button";
 confirmLine.textContent = "✓ Confirm quantity and search next";
 confirmLine.style.cssText = "width:auto;margin:8px 0;padding:10px 14px;";
+input.addEventListener("focus", () => { confirmLine.hidden = false; });
 confirmLine.addEventListener("click", () => {
   const value = input.value.trim();
   if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || !input.validity.valid) {
@@ -4490,6 +4491,7 @@ confirmLine.addEventListener("click", () => {
     return;
   }
   input.blur();
+  confirmLine.hidden = true;
   const search = document.getElementById("deliveryInvoiceSkuSearch");
   search.value = "";
   document.getElementById("deliveryInvoiceSkuSuggestions").hidden = true;
