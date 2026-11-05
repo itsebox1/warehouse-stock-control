@@ -4331,6 +4331,9 @@ if (confirmButton && currentDeliveryReportNumber) {
   if (product) {
     product.actualQty =
       input.value.trim() === "" ? null : Number(input.value);
+    // Preserve the per-line confirmation when rebuilding the review list.
+    if (input.dataset.qtyConfirmed === "true") product.qtyConfirmed = true;
+    else if (input.dataset.qtyConfirmed === "false") product.qtyConfirmed = false;
   }
 });
   container.innerHTML = "";
@@ -4482,7 +4485,23 @@ const confirmLine = document.createElement("button");
 confirmLine.type = "button";
 confirmLine.textContent = "✓ Confirm quantity and search next";
 confirmLine.style.cssText = "width:auto;margin:8px 0;padding:10px 14px;";
-input.addEventListener("focus", () => { confirmLine.hidden = false; });
+// A saved quantity is treated as checked when reopening an existing delivery.
+// New quantities still require an explicit confirmation.
+const savedConfirmed = line.qtyConfirmed === true ||
+  (line.qtyConfirmed == null && !!currentDeliveryReportNumber &&
+   input.value.trim() !== "" && /^\d+$/.test(input.value.trim()));
+confirmLine.hidden = savedConfirmed;
+input.dataset.qtyConfirmed = savedConfirmed ? "true" : "false";
+input.addEventListener("focus", () => {
+  confirmLine.hidden = false;
+  input.dataset.qtyConfirmed = "false";
+  deliveryReviewProducts[line.lineIndex].qtyConfirmed = false;
+});
+input.addEventListener("input", () => {
+  confirmLine.hidden = false;
+  input.dataset.qtyConfirmed = "false";
+  deliveryReviewProducts[line.lineIndex].qtyConfirmed = false;
+});
 confirmLine.addEventListener("click", () => {
   const value = input.value.trim();
   if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || !input.validity.valid) {
@@ -4492,6 +4511,8 @@ confirmLine.addEventListener("click", () => {
   }
   input.blur();
   confirmLine.hidden = true;
+  input.dataset.qtyConfirmed = "true";
+  deliveryReviewProducts[line.lineIndex].qtyConfirmed = true;
   const search = document.getElementById("deliveryInvoiceSkuSearch");
   search.value = "";
   document.getElementById("deliveryInvoiceSkuSuggestions").hidden = true;
