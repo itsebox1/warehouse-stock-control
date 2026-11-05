@@ -28,17 +28,25 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
   <style>
-/* Home module accordions: yellow only when a session needs attention. */
+/* Home module accordions: yellow for the signed-in user's work, grey for others'. */
 .wsc-module { margin:8px 0; }
 .wsc-module-header { display:flex; align-items:stretch; background:#294766; border-radius:12px; overflow:hidden; }
 .wsc-module-header.wsc-attention { background:#f7d35a; color:#141414; }
+.wsc-module-header.wsc-other-attention { background:#747d87; color:white; }
 .wsc-module-header > button { margin:0 !important; border-radius:0 !important; background:transparent !important; color:inherit !important; box-shadow:none !important; }
-.wsc-module-header:not(.wsc-attention) { color:white; }
+.wsc-module-header:not(.wsc-attention):not(.wsc-other-attention) { color:white; }
 .wsc-module-main { flex:1; min-width:0; }
 .wsc-module-arrow { flex:0 0 48px; width:48px !important; font-size:20px; }
 .wsc-module-detail { padding:8px 12px 12px; border:1px solid #d6dce5; border-top:0; border-radius:0 0 12px 12px; background:white; color:#172b4d; }
 .wsc-module-detail[hidden], .wsc-module-arrow[hidden] { display:none !important; }
 .wsc-module-count { font-size:12px; padding:0 0 10px; text-align:center; }
+.wsc-home-report-card { position:relative; padding:12px; margin:8px 0; border:1px solid #c7ced6; border-radius:8px; color:#172b4d; }
+.wsc-home-report-card.wsc-home-own { background:#fff2a8; border-color:#d9b536; }
+.wsc-home-report-card.wsc-home-other { background:#e8ebee; border-color:#abb3bc; }
+.wsc-home-report-heading { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.wsc-home-report-title { min-width:0; }
+.wsc-home-owner-badge { flex:0 0 auto; min-width:34px; padding:4px 7px; border-radius:999px; background:#294766; color:white; font-size:12px; font-weight:700; letter-spacing:.04em; text-align:center; }
+.wsc-home-report-card.wsc-home-other .wsc-home-owner-badge { background:#5f6872; }
 /* Home navigation buttons must fill their available row, even during loading.
    The former 75px globe allowance is no longer required. */
 #stockApp > .stock-home-button,
@@ -4694,12 +4702,8 @@ async function loadOpenDeliveries() {
     }
 
     data.deliveries.forEach(delivery => {
-      const item = document.createElement("div");
-      item.style.cssText =
-        "padding:12px;margin:8px 0;border:1px solid #ccc;border-radius:8px;";
-
-      const heading = document.createElement("strong");
-      heading.textContent = delivery.reportNumber;
+      const built = wscCreateHomeReportCard(delivery, delivery.reportNumber);
+      const item = built.card;
 
       const details = document.createElement("p");
       details.textContent =
@@ -4716,7 +4720,7 @@ resumeButton.onclick = () => {
   resumeDelivery(delivery.reportNumber);
 };
 
-item.append(heading, details, resumeButton);
+item.append(details, resumeButton);
 container.appendChild(item);
     });
 
@@ -4997,24 +5001,65 @@ function wscToggleModule(area) {
   const arrow = module.querySelector('.wsc-module-arrow');
   if (arrow) arrow.textContent = detail.hidden ? '⌄' : '⌃';
 }
+function wscHomeReportIsMine(report) {
+  // Older deployed backends returned only the signed-in user's sessions, so
+  // preserve their original behaviour during a staggered frontend/backend update.
+  return !report || report.isOwner !== false;
+}
+function wscHomeReportOwnerName(report) {
+  const name = String(report?.ownerName || '').trim();
+  return name || 'another staff member';
+}
+function wscCreateHomeReportCard(report, title) {
+  const own = wscHomeReportIsMine(report);
+  const card = document.createElement('div');
+  card.className = 'wsc-home-report-card ' + (own ? 'wsc-home-own' : 'wsc-home-other');
+
+  const heading = document.createElement('div');
+  heading.className = 'wsc-home-report-heading';
+  const headingTitle = document.createElement('strong');
+  headingTitle.className = 'wsc-home-report-title';
+  headingTitle.textContent = title;
+
+  const badge = document.createElement('span');
+  badge.className = 'wsc-home-owner-badge';
+  badge.textContent = String(report?.ownerInitials || (own ? 'YOU' : '?')).trim().toUpperCase().slice(0, 4) || '?';
+  const creator = own ? 'Created by you' : 'Created by ' + wscHomeReportOwnerName(report);
+  badge.title = creator;
+  badge.setAttribute('aria-label', creator);
+
+  heading.append(headingTitle, badge);
+  card.appendChild(heading);
+  return {card, own};
+}
 function wscUpdateHomeModules() {
   const lists = wscHomeDashboardLists || {};
-  const counts = {
-    ST: lists.listStockTakes?.stockTakes?.length || 0,
-    SC: lists.listStockCounts?.stockCounts?.length || 0,
-    TR: lists.listTradeShows?.tradeShows?.length || 0,
-    DL: lists.listOpenDeliverySessions?.deliveries?.length || 0
+  const itemsByArea = {
+    ST: lists.listStockTakes?.stockTakes || [],
+    SC: lists.listStockCounts?.stockCounts || [],
+    TR: lists.listTradeShows?.tradeShows || [],
+    DL: lists.listOpenDeliverySessions?.deliveries || []
   };
-  Object.entries(counts).forEach(([area, count]) => {
+  Object.entries(itemsByArea).forEach(([area, items]) => {
+    const count = items.length;
+    const ownCount = items.filter(wscHomeReportIsMine).length;
+    const otherCount = count - ownCount;
     const module = document.querySelector('.wsc-module[data-module="' + area + '"]');
     if (!module) return;
-    module.querySelector('.wsc-module-header').classList.toggle('wsc-attention', count > 0);
+    const header = module.querySelector('.wsc-module-header');
+    header.classList.toggle('wsc-attention', ownCount > 0);
+    header.classList.toggle('wsc-other-attention', count > 0 && ownCount === 0);
     const arrow = module.querySelector('.wsc-module-arrow');
     const detail = module.querySelector('.wsc-module-detail');
     const counter = module.querySelector('.wsc-module-count');
     arrow.hidden = count === 0;
     counter.hidden = count === 0;
-    counter.textContent = count + ' open ' + ({ST:'stock take',SC:'stock count',TR:'trade show',DL:'delivery'}[area]) + (count === 1 ? '' : 's');
+    const label = ({ST:'stock take',SC:'stock count',TR:'trade show',DL:'delivery'}[area]);
+    const ownership = [
+      ownCount ? ownCount + ' yours' : '',
+      otherCount ? otherCount + ' other' : ''
+    ].filter(Boolean).join(', ');
+    counter.textContent = count + ' open ' + label + (count === 1 ? '' : 's') + (ownership ? ' — ' + ownership : '');
     if (count === 0) detail.hidden = true;
   });
 }
@@ -5044,18 +5089,33 @@ async function wscLoadOutstandingQB() {
   const reports = result.reports || [];
   if (!reports.length) return;
   module.hidden = false;
-  module.querySelector('.wsc-module-count').textContent = reports.length + ' report' + (reports.length === 1 ? '' : 's') + ' awaiting commitment';
+  const ownCount = reports.filter(wscHomeReportIsMine).length;
+  const otherCount = reports.length - ownCount;
+  const header = module.querySelector('.wsc-module-header');
+  header.classList.toggle('wsc-attention', ownCount > 0);
+  header.classList.toggle('wsc-other-attention', ownCount === 0);
+  const ownership = [
+    ownCount ? ownCount + ' yours' : '',
+    otherCount ? otherCount + ' other' : ''
+  ].filter(Boolean).join(', ');
+  module.querySelector('.wsc-module-count').textContent =
+    reports.length + ' report' + (reports.length === 1 ? '' : 's') +
+    ' awaiting commitment' + (ownership ? ' — ' + ownership : '');
   list.replaceChildren();
   reports.forEach(report => {
-    const item = document.createElement('div');
-    item.style.cssText = 'padding:12px;margin:8px 0;border:1px solid #ccc;border-radius:8px';
-    const title = document.createElement('strong');
-    title.textContent = report.reportNumber + ' — ' + ({ST:'Stock Take',SC:'Stock Count',TR:'Trade Show'}[report.type] || report.type);
+    const built = wscCreateHomeReportCard(
+      report,
+      report.reportNumber + ' — ' + ({ST:'Stock Take',SC:'Stock Count',TR:'Trade Show'}[report.type] || report.type)
+    );
+    const item = built.card;
+    const canManage = built.own || wscPermissions?.admin === true;
     const actions = document.createElement('div');
     actions.style.cssText = 'display:flex;gap:10px;flex-wrap:wrap;margin-top:10px';
     const review = document.createElement('button');
     review.type = 'button'; review.textContent = 'Review';
     review.style.cssText = 'flex:1;min-width:120px;margin:0';
+    review.disabled = !canManage;
+    if (!canManage) review.title = 'This report belongs to ' + wscHomeReportOwnerName(report) + '.';
     review.onclick = async () => {
       if (wscLiveQBUI.busy || review.disabled) return;
       review.disabled = true;
@@ -5079,7 +5139,8 @@ async function wscLoadOutstandingQB() {
     const commit = document.createElement('button');
     commit.type = 'button'; commit.textContent = 'Commit to QB';
     commit.style.cssText = 'flex:1;min-width:120px;margin:0;background:#c62828';
-    commit.disabled = !wscLiveQBAllowed(report.type);
+    commit.disabled = !canManage || !wscLiveQBAllowed(report.type);
+    if (!canManage) commit.title = 'This report belongs to ' + wscHomeReportOwnerName(report) + '.';
     commit.onclick = async () => {
       if (wscLiveQBUI.busy || commit.disabled) return;
       commit.disabled = true; review.disabled = true;
@@ -5087,14 +5148,15 @@ async function wscLoadOutstandingQB() {
         // Reuse the full live-status, issue-check and confirmation flow.
         await wscSubmitLiveQB(report.reportNumber);
       } finally {
-        commit.disabled = !wscLiveQBAllowed(report.type); review.disabled = false;
+        commit.disabled = !canManage || !wscLiveQBAllowed(report.type);
+        review.disabled = !canManage;
         if (wscHomeDashboardLists) delete wscHomeDashboardLists.getHomeQBCommitments;
         try { await wscLoadOutstandingQB(); }
         catch (error) { console.warn('QB dashboard refresh:', error); }
       }
     };
     actions.append(review,commit);
-    item.append(title,actions); list.appendChild(item);
+    item.append(actions); list.appendChild(item);
   });
 }
 
@@ -5266,34 +5328,30 @@ if (reportInProgress) {
       December: "Fourth Quarter (December)"
     };
 
-    const item = document.createElement("div");
-    item.style.margin = "12px 0";
-    item.style.padding = "12px";
-    item.style.border = "1px solid #ccc";
-    item.style.borderRadius = "8px";
-
     const periodLabel =
   periodLabels[stockTake.stockTakePeriod] ||
   stockTake.stockTakePeriod ||
   "";
-
-item.innerHTML = `
-  <div style="display:flex; flex-direction:column; align-items:flex-start; gap:10px;">
-    
-    <span style="flex:1; font-weight:bold;">
-      ${stockTake.reportNumber}${periodLabel ? ` — ${periodLabel}` : ""} — 0 products
-    </span>
-
-    <span style="display:flex; gap:8px; align-items:center;">
-      <button
-        type="button"
-       onclick="event.preventDefault(); event.stopPropagation(); wscModuleMainClick('ST');"
-        style="width:auto; background:#f0ad4e !important; color:white; border:0; border-radius:6px; padding:8px 14px; cursor:pointer; font-weight:bold;"
-      >In Progress — Resume Stock Take</button>
-    </span>
-
-  </div>
-`;
+    const built = wscCreateHomeReportCard(
+      stockTake,
+      stockTake.reportNumber + (periodLabel ? " — " + periodLabel : "")
+    );
+    const item = built.card;
+    const actions = document.createElement("div");
+    actions.style.cssText = "display:flex;gap:8px;align-items:center;margin-top:10px;";
+    const resume = document.createElement("button");
+    resume.type = "button";
+    resume.style.cssText = "width:auto;background:#f0ad4e !important;color:white;border:0;border-radius:6px;padding:8px 14px;cursor:pointer;font-weight:bold;";
+    if (built.own) {
+      resume.textContent = "In Progress — Resume Stock Take";
+      resume.onclick = () => wscModuleMainClick('ST');
+    } else {
+      resume.textContent = "Created by " + wscHomeReportOwnerName(stockTake);
+      resume.disabled = true;
+      resume.title = "Only the creator can continue this Stock Take.";
+    }
+    actions.appendChild(resume);
+    item.appendChild(actions);
     reportInProgress.appendChild(item);
   });
 }
@@ -5745,19 +5803,27 @@ throw new Error("Unable to load stock counts. Please try again.");
     }
 
     result.stockCounts.forEach(stockCount => {
-      const row = document.createElement("div");
+      const homeCard = list.id === "homeStockCountSessions";
+      const built = homeCard
+        ? wscCreateHomeReportCard(stockCount, stockCount.reportNumber)
+        : {card:document.createElement("div"), own:true};
+      const row = built.card;
 
-      row.style.margin = "12px 0";
-      row.style.padding = "12px";
-      row.style.border = "1px solid #ccc";
-      row.style.borderRadius = "8px";
-      row.style.minHeight = "70px";
-      row.style.boxSizing = "border-box";
+      if (!homeCard) {
+        row.style.margin = "12px 0";
+        row.style.padding = "12px";
+        row.style.border = "1px solid #ccc";
+        row.style.borderRadius = "8px";
+        row.style.minHeight = "70px";
+        row.style.boxSizing = "border-box";
+      }
 
       const number = document.createElement("strong");
       number.textContent = stockCount.reportNumber;
-      number.style.display = "inline-block";
-      number.style.marginTop = "12px";
+      if (!homeCard) {
+        number.style.display = "inline-block";
+        number.style.marginTop = "12px";
+      }
 
       const resume = document.createElement("button");
       resume.textContent = "In Progress — Resume Stock Count";
@@ -5772,36 +5838,43 @@ throw new Error("Unable to load stock counts. Please try again.");
       resume.style.cursor = "pointer";
       resume.style.fontWeight = "bold";
 
-      resume.onclick = () => {
-        // Home opens session management; Resume inside that screen starts counting.
-        if (list.id === "homeStockCountSessions") {
-          wscModuleMainClick('SC');
-          return;
-        }
-        const scMode = document.querySelector('input[name="countType"][value="SC"]');
+      if (homeCard && !built.own) {
+        resume.textContent = "Created by " + wscHomeReportOwnerName(stockCount);
+        resume.disabled = true;
+        resume.title = "Only the creator can continue this Stock Count.";
+        resume.style.cursor = "not-allowed";
+      } else {
+        resume.onclick = () => {
+          // Home opens session management; Resume inside that screen starts counting.
+          if (list.id === "homeStockCountSessions") {
+            wscModuleMainClick('SC');
+            return;
+          }
+          const scMode = document.querySelector('input[name="countType"][value="SC"]');
 
-if (scMode) {
-  scMode.checked = true;
-}
+  if (scMode) {
+    scMode.checked = true;
+  }
 
-document.getElementById("welcomeScreen").style.display = "none";
-        localStorage.setItem(
-          "activeStockCount",
-          stockCount.reportNumber
-        );
+  document.getElementById("welcomeScreen").style.display = "none";
+          localStorage.setItem(
+            "activeStockCount",
+            stockCount.reportNumber
+          );
 
-        document.getElementById(
-          "stockCountStatus"
-        ).textContent = "Stock count in progress: " +
-          stockCount.reportNumber;
+          document.getElementById(
+            "stockCountStatus"
+          ).textContent = "Stock count in progress: " +
+            stockCount.reportNumber;
 
-        document.getElementById(
-          "activeStockTakeNumber"
-        ).textContent = "Current Stock Count: " +
-          stockCount.reportNumber;
+          document.getElementById(
+            "activeStockTakeNumber"
+          ).textContent = "Current Stock Count: " +
+            stockCount.reportNumber;
 
-        showCountingScreen();
-      };
+          showCountingScreen();
+        };
+      }
 
       resume.style.width = "auto";
       resume.style.display = "inline-block";
@@ -5811,7 +5884,8 @@ document.getElementById("welcomeScreen").style.display = "none";
       resume.style.width = "fit-content";
       resume.style.marginTop = "10px";
       
-      row.append(number, resume);
+      if (!homeCard) row.appendChild(number);
+      row.appendChild(resume);
       list.appendChild(row);
     });
 
@@ -5902,88 +5976,73 @@ async function loadTradeShowList() {
     }
 
     result.tradeShows.forEach(tradeShow => {
-      const row = document.createElement("div");
+      const built = wscCreateHomeReportCard(
+        tradeShow,
+        tradeShow.reportNumber + " — " + tradeShow.showName
+      );
+      const row = built.card;
+      const status = document.createElement("div");
+      status.textContent = tradeShow.status;
+      status.style.marginTop = "6px";
+      row.appendChild(status);
 
-      row.style.margin = "12px 0";
-      row.style.padding = "12px";
-      row.style.border = "1px solid #ccc";
-      row.style.borderRadius = "8px";
+      const resume = document.createElement("button");
+      resume.type = "button";
+      resume.style.cssText = "width:auto;display:inline-block;margin:10px 0 0;";
 
-      const details = document.createElement("strong");
-      details.textContent =
-        tradeShow.reportNumber + " — " + tradeShow.showName;
-
-     const status = document.createElement("div");
-status.textContent = tradeShow.status;
-
-const resume = document.createElement("button");
-resume.type = "button";
-resume.textContent = "Return to Trade Show";
-resume.disabled = true;
-(async () => {
-  try {
-    const idToken = await window.getCurrentStaffToken();
-
-    const response = await fetch(
-      "https://warehouse-stock-reports.tmerry.workers.dev",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          action: "getTradeShowReturnsStatus",
-          idToken: idToken,
-          reportNumber: tradeShow.reportNumber
-        })
+      if (!built.own) {
+        resume.textContent = "Created by " + wscHomeReportOwnerName(tradeShow);
+        resume.disabled = true;
+        resume.title = "Only the creator can continue this Trade Show.";
+      } else {
+        resume.textContent = "Return to Trade Show";
+        resume.disabled = true;
+        resume.onclick = () => {
+          localStorage.setItem("activeTradeShow", tradeShow.reportNumber);
+          document.getElementById("activeTradeShowNumber").textContent =
+            tradeShow.reportNumber + " – " + tradeShow.showName +
+            "   " + formatTradeShowDates(tradeShow.startDate, tradeShow.endDate);
+          document.getElementById("welcomeScreen").style.display = "none";
+          document.getElementById("tradeShowSetupScreen").style.display = "none";
+          document.getElementById("tradeShowCountingScreen").style.display = "block";
+          updateTradeShowStage(tradeShow.endDate);
+        };
+        (async () => {
+          try {
+            const idToken = await window.getCurrentStaffToken();
+            const response = await fetch(
+              "https://warehouse-stock-reports.tmerry.workers.dev",
+              {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                  action: "getTradeShowReturnsStatus",
+                  idToken: idToken,
+                  reportNumber: tradeShow.reportNumber
+                })
+              }
+            );
+            const returnsStatus = await response.json();
+            if (!response.ok || returnsStatus.success !== true) {
+              throw new Error(returnsStatus.error || "Unable to check returns.");
+            }
+            if (returnsStatus.returnsConfirmed) {
+              resume.textContent = "Go to Report";
+              resume.onclick = () => {
+                localStorage.setItem("activeTradeShow", tradeShow.reportNumber);
+                showTradeShowReport();
+              };
+            }
+            resume.disabled = false;
+          } catch (error) {
+            resume.textContent = "Unable to check Trade Show";
+            resume.title = String(error.message || error);
+          }
+        })();
       }
-    );
 
-    const result = await response.json();
-
-    if (!response.ok || result.success !== true) {
-      throw new Error(result.error || "Unable to check returns.");
-    }
-
-    if (result.returnsConfirmed) {
-      resume.textContent = "Go to Report";
-      resume.onclick = () => {
-        localStorage.setItem("activeTradeShow", tradeShow.reportNumber);
-        showTradeShowReport();
-      };
-    }
-
-    resume.disabled = false;
-
-  } catch (error) {
-    resume.textContent = "Unable to check Trade Show";
-    resume.title = String(error.message || error);
-  }
-})();      
-
-resume.style.width = "auto";
-resume.style.display = "inline-block";
-resume.style.margin = "10px 0 0";
-
-resume.onclick = resume.onclick || (() => {
-  localStorage.setItem(
-    "activeTradeShow",
-    tradeShow.reportNumber
-  );
-
-  document.getElementById("activeTradeShowNumber").textContent =
-  tradeShow.reportNumber + " – " + tradeShow.showName +
-  "   " + formatTradeShowDates(tradeShow.startDate, tradeShow.endDate);
-
-  document.getElementById("welcomeScreen").style.display = "none";
-  document.getElementById("tradeShowSetupScreen").style.display = "none";
-  document.getElementById("tradeShowCountingScreen").style.display = "block";
-
-  updateTradeShowStage(tradeShow.endDate);
-});
-
-row.append(details, status, resume);
-list.appendChild(row);
+      row.appendChild(resume);
+      list.appendChild(row);
     });
 
   } catch (error) {
