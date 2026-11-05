@@ -705,6 +705,7 @@ input[type="reset"]:disabled,
   </div>
 
   <h3>Products to Check</h3>
+  <p id="deliveryReviewProgress" role="status" aria-live="polite"></p>
   <div style="display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
   <input
     type="text"
@@ -4276,11 +4277,13 @@ message.style.color = "black";
   let totalInvoiced = 0;
   let totalActual = 0;
   let totalMissing = 0;
+  let remainingLines = 0;
   let allCounted = inputs.length > 0;
 
   inputs.forEach(input => {
     const invoiced = Number(input.dataset.invoicedQty);
     const value = input.value.trim();
+    if (value === "" || !/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || !input.validity.valid) remainingLines++;
 
     if (value === "") {
       allCounted = false;
@@ -4306,6 +4309,8 @@ message.style.color = "black";
   });
 
   document.getElementById("deliveryTotalInvoiced").textContent = totalInvoiced;
+  document.getElementById("deliveryReviewProgress").textContent =
+    "Invoice quantity: " + totalInvoiced + " | Delivery lines: " + inputs.length + " | Remaining to check: " + remainingLines;
   document.getElementById("deliveryTotalActual").textContent = totalActual;
   document.getElementById("deliveryTotalMissing").textContent =
     allCounted ? (totalMissing > 0 ? "+" : "") + totalMissing : "Incomplete";
@@ -4402,6 +4407,7 @@ row.appendChild(lineNumber);
       input.min = "0";
       input.step = "1";
       input.placeholder = "Enter quantity";
+      input.setAttribute("enterkeyhint", "done");
     if (line.actualQty != null) {
   input.value = line.actualQty;
 }
@@ -4472,6 +4478,24 @@ row.appendChild(invoiceQty);
       label.appendChild(input);
      row.appendChild(label);
 row.appendChild(missingText);
+const confirmLine = document.createElement("button");
+confirmLine.type = "button";
+confirmLine.textContent = "✓ Confirm quantity and search next";
+confirmLine.style.cssText = "width:auto;margin:8px 0;padding:10px 14px;";
+confirmLine.addEventListener("click", () => {
+  const value = input.value.trim();
+  if (!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || !input.validity.valid) {
+    input.focus();
+    input.reportValidity();
+    return;
+  }
+  input.blur();
+  const search = document.getElementById("deliveryInvoiceSkuSearch");
+  search.value = "";
+  document.getElementById("deliveryInvoiceSkuSuggestions").hidden = true;
+  search.scrollIntoView({behavior:"smooth",block:"center"});
+});
+row.appendChild(confirmLine);
 section.appendChild(row);
     });
 
@@ -4645,6 +4669,7 @@ document.getElementById("deliverySearchButton")
   .addEventListener("click", () => searchDeliveries());
 
 async function resumeDelivery(reportNumber) {
+  wscUnifiedBusy(true);
   try {
     const idToken = await window.getCurrentStaffToken();
     if (!idToken) {
@@ -4712,6 +4737,8 @@ async function resumeDelivery(reportNumber) {
       "Unable to Resume Delivery",
       error.message
     );
+  } finally {
+    wscUnifiedBusy(false);
   }
 }
   
