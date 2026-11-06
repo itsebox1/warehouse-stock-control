@@ -7431,7 +7431,7 @@ async function wscOpenStockQBReview(number) {
   const processingText=document.createElement('span');processingCard.append(globe,processingText);processing.appendChild(processingCard);dialog.appendChild(processing);
   const status=document.createElement('p');status.setAttribute('role','status');dialog.appendChild(status);
   const body=document.createElement('div');dialog.appendChild(body);
-  const download=document.createElement('button');download.type='button';download.textContent='Download issue report (CSV)';dialog.appendChild(download);
+  const download=document.createElement('button');download.type='button';download.textContent='Download issue report (PDF)';dialog.appendChild(download);
   const send=document.createElement('button');send.type='button';send.textContent='Send issue report';dialog.appendChild(send);
   const close=document.createElement('button');close.type='button';close.textContent='Close';close.onclick=()=>dialog.close();dialog.appendChild(close);
   let result=null,busy=false;
@@ -7446,16 +7446,20 @@ async function wscOpenStockQBReview(number) {
     send.textContent=data.reportEmailState==='UNSENT'?'Send issue report':'Resend issue report';
     wscPaintLiveQBReport(number,data);
   };
-  download.onclick=()=>{
-    if(!result?.submitted)return;
-    const rows=[['WSC manual review',number],['Warning',number.startsWith('BOM-')?'Applied items are independent. Review related finished products and components and reconcile manually.':'Verify current stock before making corrections.'],
-      ['Excluded SKU','Section','Product','Saved QB','Calculated target / counted quantity','Live QB at check','Issue']];
-    (result.issues||[]).forEach(i=>rows.push([i.sku,i.section||'',i.productName||'',i.saved,i.actual,i.live??'Unavailable',i.message]));
-    rows.push([],['Verified SKU','QB quantity before','Target','Adjustment']);
-    (result.appliedItems||[]).forEach(i=>rows.push([i.sku,i.previous,i.target,i.qtyDiff]));
-    const cell=value=>'"'+String(value??'').replace(/^[=+\-@\t\r]/,"'$&").replace(/"/g,'""')+'"';
-    const blob=new Blob(['\ufeff'+rows.map(row=>row.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
-    const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='WSC_'+number+'_Manual_Review.csv';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  download.onclick=async()=>{
+    if(busy||!result?.submitted)return;
+    setBusy(true,'Generating issue report PDF…');
+    try {
+      const report=await wscLiveQBRequest(wscStockQBAction(number),number,{operation:'viewIssueReport',includePdf:true});
+      if(typeof report.pdfBase64!=='string'||!report.pdfBase64)throw new Error('PDF is unavailable. Check that the latest Code.gs is deployed.');
+      const bytes=atob(report.pdfBase64),array=new Uint8Array(bytes.length);
+      for(let i=0;i<bytes.length;i++)array[i]=bytes.charCodeAt(i);
+      const url=URL.createObjectURL(new Blob([array],{type:'application/pdf'}));
+      const link=document.createElement('a');link.href=url;link.download=report.filename||'WSC_'+number+'_Outstanding_Issues.pdf';
+      document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+    } catch(error) {
+      status.textContent='The PDF could not be generated: '+String(error.message||error)+'. No QuickBooks adjustment was sent.';
+    } finally {setBusy(false);}
   };
   send.onclick=async()=>{
     if(busy||!result)return;
