@@ -1614,17 +1614,7 @@ if (!idToken) {
    const finishedReportNumber = currentDeliveryReportNumber;
 
   wscBOMLoadingEnd();
-  await showWelcomeScreen();
-
-  const viewPdf = await window.showWSCConfirm(
-    "Delivery Finished",
-    "Delivery " + finishedReportNumber +
-    " has been finished successfully. Would you like to view its PDF report?"
-  );
-
-  if (viewPdf) {
-    await window.openDeliveryPdf(finishedReportNumber);
-  }
+  await wscAskOpenCompletedReport_('DL', finishedReportNumber);
 
 } catch (error) {
   window.showWSCMessage(
@@ -2668,6 +2658,7 @@ async function confirmTradeShowReturns() {
     document.querySelectorAll(".tradeShowReturnQty").forEach(input => {
       input.disabled = true;
     });
+    await wscAskOpenCompletedReport_('TR', reportNumber);
 
   } catch (error) {
     message.textContent =
@@ -5664,11 +5655,12 @@ if (!result || result.verificationRequired) {
 }
 
     
+    document.getElementById("wscFinishStockTakeOverlay")?.remove();
     if (result && result.completionEmailState && result.completionEmailState !== 'SENT') {
-      window.showWSCMessage('Stock Take finished — email needs attention',
-        'The count is saved, but the completion PDF email to nmerry@sensafe.com was not confirmed. ' + (result.completionEmailMessage || '') + ' Use Email PDF on the report after checking whether it arrived.');
+      await new Promise(resolve => window.showWSCMessage('Stock Take finished — email needs attention',
+        'The count is saved, but the completion PDF email to nmerry@sensafe.com was not confirmed. ' + (result.completionEmailMessage || '') + ' Use Email PDF on the report after checking whether it arrived.', resolve));
     } else if (!result || !result.completionEmailState) {
-      window.showWSCMessage('Check completion email', 'The Stock Take is closed, but the completion email status could not be confirmed. Check Nicola’s inbox before sending the PDF manually.');
+      await new Promise(resolve => window.showWSCMessage('Check completion email', 'The Stock Take is closed, but the completion email status could not be confirmed. Check Nicola’s inbox before sending the PDF manually.', resolve));
     }
     localStorage.removeItem('wscBOMChoice_' + stockTake.reportNumber);
 
@@ -5677,94 +5669,7 @@ if (!result || result.verificationRequired) {
 
     const finishedReportNumber = stockTake.reportNumber;
 
-    document.getElementById("countingScreen").style.display = "none";
-    document.getElementById("stockApp").style.display = "none";
-    showReportOptions("ST");
-
-    
-const successMessage = document.createElement("div");
-
-successMessage.style.cssText = `
-  padding: 20px;
-  margin: 15px 0;
-  border: 1px solid #c3e6cb;
-  border-radius: 10px;
-  background: #d4edda;
-  text-align: center;
-  color: #155724;
-`;
-
-const heading = document.createElement("h3");
-heading.textContent = "✅ Stock Take Finished";
-
-const message = document.createElement("p");
-message.textContent =
-  finishedReportNumber + " has been finished successfully.";
-
-const question = document.createElement("p");
-question.textContent =
-  "Would you like to go to the " +
-  finishedReportNumber + " Report now?";
-
-const buttons = document.createElement("div");
-buttons.style.cssText = `
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  margin-top: 18px;
-`;
-
-const yesButton = document.createElement("button");
-yesButton.textContent = "Yes — View Report";
-
-const noButton = document.createElement("button");
-noButton.textContent = "No — Home";
-
-yesButton.style.cssText =
-  "flex:1; max-width:220px; background:#287a45; color:white;";
-
-noButton.style.cssText =
-  "flex:1; max-width:220px; background:#555; color:white;";
-
-yesButton.onclick = () => {
-  successMessage.remove();
-
-  showReportOptions("ST");
-
-  const numberInput = document.getElementById("stReportNumber");
-  numberInput.value =
-    finishedReportNumber.replace(/^ST-/i, "");
-
-  const numberMode = document.querySelector(
-    'input[name="stSearchMode"][value="number"]'
-  );
-
-  if (numberMode) {
-    numberMode.checked = true;
-    changeSCSearch();
-  }
-
-  generateStockReport();
-};
-
-noButton.onclick = () => {
-  successMessage.remove();
-  showWelcomeScreen();
-};
-
-buttons.appendChild(yesButton);
-buttons.appendChild(noButton);
-
-successMessage.appendChild(heading);
-successMessage.appendChild(message);
-successMessage.appendChild(question);
-successMessage.appendChild(buttons);
-
-const reportOptions = document.getElementById("reportOptionsScreen");
-
-if (reportOptions) {
-  reportOptions.prepend(successMessage);
-}
+    await wscAskOpenCompletedReport_('ST', finishedReportNumber);
 
     
   } catch (error) {
@@ -5826,24 +5731,8 @@ async function finishStockCount(reportNumber, finishButton) {
 
     localStorage.removeItem("activeStockCount");
 
-    document.getElementById("countingScreen").style.display = "none";
-    document.getElementById("stockApp").style.display = "none";
-
-    showReportOptions("SC");
-
-    const numberInput = document.getElementById("scReportNumber");
-    numberInput.value = reportNumber.replace(/^SC-/i, "");
-
-    const numberMode = document.querySelector(
-      'input[name="scSearchMode"][value="number"]'
-    );
-
-    if (numberMode) {
-      numberMode.checked = true;
-      changeSCSearch();
-    }
-
-    window.showWSCMessage("Stock Count Finished", reportNumber + " has been finished successfully.");
+    stopGlobeLoading();
+    await wscAskOpenCompletedReport_('SC', reportNumber);
 
   } catch (error) {
     window.showWSCMessage("Unable to Finish Stock Count", error.message);
@@ -6284,6 +6173,29 @@ function openSelectedReports() {
   showReportOptions(selectedType);
 }
   
+async function wscAskOpenCompletedReport_(type, number) {
+  // Completion has already succeeded. A later navigation error must never be
+  // presented as a failed completion or invite another finish request.
+  try {
+    if (!/^(DL|TR|ST|SC)-\d{6}$/.test(number) || !number.startsWith(type+'-')) throw new Error('Invalid report number.');
+    const go=await window.showWSCConfirm('Report completed', number+' has completed generating the report.<br><br>Take me to the report?', {confirmLabel:'Yes',cancelLabel:'No'});
+    if (!go) { await showWelcomeScreen(); return; }
+    ['deliverySetupScreen','deliveryReviewScreen','tradeShowSetupScreen','tradeShowCountingScreen','tradeShowReportScreen','countingScreen'].forEach(id=>{
+      const screen=document.getElementById(id); if(screen)screen.style.display='none';
+    });
+    showReportsScreen();
+    document.getElementById('wscReportSelect').value=type;
+    wscReportsUpdate();
+    document.getElementById('wscReportSearchBy').value='number';
+    wscReportsUpdateFields();
+    document.getElementById('wscReportNumber').value=number.slice(type.length+1);
+    await wscRunUnifiedReport();
+  } catch(error) {
+    window.showWSCMessage('Report completed', number+' was completed, but the report could not be opened automatically. Find it in Reports using its report number.');
+    console.error('Report navigation:',error);
+  }
+}
+
 function showReportsScreen() {
   document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("stockApp").style.display = "none";
@@ -6434,6 +6346,8 @@ async function wscRunUnifiedReport() {
         };
         actions.appendChild(previewButton);
         card.appendChild(actions);target.appendChild(card);
+        // Restore the durable manual-review state after a page reload.
+        void wscRefreshLiveQBButton(item.reportNumber);
       }
       document.getElementById('wscReportInfo').textContent='BOM reports can be viewed, emailed or printed as PDF.';
     }catch(e){window.showWSCMessage('BOM Reports',String(e.message||e));}
@@ -7250,7 +7164,7 @@ function wscPaintLiveQBButton(button, number, result) {
   else if (!wscLiveQBAllowed(area)) button.textContent='QB Submissions Disabled';
   else {button.disabled=false;button.textContent=area==='BOM'?'Review Live QB Adjustment':'Commit to QB Live';button.style.background='#c62828';button.style.cursor='pointer';}
   button.title=button.textContent;
-  if (['ST','SC'].includes(area) && button.parentElement) {
+  if (['ST','SC','BOM'].includes(area) && button.parentElement) {
     let issuesButton=button.nextElementSibling;
     if(issuesButton?.dataset.qbIssuesFor!==number) {
       issuesButton=document.createElement('button');issuesButton.type='button';
@@ -7259,7 +7173,7 @@ function wscPaintLiveQBButton(button, number, result) {
       button.insertAdjacentElement('afterend',issuesButton);
     }
     const review=status?.manualReviewRequired===true||status?.manualReviewResolved===true;
-    issuesButton.textContent=review?(status?.manualReviewResolved?'Resolved review / email report':'Outstanding issues / email report'):'Check and Resolve Issues';
+    issuesButton.textContent=review?(status?.manualReviewResolved?'Resolved review / issue report':'Outstanding issues / issue report'):(area==='BOM'?'Check BOM issues':'Check and Resolve Issues');
     issuesButton.onclick=()=>review?wscOpenStockQBReview(number):wscOpenStockQBIssues(number);
     issuesButton.hidden=['SUBMITTED','NO_CHANGE'].includes(state)&&!review;
     issuesButton.disabled=wscLiveQBUI.busy || !wscLiveQBAllowed(area);
@@ -7291,10 +7205,7 @@ async function wscReadLiveQBStatus(number) {
   const area=number.split('-')[0];
   if(!/^(ST|SC|TR|BOM)-\d{6}$/.test(number))throw new Error('Invalid report number.');
   if(area==='BOM') {
-    const found=await wscLiveQBRequest('findBOMReports',number,{searchBy:'number'});
-    const rows=(found.reports||[]).filter(r=>r.reportNumber===number);
-    if(rows.length!==1)throw new Error('BOM report status unavailable.');
-    return rows[0];
+    return wscLiveQBRequest('commitBOMQuickBooks',number,{operation:'getStatus'});
   }
   return wscLiveQBRequest({ST:'getQuickBooksCommitStatus',SC:'getStockCountQuickBooksStatus',TR:'getTradeShowQuickBooksStatus'}[area],number);
 }
@@ -7322,7 +7233,7 @@ async function wscSubmitLiveQB(number, button) {
     const before=await wscReadLiveQBStatus(number);wscPaintLiveQBReport(number,before);
     const state=wscLiveQBState(before);
     if(state==='SUBMITTED'||state==='NO_CHANGE') {notice=number+' is already complete.';return;}
-    if(['ST','SC'].includes(area)) {
+    if(['ST','SC','BOM'].includes(area)) {
       wscBOMLoading('Checking all report products against QuickBooks Live…');
       const checked=await wscCheckStockQBIssues(number);
       if(!checked.ready){issueResult=checked;return;}
@@ -7352,7 +7263,7 @@ async function wscSubmitLiveQB(number, button) {
       // This is a status read only, never a second submission.
       const status=await wscRefreshLiveQBButton(number);
       if(status && ['SUBMITTED','NO_CHANGE'].includes(wscLiveQBState(status))) {outcome=status;notice=wscLiveQBMessage(status,number);}
-      else if(['ST','SC'].includes(area)) {
+      else if(['ST','SC','BOM'].includes(area)) {
         try {
           const checked=await wscCheckStockQBIssues(number);
           if(checked.noExistingSubmission===true) {
@@ -7377,6 +7288,7 @@ async function wscSubmitLiveQB(number, button) {
   }
 }
 function wscStockQBAction(number) {
+  if(number.startsWith('BOM-'))return 'commitBOMQuickBooks';
   return number.startsWith('ST-')?'commitStockTakeToQuickBooks':'commitStockCountToQuickBooks';
 }
 async function wscCheckStockQBIssues(number) {
@@ -7389,8 +7301,12 @@ async function wscOpenStockQBIssues(number, initial) {
   const dialog=document.createElement('dialog');dialog.id='wscQBIssuesDialog';
   dialog.style.cssText='width:min(920px,94vw);max-height:90vh;overflow:auto;border:1px solid #bbb;border-radius:16px;padding:20px;color:#263244;background:#fff;box-sizing:border-box';
   const heading=document.createElement('h2');heading.textContent=number+' — Check and Resolve Issues';dialog.appendChild(heading);
-  const intro=document.createElement('p');intro.textContent='Resolve changed stock using a verified current physical count. Original counts remain in the history. These amendments do not send anything to QuickBooks.';dialog.appendChild(intro);
+  const isBOM=number.startsWith('BOM-');
+  const intro=document.createElement('p');intro.textContent=isBOM?'Review excluded BOM products and current stock. Related finished products and components may also require manual reconciliation.':'Resolve changed stock using a verified current physical count. Original counts remain in the history. These amendments do not send anything to QuickBooks.';dialog.appendChild(intro);
   const status=document.createElement('p');status.setAttribute('role','status');status.setAttribute('aria-live','polite');dialog.appendChild(status);
+  const processing=document.createElement('div');processing.style.cssText='display:none;align-items:center;gap:14px;padding:12px;color:#304b70;font-weight:600';processing.setAttribute('role','status');
+  const globe=document.createElement('img');globe.src='Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png';globe.alt='';globe.style.cssText='width:54px;height:54px;object-fit:contain;animation:globeSpin 3s linear infinite';
+  const processingText=document.createElement('span');processing.append(globe,processingText);dialog.appendChild(processing);
   const body=document.createElement('div');dialog.appendChild(body);
   const actions=document.createElement('div');actions.style.cssText='display:flex;gap:12px;flex-wrap:wrap';dialog.appendChild(actions);
   const makeButton=(label,host,click)=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.onclick=click;host.appendChild(b);return b;};
@@ -7399,7 +7315,7 @@ async function wscOpenStockQBIssues(number, initial) {
   const recheck=makeButton('Recheck All Issues',actions,()=>load());
   const commit=makeButton('Commit to QB Live',actions,async()=>{dialog.close();await wscSubmitLiveQB(number);});commit.disabled=true;
   const partial=makeButton('Commit and report',actions,async()=>{dialog.close();await wscSubmitStockQBPartial(number);});partial.disabled=true;
-  const setBusy=value=>{busy=value;wscLiveQBUI.busy=value;close.disabled=value;recheck.disabled=value;commit.disabled=value||checked?.ready!==true;partial.disabled=value||checked?.partialAllowed!==true;
+  const setBusy=(value,message)=>{busy=value;wscLiveQBUI.busy=value;processing.style.display=value?'flex':'none';processingText.textContent=message||'Processing…';dialog.setAttribute('aria-busy',value?'true':'false');close.disabled=value;recheck.disabled=value;commit.disabled=value||checked?.ready!==true;partial.disabled=value||checked?.partialAllowed!==true;
     body.querySelectorAll('button,input,textarea').forEach(el=>el.disabled=value);wscPaintLiveQBReport(number);};
   dialog.addEventListener('cancel',event=>{if(busy)event.preventDefault();});
   dialog.addEventListener('close',()=>{dialog.remove();wscPaintLiveQBReport(number);});
@@ -7408,13 +7324,13 @@ async function wscOpenStockQBIssues(number, initial) {
     status.textContent=result.ready?'All '+result.checkedCount+' products checked. No blocking issues found. Commit will check the live quantities again.':
       (result.issues||[]).length+' product issue(s). '+(result.blockers||[]).length+' report blocker(s).';
     if(result.partialAllowed) {
-      const hint=document.createElement('p');hint.textContent='If these issues cannot be resolved, Commit and report will submit verified products only, leave unresolved products unchanged, and email nmerry@sensafe.com for manual review.';body.appendChild(hint);
+      const hint=document.createElement('p');hint.textContent=isBOM?'Commit and report will submit verified product adjustments independently and leave excluded products unchanged. Related BOM lines can become out of balance and must be reviewed manually. A review report will be available.':'If these issues cannot be resolved, Commit and report will submit verified products only, leave unresolved products unchanged, and email nmerry@sensafe.com for manual review.';body.appendChild(hint);
     }
     (result.blockers||[]).forEach(message=>{const p=document.createElement('p');p.style.color='#b71c1c';p.textContent=message;body.appendChild(p);});
     (result.issues||[]).forEach(issue=>{
       const card=document.createElement('section');card.style.cssText='border:1px solid #ccc;border-radius:8px;padding:14px;margin:14px 0';body.appendChild(card);
       const title=document.createElement('h3');title.textContent=issue.sku;card.appendChild(title);
-      const values=document.createElement('p');values.textContent='Saved QB: '+issue.saved+' | Saved actual: '+issue.actual+' | Live QB: '+(issue.live??'Unavailable');card.appendChild(values);
+      const values=document.createElement('p');values.textContent='Saved QB: '+issue.saved+' | '+(isBOM?'Calculated target':'Saved actual')+': '+issue.actual+' | Live QB: '+(issue.live??'Unavailable');card.appendChild(values);
       const message=document.createElement('p');message.textContent=issue.message;card.appendChild(message);
       if(!issue.resolvable || result.blockers.length)return;
       makeButton('Resolve',card,event=>{
@@ -7436,11 +7352,11 @@ async function wscOpenStockQBIssues(number, initial) {
           if(quantity.value.trim()==='' || !Number.isSafeInteger(value) || value<0 || !explanation || !verified.checked){error.textContent='Enter a current whole-number count, a reason, and confirm verification.';return;}
           const details=JSON.stringify([value,explanation]);
           if(requestPayload!==details){requestId=crypto.randomUUID();requestPayload=details;}
-          setBusy(true);error.textContent='Saving the amendment…';
+          setBusy(true,'Saving the amendment…');error.textContent='Saving the amendment…';
           try {
             await wscLiveQBRequest(wscStockQBAction(number),number,{operation:'resolveIssue',sku:issue.sku,
               fingerprint:result.fingerprint,live:issue.live,itemId:issue.itemId,quantity:value,reason:explanation,verifiedCurrentCount:true,requestId});
-            checked=null;commit.disabled=true;body.replaceChildren();status.textContent='Amendment saved. Rechecking all products…';
+            checked=null;commit.disabled=true;body.replaceChildren();status.textContent='Amendment saved. Rechecking all products…';processingText.textContent='Rechecking all products…';
             render(await wscCheckStockQBIssues(number));
           } catch(e) {
             checked=null;commit.disabled=true;status.textContent='Save or recheck could not be confirmed: '+String(e.message||e)+'. Recheck All Issues before continuing.';
@@ -7452,7 +7368,7 @@ async function wscOpenStockQBIssues(number, initial) {
     });
   }
   async function load() {
-    if(busy)return;checked=null;setBusy(true);body.replaceChildren();status.textContent='Checking every product against QuickBooks Live…';
+    if(busy)return;checked=null;setBusy(true,'Checking products against QuickBooks Live…');body.replaceChildren();status.textContent='Checking every product against QuickBooks Live…';
     try {render(await wscCheckStockQBIssues(number));}
     catch(error){status.textContent=String(error.message||error);}
     finally{setBusy(false);}
@@ -7471,8 +7387,11 @@ async function wscSubmitStockQBPartial(number) {
     const checked=await wscCheckStockQBIssues(number);
     if(!checked.partialAllowed)throw new Error((checked.blockers||[]).join('\n')||'The outstanding issues have changed. Reopen Check and Resolve Issues.');
     wscBOMLoadingEnd();
+    const isBOM=number.startsWith('BOM-');
+    const lines=isBOM?'\n\nVerified adjustments to send:\n'+(checked.verifiedItems||[]).filter(i=>i.qtyDiff!==0).map(i=>i.sku+': '+i.previous+' → '+i.target+' ('+(i.qtyDiff>0?'+':'')+i.qtyDiff+')').join('\n'):'';
+    const warning=isBOM?'\n\nThese adjustments are applied independently. Related finished products and components may be out of balance until manually reconciled. Review the excluded and related products in QuickBooks. A report will be available to download.':'\n\nTheir details will be emailed to nmerry@sensafe.com for manual review.';
     const message='Commit '+number+' and report?\n\n'+checked.adjustmentLineCount+' verified product adjustment(s) will be sent to QuickBooks. '+checked.issues.length+' unresolved product(s) will be LEFT UNCHANGED:\n'+
-      checked.issues.map(i=>i.sku).join(', ')+'\n\nTheir details will be emailed to nmerry@sensafe.com for manual review. This report cannot be committed again.';
+      checked.issues.map(i=>i.sku).join(', ')+lines+warning+'\n\nThis report cannot be committed again.';
     const safeMessage=message.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])).replace(/\n/g,'<br>');
     if(!await window.showWSCConfirm('Commit and report',safeMessage))return;
     wscBOMLoading('Committing verified products and preparing the issue report…');
@@ -7494,7 +7413,8 @@ async function wscSubmitStockQBPartial(number) {
   } finally {
     if(result)wscPaintLiveQBReport(number,result);else await wscRefreshLiveQBButton(number);
     wscLiveQBUI.busy=false;wscBOMLoadingEnd();wscPaintLiveQBReport(number);
-    if(notice)window.showWSCMessage('Commit and report',notice);
+    if(notice)window.showWSCMessage('Commit and report',notice,
+      number.startsWith('BOM-') && result?.submitted && result?.manualReviewRequired ? ()=>wscOpenStockQBReview(number) : undefined);
   }
 }
 async function wscOpenStockQBReview(number) {
@@ -7504,19 +7424,31 @@ async function wscOpenStockQBReview(number) {
   const title=document.createElement('h2');title.textContent=number+' — Manual review required';dialog.appendChild(title);
   const status=document.createElement('p');status.setAttribute('role','status');dialog.appendChild(status);
   const body=document.createElement('div');dialog.appendChild(body);
+  const download=document.createElement('button');download.type='button';download.textContent='Download issue report (CSV)';dialog.appendChild(download);
   const send=document.createElement('button');send.type='button';send.textContent='Send issue report';dialog.appendChild(send);
   const close=document.createElement('button');close.type='button';close.textContent='Close';close.onclick=()=>dialog.close();dialog.appendChild(close);
   let result=null,busy=false;
-  const setBusy=value=>{busy=value;wscLiveQBUI.busy=value;send.disabled=value||!result?.submitted;close.disabled=value;};
+  const setBusy=value=>{busy=value;wscLiveQBUI.busy=value;download.disabled=value||!result?.submitted;send.disabled=value||!result?.submitted;close.disabled=value;};
   const render=data=>{
     result=data;body.replaceChildren();
-    status.textContent=(!data.submitted?'QuickBooks outcome is not yet confirmed; check the existing submission. ':(data.noAdjustment?'No QuickBooks adjustment was needed for verified products. ':'Verified product adjustments were committed. '))+data.unresolvedCount+' unresolved product(s) were left unchanged. Email status: '+data.reportEmailState+'. '+(data.reportEmailMessage||'');
+    status.textContent=(!data.submitted?'QuickBooks outcome is not yet confirmed; check the existing submission. ':(data.noAdjustment?'No QuickBooks adjustment was needed for verified products. ':'Verified product adjustments were committed. '))+data.unresolvedCount+' unresolved product(s) were left unchanged. '+(number.startsWith('BOM-')?'Related finished products and components may also need manual reconciliation. ':'')+'Email status: '+data.reportEmailState+'. '+(data.reportEmailMessage||'');
     for(const issue of data.issues||[]) {
-      const p=document.createElement('p');p.textContent=issue.sku+' — Saved QB: '+issue.saved+'; saved actual: '+issue.actual+'; Live QB at check: '+(issue.live??'Unavailable')+'. '+issue.message;body.appendChild(p);
+      const p=document.createElement('p');p.textContent=issue.sku+' — Saved QB: '+issue.saved+'; '+(number.startsWith('BOM-')?'calculated target':'saved actual')+': '+issue.actual+'; Live QB at check: '+(issue.live??'Unavailable')+'. '+issue.message;body.appendChild(p);
     }
     if(data.manualReviewResolved)status.textContent='Review resolved by '+data.reviewResolvedBy+' on '+new Date(data.reviewResolvedAt).toLocaleString()+'. Original excluded items are retained below. Email status: '+data.reportEmailState+'.';
     send.textContent=data.reportEmailState==='UNSENT'?'Send issue report':'Resend issue report';
     wscPaintLiveQBReport(number,data);
+  };
+  download.onclick=()=>{
+    if(!result?.submitted)return;
+    const rows=[['WSC manual review',number],['Warning',number.startsWith('BOM-')?'Applied items are independent. Review related finished products and components and reconcile manually.':'Verify current stock before making corrections.'],
+      ['Excluded SKU','Section','Product','Saved QB','Calculated target / counted quantity','Live QB at check','Issue']];
+    (result.issues||[]).forEach(i=>rows.push([i.sku,i.section||'',i.productName||'',i.saved,i.actual,i.live??'Unavailable',i.message]));
+    rows.push([],['Verified SKU','QB quantity before','Target','Adjustment']);
+    (result.appliedItems||[]).forEach(i=>rows.push([i.sku,i.previous,i.target,i.qtyDiff]));
+    const cell=value=>'"'+String(value??'').replace(/^[=+\-@\t\r]/,"'$&").replace(/"/g,'""')+'"';
+    const blob=new Blob(['\ufeff'+rows.map(row=>row.map(cell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'});
+    const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download='WSC_'+number+'_Manual_Review.csv';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
   };
   send.onclick=async()=>{
     if(busy||!result)return;
