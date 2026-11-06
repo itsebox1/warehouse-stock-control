@@ -7422,13 +7422,20 @@ async function wscOpenStockQBReview(number) {
   const dialog=document.createElement('dialog');dialog.id='wscQBReviewDialog';
   dialog.style.cssText='width:min(900px,94vw);max-height:90vh;overflow:auto;border:1px solid #bbb;border-radius:16px;padding:20px;box-sizing:border-box';
   const title=document.createElement('h2');title.textContent=number+' — Manual review required';dialog.appendChild(title);
+  // A modal dialog is in the browser's top layer, so its processing indicator
+  // must be inside the dialog to remain visible while requests are running.
+  const processing=document.createElement('div');processing.style.cssText='display:none;justify-content:center;margin:16px 0';
+  processing.setAttribute('role','status');processing.setAttribute('aria-live','polite');
+  const processingCard=document.createElement('div');processingCard.style.cssText='display:flex;align-items:center;gap:14px;padding:18px 24px;border-radius:12px;background:white;box-shadow:0 5px 24px rgba(0,0,0,.2);color:#304b70;font-weight:600';
+  const globe=document.createElement('img');globe.src='Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png';globe.alt='';globe.style.cssText='width:54px;height:54px;object-fit:contain;animation:globeSpin 3s linear infinite';
+  const processingText=document.createElement('span');processingCard.append(globe,processingText);processing.appendChild(processingCard);dialog.appendChild(processing);
   const status=document.createElement('p');status.setAttribute('role','status');dialog.appendChild(status);
   const body=document.createElement('div');dialog.appendChild(body);
   const download=document.createElement('button');download.type='button';download.textContent='Download issue report (CSV)';dialog.appendChild(download);
   const send=document.createElement('button');send.type='button';send.textContent='Send issue report';dialog.appendChild(send);
   const close=document.createElement('button');close.type='button';close.textContent='Close';close.onclick=()=>dialog.close();dialog.appendChild(close);
   let result=null,busy=false;
-  const setBusy=value=>{busy=value;wscLiveQBUI.busy=value;download.disabled=value||!result?.submitted;send.disabled=value||!result?.submitted;close.disabled=value;};
+  const setBusy=(value,message)=>{busy=value;wscLiveQBUI.busy=value;processing.style.display=value?'flex':'none';processingText.textContent=value?(message||'Processing…'):'';dialog.setAttribute('aria-busy',value?'true':'false');download.disabled=value||!result?.submitted;send.disabled=value||!result?.submitted;close.disabled=value;};
   const render=data=>{
     result=data;body.replaceChildren();
     status.textContent=(!data.submitted?'QuickBooks outcome is not yet confirmed; check the existing submission. ':(data.noAdjustment?'No QuickBooks adjustment was needed for verified products. ':'Verified product adjustments were committed. '))+data.unresolvedCount+' unresolved product(s) were left unchanged. '+(number.startsWith('BOM-')?'Related finished products and components may also need manual reconciliation. ':'')+'Email status: '+data.reportEmailState+'. '+(data.reportEmailMessage||'');
@@ -7454,14 +7461,14 @@ async function wscOpenStockQBReview(number) {
     if(busy||!result)return;
     const resend=result.reportEmailState!=='UNSENT';
     if(resend&&!window.confirm('Resend the issue report to nmerry@sensafe.com? The earlier email may already have arrived. This will not send another stock adjustment.'))return;
-    setBusy(true);
+    setBusy(true,resend?'Resending issue report…':'Sending issue report…');
     try{render(await wscLiveQBRequest(wscStockQBAction(number),number,{operation:'sendIssueReport',allowResend:resend}));}
     catch(error){status.textContent='Email could not be confirmed: '+String(error.message||error)+'. Close and reopen this report to check its status. No stock adjustment was sent.';}
     finally{setBusy(false);}
   };
   dialog.addEventListener('cancel',e=>{if(busy)e.preventDefault();});
   dialog.addEventListener('close',()=>{dialog.remove();wscPaintLiveQBReport(number);});
-  document.body.appendChild(dialog);dialog.showModal();setBusy(true);status.textContent='Loading outstanding issues…';
+  document.body.appendChild(dialog);dialog.showModal();setBusy(true,'Loading outstanding issues…');status.textContent='Loading outstanding issues…';
   try{render(await wscLiveQBRequest(wscStockQBAction(number),number,{operation:'viewIssueReport'}));}
   catch(error){status.textContent=String(error.message||error);}
   finally{setBusy(false);}
