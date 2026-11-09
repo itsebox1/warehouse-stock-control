@@ -277,6 +277,31 @@ input[type="reset"]:disabled,
 [role="button"][aria-disabled="true"] { cursor: not-allowed !important; }
 
   </style>
+<style>
+#wscPostageScreen[hidden]{display:none!important} #wscPostageScreen{width:100%;max-width:1200px;margin:0 auto;box-sizing:border-box}
+#wscPostageScreen *{box-sizing:border-box} #wscPostageScreen .layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,350px);gap:18px;align-items:start}
+#wscPostageScreen .stack{display:grid;gap:15px} #wscPostageScreen .card{background:white;border:1px solid #d5dce4;border-radius:12px;padding:20px}
+#wscPostageScreen .section-heading{display:flex;gap:12px;margin-bottom:16px;align-items:flex-start} #wscPostageScreen .section-heading h2{font-size:18px;margin:0 0 4px} #wscPostageScreen .section-heading p{font-size:13px;margin:0;color:#5f6f82}
+#wscPostageScreen .number{background:#eaf1f8;color:#345a7d;border-radius:8px;min-width:34px;height:34px;display:grid;place-items:center;font-weight:bold}
+#wscPostageScreen .grid{display:grid;gap:12px} #wscPostageScreen .grid.three{grid-template-columns:repeat(3,minmax(0,1fr))} #wscPostageScreen .grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+#wscPostageScreen label{display:block;font-size:14px;font-weight:bold;margin:0 0 6px;color:#304861} #wscPostageScreen input:not([type=radio]),#wscPostageScreen select{width:100%;min-height:44px;padding:10px 12px;border:1px solid #bac8d7;border-radius:7px;background:white;color:#203247;font-size:16px}
+#wscPostageScreen .quantity-card{border:1px solid #d5dce4;border-radius:9px;padding:12px} #wscPostageScreen small,#wscPostageScreen .hint,#wscPostageScreen .section-tip{font-size:12px;color:#5f6f82}
+#wscPostageScreen .quantity-card small{display:block;margin-top:7px} #wscPostageScreen .calculated,#wscPostageScreen .guide-result{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;background:#edf5f7;border-radius:8px;padding:12px;margin-top:14px}
+#wscPostageScreen .tiny-heading{font-size:13px;font-weight:bold;margin:16px 0 8px} #wscPostageScreen .mode-switch{display:flex;flex-wrap:wrap;gap:8px;border:0;padding:0;margin:0 0 15px}
+#wscPostageScreen .mode-switch label{display:flex;gap:7px;align-items:center;border:1px solid #bac8d7;border-radius:8px;padding:10px;margin:0;cursor:pointer} #wscPostageScreen input[type=radio]{width:auto;margin:0;accent-color:#244b72}
+#wscPostageScreen .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0} #wscPostageScreen [hidden]{display:none!important}
+#wscPostageScreen .cost-field{position:relative} #wscPostageScreen .cost-field span{position:absolute;left:12px;top:12px;color:#6b7e91} #wscPostageScreen .cost-field input{padding-left:27px}
+#wscPostageScreen .summary-head{display:flex;justify-content:space-between;gap:10px;align-items:center} #wscPostageScreen .summary-head h2{font-size:19px;margin:0} #wscPostageScreen .tag{font-size:11px;color:#526d88;font-weight:bold}
+#wscPostageScreen .summary-dest{color:#5f6f82;font-size:13px} #wscPostageScreen .estimate{background:#edf4fa;border-radius:10px;padding:15px;margin:14px 0} #wscPostageScreen .estimate span{font-size:12px;font-weight:bold}
+#wscPostageScreen .estimate strong{display:block;font-size:30px;color:#163e66;margin:4px 0} #wscPostageScreen .estimate p{font-size:12px;margin:0} #wscPostageScreen .breakdown{margin:0}
+#wscPostageScreen .breakdown>div{display:flex;justify-content:space-between;gap:12px;font-size:14px;padding:7px 0} #wscPostageScreen .breakdown dt{color:#5f6f82} #wscPostageScreen .breakdown dd{margin:0;text-align:right;font-weight:bold}
+#wscPostageScreen .breakdown .total{border-top:1px solid #d5dce4;margin-top:8px;padding-top:14px;font-weight:bold} #wscPostageScreen .notice,#wscPostageScreen .pqp-notice{font-size:13px;border-left:3px solid #d5a53a;background:#fff9e9;color:#604a20;padding:10px 12px;border-radius:0 7px 7px 0}
+#wscPostageScreen .good{border-color:#55a996;background:#eef8f4;color:#215d4f} #wscPostageScreen .actions{display:grid;gap:8px} #wscPostageScreen .actions button{width:100%;margin:0} #wscPostageScreen .secondary{background:white;color:#244b72;border:1px solid #bac8d7}
+#wscPostageScreen button:disabled{opacity:.5;cursor:default} #wscPostageScreen .quiet{display:block;text-align:center;margin-top:14px;color:#244b72} #wscPostageScreen .subcard{margin-top:16px} #wscPostageScreen .subcard summary{font-weight:bold;cursor:pointer} #wscPostageScreen .subcard .grid{margin-top:15px}
+#wscPostageScreen .conversion{margin-top:15px;padding:12px;background:#f4f7fa;border-radius:8px;font-weight:bold} #wscPostageScreen .pqp-footer{font-size:12px;color:#5f6f82;text-align:center}
+@media(max-width:850px){#wscPostageScreen .layout{grid-template-columns:1fr}} @media(max-width:600px){#wscPostageScreen .card{padding:16px} #wscPostageScreen .grid.three,#wscPostageScreen .grid.two{grid-template-columns:1fr}}
+#wscPostagePrint{display:none} @media print{body.wsc-postage-printing > *:not(#wscPostagePrint){display:none!important} body.wsc-postage-printing #wscPostagePrint{display:block!important;color:#182c45;font:13px/1.5 Arial,sans-serif} #wscPostagePrint table{border-collapse:collapse;width:100%;margin:20px 0} #wscPostagePrint td{padding:8px;border-bottom:1px solid #ddd} #wscPostagePrint td:first-child{width:42%;font-weight:bold}}
+</style>
 </head>
 
 <body>
@@ -501,10 +526,49 @@ input[type="reset"]:disabled,
     <button class="wsc-module-main" data-wsc-area="TR" type="button" onclick="wscModuleMainClick('TR')">🎪 TR – Trade Show</button>
     <button class="wsc-module-arrow" type="button" aria-label="Expand open Trade Shows" onclick="wscToggleModule('TR')" hidden>⌄</button>
   </div><div class="wsc-module-count" hidden></div><div class="wsc-module-detail" hidden><div id="homeTradeShowSessions"></div></div></div>
+  <button id="wscPostageQuotesButton" data-wsc-area="POSTAGE_QUOTES" type="button" onclick="wscOpenPostageQuotes()" style="display:none;width:100%;margin:12px 0;background:#294766;color:white;border-radius:12px;">📮 Postage Quotes</button>
   <div class="wsc-module" data-module="QB" id="wscQbModule" hidden><div class="wsc-module-header wsc-attention">
     <button class="wsc-module-main" type="button" onclick="wscToggleModule('QB')">📋 Outstanding QB Commitments</button>
     <button class="wsc-module-arrow" type="button" onclick="wscToggleModule('QB')">⌄</button>
   </div><div class="wsc-module-count"></div><div class="wsc-module-detail" hidden id="wscOutstandingQBList"></div></div>
+  </section>
+  <section id="wscPostageScreen" hidden aria-labelledby="wscPostageHeading">
+    <button type="button" onclick="wscClosePostageQuotes()" style="width:100%;">← Stock Manager</button>
+    <h2 id="wscPostageHeading" tabindex="-1" style="text-align:center;">📮 Postage Quotes</h2>
+    <p class="pqp-notice">Royal Mail reference prices saved on 3 November 2026. These are not live or account-specific prices; check the current service and price in Click &amp; Drop.</p>
+    <form id="wscPostageForm" onsubmit="return false;">
+ <div class="layout"><div class="stack">
+ <section class="card"><div class="section-heading"><div class="number">01</div><div><h2>What are you sending?</h2><p>Use the same weight guide as PandP.</p></div></div>
+  <div class="grid three"><div class="quantity-card"><label for="wscPQBottles">Bottles</label><input id="wscPQBottles" type="number" min="0" step="1" value="0" inputmode="numeric"><small>25, 50 and 100 strip bottles</small></div><div class="quantity-card"><label for="wscPQBlueKits">Blue kits</label><input id="wscPQBlueKits" type="number" min="0" step="1" value="0" inputmode="numeric"><small>Various EZ meter kits</small></div><div class="quantity-card"><label for="wscPQBlackKits">Large black kits</label><input id="wscPQBlackKits" type="number" min="0" step="1" value="0" inputmode="numeric"><small>Micro kits and arsenic kits</small></div></div>
+  <div class="calculated"><span>Estimated goods weight <small>· excludes packaging</small></span><strong id="wscPQGoodsWeight" aria-live="polite">—</strong></div>
+ </section>
+ <section class="card"><div class="section-heading"><div class="number">02</div><div><h2>Choose your packaging</h2><p>Box suggestions come from your existing PandP guide.</p></div></div>
+  <div class="grid two"><div><label for="wscPQGuideType">Packing guide</label><select id="wscPQGuideType"><option value="bottles">Average bottles</option><option value="blue">Blue kits</option><option value="black">Large black kits</option><option value="custom">Custom packaging</option></select></div><div id="wscPQGuideChoiceWrap"><label for="wscPQGuideChoice">Guide quantity</label><select id="wscPQGuideChoice"></select></div></div>
+  <div class="guide-result"><span>Suggested packaging</span><strong id="wscPQBoxName">—</strong></div>
+  <div class="tiny-heading">Actual parcel dimensions <span class="hint">(cm, editable)</span></div><div class="grid three"><div><label for="wscPQLength">Length</label><input id="wscPQLength" type="number" min="0.01" step="0.1" inputmode="decimal"></div><div><label for="wscPQWidth">Width</label><input id="wscPQWidth" type="number" min="0.01" step="0.1" inputmode="decimal"></div><div><label for="wscPQHeight">Height</label><input id="wscPQHeight" type="number" min="0.01" step="0.1" inputmode="decimal"></div></div>
+  <p class="section-tip">The guide is a starting point. Confirm the actual packed size and weight.</p>
+ </section>
+ <section class="card"><div class="section-heading"><div class="number">03</div><div><h2>Delivery details</h2><p>Enter the destination and packed weight.</p></div></div>
+  <div class="grid three"><div><label for="wscPQDestination">Destination</label><select id="wscPQDestination"></select></div><div><label for="wscPQPostcode">Postcode <span class="hint">(optional)</span></label><input id="wscPQPostcode" type="text" autocomplete="off" placeholder="Enter postcode"></div><div><label for="wscPQPackedWeight">Packed weight (kg)</label><input id="wscPQPackedWeight" type="number" min="0.001" step="0.001" placeholder="Enter packed weight" inputmode="decimal"></div></div>
+  <div id="wscPQOtherCountryWrap" hidden style="margin-top:14px"><label for="wscPQOtherCountry">Other destination</label><input id="wscPQOtherCountry" type="text" placeholder="Enter destination"></div>
+  <p class="section-tip">Choose an island or territory separately where listed. The postcode is shown on the quote but is not used by the saved-rate lookup.</p>
+ </section>
+ <section class="card"><div class="section-heading"><div class="number">04</div><div><h2>Postage and quote</h2><p>Use a reference estimate or enter a price from Click &amp; Drop.</p></div></div>
+  <fieldset class="mode-switch"><legend class="sr-only">Postage price source</legend><label><input type="radio" name="wscPostageSource" value="table" checked> Saved Royal Mail rates</label><label><input type="radio" name="wscPostageSource" value="manual"> Enter a price</label></fieldset>
+  <div id="wscPQManualFields" class="grid two" hidden><div><label for="wscPQManualPrice">Postage price (£)</label><div class="cost-field"><span>£</span><input id="wscPQManualPrice" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal"></div></div><div><label for="wscPQManualService">Service</label><input id="wscPQManualService" type="text" placeholder="Enter the service name"></div></div>
+  <div class="grid two" style="margin-top:14px"><div><label for="wscPQPackingCost">Packaging cost (£) <span class="hint">(optional)</span></label><div class="cost-field"><span>£</span><input id="wscPQPackingCost" type="number" min="0" step="0.01" value="0" inputmode="decimal"></div></div><div><label for="wscPQMarkup">Add percentage</label><input id="wscPQMarkup" type="number" min="0" step="0.1" value="10" inputmode="decimal"><small>Applied to postage plus packaging.</small></div></div>
+  <div class="grid two" style="margin-top:14px"><div><label for="wscPQQuoteCurrency">Quote currency</label><select id="wscPQQuoteCurrency"><option value="GBP">£ Pound sterling</option><option value="EUR">€ Euro</option><option value="USD">$ US dollar</option></select></div><div id="wscPQQuoteFxWrap" hidden><label for="wscPQQuoteFx">Exchange rate <span class="hint">(£1 = ?)</span></label><input id="wscPQQuoteFx" type="number" min="0.000001" step="0.0001" placeholder="Enter current rate" inputmode="decimal"><small>Enter your chosen rate; this is not a live rate.</small></div></div>
+ </section>
+ </div><aside class="right"><section class="card" aria-label="Quote summary"><div class="summary-head"><h2>Quote summary</h2><span class="tag">Guide only</span></div><p class="summary-dest" id="wscPQSummaryDest">—</p>
+ <div class="estimate"><span>ESTIMATED POSTAGE</span><strong id="wscPQPostageDisplay">—</strong><p id="wscPQServiceDisplay">Complete the delivery details</p></div>
+ <dl class="breakdown"><div><dt>Packaging</dt><dd id="wscPQSummaryBox">—</dd></div><div><dt>Parcel dimensions</dt><dd id="wscPQSummaryDimensions">—</dd></div><div><dt>Packed weight</dt><dd id="wscPQSummaryWeight">—</dd></div><div><dt>Packaging cost</dt><dd id="wscPQSummaryPacking">—</dd></div><div><dt id="wscPQSummaryMarkupLabel">Uplift</dt><dd id="wscPQSummaryMarkup">—</dd></div><div class="total"><dt>Suggested charge</dt><dd id="wscPQChargeDisplay">—</dd></div></dl>
+ <p id="wscPQQuoteNotice" class="notice" role="status">—</p>
+ <div class="actions"><button class="primary" type="button" id="wscPQCopyQuote">Copy quote</button><button class="secondary" type="button" id="wscPQPrintQuote">Print / save PDF</button></div>
+ <a class="quiet" href="https://send.royalmail.com/" target="_blank" rel="noopener">Check price with Royal Mail ↗</a><div id="wscPQActionMessage" class="hint" role="status" style="text-align:center;margin-top:8px"></div>
+ </section></aside></div>
+ <details class="card subcard"><summary>Currency converter</summary><p class="hint">Convert any amount using a rate you enter, with an optional percentage as in PandP.</p><div class="grid three"><div><label for="wscPQConvertAmount">Amount</label><input id="wscPQConvertAmount" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal"></div><div><label for="wscPQConvertFrom">From</label><select id="wscPQConvertFrom"><option value="GBP">GBP — Pound</option><option value="EUR">EUR — Euro</option><option value="USD">USD — US Dollar</option></select></div><div><label for="wscPQConvertTo">To</label><select id="wscPQConvertTo"><option value="EUR">EUR — Euro</option><option value="GBP">GBP — Pound</option><option value="USD">USD — US Dollar</option></select></div><div><label for="wscPQConvertRate">Exchange rate</label><input id="wscPQConvertRate" type="number" min="0.000001" step="0.0001" placeholder="Enter current rate" inputmode="decimal"></div><div><label for="wscPQConvertUplift">Add percentage</label><input id="wscPQConvertUplift" type="number" min="0" step="0.1" value="0" inputmode="decimal"></div></div><div id="wscPQConversionResult" class="conversion" role="status">Enter an amount and exchange rate.</div></details>
+    </form>
+    <p class="pqp-footer">No orders or labels are created. Confirm the parcel and contents with Royal Mail.</p>
   </section>
   <button id="wscAdminCog" type="button" onclick="wscOpenAdmin()" aria-label="Administrator settings" title="Administrator settings" style="display:none; position:fixed; right:16px; bottom:16px; z-index:1200; width:52px; height:52px; border-radius:50%; padding:0; font-size:25px; background:#164b84; color:white; box-shadow:0 2px 12px #0004;">⚙️</button>
   <div id="homeSessionsLoading" role="status" aria-live="polite" style="display:none; padding:15px; text-align:center;">
@@ -5089,6 +5153,8 @@ function wscSetStockManagerView(open, moveFocus) {
   const navigation=document.getElementById('wscHomeNavigation');
   const manager=document.getElementById('wscStockManagerScreen');
   if(!header||!navigation||!manager)return;
+  const postage=document.getElementById('wscPostageScreen');if(postage)postage.hidden=true;
+  if(typeof window.wscStopPostagePermissionChecks==='function')window.wscStopPostagePermissionChecks();
   header.hidden=!!open;navigation.hidden=!!open;manager.hidden=!open;
   if(moveFocus) {
     window.scrollTo(0,0);
@@ -7081,7 +7147,7 @@ if (["ST","SC"].includes(selectedReportType)) {
 window.WSC_ADMIN_URL = "https://warehouse-stock-reports.tmerry.workers.dev";
 let wscAdminData = null;
 let wscPermissions = null;
-const wscLabels = {WEEKLY_BOM:"🧩 Weekly BOM",BOM:"🧩 BOM – Bill of Materials",ST:"📦 ST – Stock Take",SC:"📋 SC – Stock Count",TR:"🎪 TR – Trade Show",DL:"🚚 DL – Delivery",DATES:"📅 Check Dates"};
+const wscLabels = {POSTAGE_QUOTES:"📮 Postage Quotes",WEEKLY_BOM:"🧩 Weekly BOM",BOM:"🧩 BOM – Bill of Materials",ST:"📦 ST – Stock Take",SC:"📋 SC – Stock Count",TR:"🎪 TR – Trade Show",DL:"🚚 DL – Delivery",DATES:"📅 Check Dates"};
 async function wscAdminRequest(action, extra={}) {
   const idToken = await window.getCurrentStaffToken();
   const response = await fetch(window.WSC_ADMIN_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,idToken,...extra})});
@@ -7547,6 +7613,8 @@ async function wscConfirmStockQBReviewResolved(number) {
 function wscPaintPermissions(permissions) {
   const cog = document.getElementById("wscAdminCog");
   const areas = permissions?.functions || {};
+  const postage=document.getElementById('wscPostageScreen');
+  if(postage && !postage.hidden && areas.POSTAGE_QUOTES!==true && typeof window.wscClosePostageQuotes==='function') window.wscClosePostageQuotes();
   document.querySelectorAll("[data-wsc-area]").forEach(button => {
     button.style.display = areas[button.dataset.wscArea] === true ? "" : "none";
   });
@@ -7662,7 +7730,7 @@ function wscSwitchRow(label,enabled,onChange,disabled=false){
 function wscRenderAdminStaff(){
   const box=document.getElementById("wscStaffToggles"),email=document.getElementById("wscStaffSelect").value;
   box.replaceChildren();const member=wscAdminData?.staff.find(s=>s.email===email);if(!member)return;
-  ["ST","SC","TR","DL","DATES","WEEKLY_BOM"].forEach(area=>box.appendChild(wscSwitchRow(wscLabels[area],member.functions[area],input=>wscSaveSwitch(input,"STAFF",area,email))));
+  ["ST","SC","TR","DL","DATES","WEEKLY_BOM","POSTAGE_QUOTES"].forEach(area=>box.appendChild(wscSwitchRow(wscLabels[area],member.functions[area],input=>wscSaveSwitch(input,"STAFF",area,email))));
 }
 function wscRenderAdminQB(){
   const box=document.getElementById("wscQBToggles");box.replaceChildren();
@@ -7893,7 +7961,7 @@ function wscIdleVisible(id) {
   return !!el && el.getClientRects().length>0 && getComputedStyle(el).visibility!=='hidden';
 }
 function wscIdleSafeToRefresh() {
-  return wscIdleVisible('welcomeScreen') && wscPendingRequests===0 &&
+  return wscIdleVisible('welcomeScreen') && !wscIdleVisible('wscPostageScreen') && wscPendingRequests===0 &&
     !document.querySelector('dialog[open]:not(#wscIdleDialog)') &&
     !(typeof wscLiveQBUI!=='undefined' && wscLiveQBUI.busy) &&
     !document.querySelector('input:focus,textarea:focus,select:focus');
@@ -9127,6 +9195,66 @@ if ('serviceWorker' in navigator) {
       .catch(err => console.warn('WSC app installation worker:', err));
   });
 }
+</script>
+<section id="wscPostagePrint" aria-label="Printable postage quotation"><h1>WSC — Postage Quote</h1><p>Estimate only. Confirm price and service with Royal Mail Click &amp; Drop.</p><table id="wscPQPrintTable"></table><p>Reference rates saved 3 November 2026 where used. Check dimensions, contents and carrier acceptance.</p></section>
+<script>
+(function(){
+let RATES={};
+const bottleGuides=[['25','Poolcase',[22,24,10]],['36','Red',[26,21,16]],['40','Blue',[23,23,23]],['50','Blue',[23,23,23]],['60','Blue',[23,23,23]],['80','Green',[31,23,23]],['130','Orange',[33,26,32]],['200 SW','Yellow',[43,32,27]],['200 DW','Grey',[43,24,37]],['360','Purple',[51,38,36]],['400','Pink',[61,31,46]],['800','Alpha',[61,39,61]]];
+const blueGuides=Array.from({length:25},(_,i)=>{const n=i+1;if(n<=2)return [String(n),'Green',[31,23,23]];if(n<=4)return [String(n),'Orange',[33,26,32]];if(n===5)return [String(n),'Yellow',[43,32,27]];if(n<=8)return [String(n),'Purple',[51,38,36]];if(n<=12)return [String(n),'iDip Box',[50,33,55]];return [String(n),'Pink',[61,31,46]];});
+const blackGuides=Array.from({length:14},(_,i)=>{const n=i+1;if(n===1)return [String(n),'K7',[45,35,11]];if(n===2)return [String(n),'Orange',[33,26,32]];if(n<=4)return [String(n),'Grey',[43,24,37]];if(n<=7)return [String(n),'Purple',[51,38,36]];return [String(n),'Black Case',[62,37,53]];});
+const $=id=>document.getElementById('wscPQ'+id.charAt(0).toUpperCase()+id.slice(1)), money=(n,c='GBP')=>new Intl.NumberFormat('en-GB',{style:'currency',currency:c}).format(n);
+const num=id=>{const input=$(id),v=input.value.trim();return v===''?null:Number(v);};
+const clean=n=>Number.isFinite(n)&&n>=0;
+const kilo=n=>n.toFixed(3).replace(/0+$/,'').replace(/\.$/,'');
+let currentQuote=null;
+function populateDestinations(){const select=$('destination');const first=document.createElement('option');first.value='';first.textContent='Select destination';select.append(first);for(const name of ['United Kingdom','Guernsey','Isle of Man','Jersey']){const opt=document.createElement('option');opt.value=name;opt.textContent=name+' — enter price';select.append(opt);}for(const name of Object.keys(RATES).sort((a,b)=>a.localeCompare(b))){const opt=document.createElement('option');opt.value=name;opt.textContent=name;select.append(opt);}const other=document.createElement('option');other.value='__other__';other.textContent='Other destination — enter price';select.append(other);select.value='';}
+function activeGuides(){return $('guideType').value==='blue'?blueGuides:$('guideType').value==='black'?blackGuides:bottleGuides;}
+function populateGuide(){const type=$('guideType').value,select=$('guideChoice');select.replaceChildren();$('guideChoiceWrap').hidden=type==='custom';if(type==='custom'){$('boxName').textContent='Custom packaging';['length','width','height'].forEach(id=>$(id).value='');update();return;}for(const [quantity,name] of activeGuides()){const o=document.createElement('option');o.value=quantity;o.textContent=(type==='bottles'?quantity+' bottle guide':quantity+' '+(type==='blue'?'blue':'black')+' kit'+(quantity==='1'?'':'s'))+' — '+name;select.append(o);}applyGuide();}
+function applyGuide(){const selected=activeGuides().find(x=>x[0]===$('guideChoice').value);if(!selected)return;$('boxName').textContent=selected[1]+' ('+selected[2].join(' × ')+' cm)';['length','width','height'].forEach((id,i)=>$(id).value=selected[2][i]);update();}
+function goodsWeight(){const values=['bottles','blueKits','blackKits'].map(num);if(values.some(n=>!clean(n)||!Number.isInteger(n)))return null;return [values[0]*0.032+values[1]*0.7+values[2],values[0]*0.04+values[1]*0.9+values[2]*1.8];}
+function estimate(){const country=$('destination').value,weight=num('packedWeight'),dims=['length','width','height'].map(num);if(!country)return {error:'Choose a destination to see a postage estimate.'};if(!clean(weight)||weight<=0)return {error:'Enter the actual packed weight to see a postage estimate.'};if(dims.some(v=>!clean(v)||v<=0))return {error:'Enter the actual packed dimensions to see a postage estimate.'};const bands=RATES[country];if(!bands)return {error:'No saved rate is available for this destination. Enter a Click & Drop price instead.'};const grams=Math.ceil(weight*1000-1e-7);const band=bands.find(b=>grams>b[0]&&grams<=b[1]);if(!band)return {error:'No saved rate covers this weight. Check the available services in Click & Drop.'};const sorted=[...dims].sort((a,b)=>b-a);const heavier=band[3]==='Tracked Heavier';const fits=heavier?(sorted[0]<=61&&sorted[1]<=46&&sorted[2]<=46&&weight<=20):(sorted[0]<=60&&dims.reduce((a,b)=>a+b,0)<90&&weight<=2);if(!fits)return {error:'This parcel is outside the size or weight guide for the listed service. Check another service in Click & Drop.'};return {price:band[2],service:band[3],band:'Up to '+kilo(band[1]/1000)+' kg',source:'Saved reference rates · 3 Nov 2026'};}
+function countryName(){return $('destination').value==='__other__'?$('otherCountry').value.trim():$('destination').value;}
+function update(){const g=goodsWeight();$('goodsWeight').textContent=g?kilo(g[0])+' – '+kilo(g[1])+' kg':'Enter whole numbers';const manual=document.querySelector('input[name="wscPostageSource"]:checked').value==='manual';$('manualFields').hidden=!manual;$('otherCountryWrap').hidden=$('destination').value!=='__other__';const fxNeeded=$('quoteCurrency').value!=='GBP';$('quoteFxWrap').hidden=!fxNeeded;let quote=manual?{price:num('manualPrice'),service:$('manualService').value.trim()||'Service not entered',source:'Price entered by user'}:estimate();const country=countryName(),weight=num('packedWeight'),dims=['length','width','height'].map(num),packing=num('packingCost'),markup=num('markup');let error=quote.error||'';if(!country)error='Enter a destination.';else if(!clean(weight)||weight<=0)error='Enter the actual packed weight.';else if(dims.some(v=>!clean(v)||v<=0))error='Enter the actual packed dimensions.';else if(manual&&(!clean(quote.price)))error='Enter the postage price from Click & Drop.';else if(!clean(packing)||!clean(markup))error='Enter a valid packaging cost and percentage.';const eligible=!error&&clean(quote.price);const increase=eligible?(quote.price+packing)*markup/100:null;const total=eligible?quote.price+packing+increase:null;const fx=num('quoteFx');const currency=$('quoteCurrency').value;let charge=eligible?money(total):'—';let fxError='';if(eligible&&fxNeeded){if(clean(fx)&&fx>0)charge=money(total*fx,currency)+' ('+money(total)+')';else fxError=' Enter a current exchange rate to convert the suggested charge.';}
+ $('summaryDest').textContent=(country||'Destination not entered')+($('postcode').value.trim()?' · '+$('postcode').value.trim():'');$('summaryBox').textContent=$('boxName').textContent;$('summaryDimensions').textContent=dims.every(v=>clean(v)&&v>0)?dims.join(' × ')+' cm':'—';$('summaryWeight').textContent=clean(weight)&&weight>0?kilo(weight)+' kg':'—';$('summaryPacking').textContent=clean(packing)?money(packing):'—';$('summaryMarkupLabel').textContent='Uplift'+(clean(markup)?' ('+markup+'%)':'');$('summaryMarkup').textContent=eligible?money(increase):'—';$('postageDisplay').textContent=eligible?money(quote.price):'—';$('serviceDisplay').textContent=eligible?quote.service+(quote.band?' · '+quote.band:''):'No estimate available';$('chargeDisplay').textContent=charge;
+ const notice=$('quoteNotice');notice.textContent=error||((manual?'Price entered manually. ':'Reference rates last checked 3 November 2026. ')+'Confirm the price, service, parcel size and contents with Click & Drop.'+fxError);notice.classList.toggle('good',eligible&&!fxError);$('copyQuote').disabled=!eligible||(fxNeeded&&!!fxError);$('printQuote').disabled=$('copyQuote').disabled;currentQuote=eligible&&!fxError?{country,postcode:$('postcode').value.trim(),weight,dims,box:$('boxName').textContent,postage:quote.price,service:quote.service,source:quote.source,packing,markup,increase,total,charge}:null;}
+function convert(){const amt=num('convertAmount'),rate=num('convertRate'),uplift=num('convertUplift'),from=$('convertFrom').value,to=$('convertTo').value,same=from===to;$('convertRate').disabled=same;if(same)$('convertRate').placeholder='Not needed';else $('convertRate').placeholder='Enter current rate';if(!clean(amt)||!clean(uplift)||(!same&&(!clean(rate)||rate<=0))){$('conversionResult').textContent='Enter an amount and '+(same?'percentage.':'exchange rate.');return;}const result=amt*(same?1:rate)*(1+uplift/100);$('conversionResult').textContent=money(amt,from)+' → '+money(result,to)+(uplift?' including '+uplift+'%':'');}
+function quoteText(){if(!currentQuote)return '';const q=currentQuote;return ['WSC — ESTIMATE ONLY','Destination: '+q.country+(q.postcode?' '+q.postcode:''),'Packaging: '+q.box,'Dimensions: '+q.dims.join(' × ')+' cm','Packed weight: '+kilo(q.weight)+' kg','Service: '+q.service,'Postage: '+money(q.postage),'Packaging: '+money(q.packing),'Uplift ('+q.markup+'%): '+money(q.increase),'Suggested charge: '+q.charge,'Source: '+q.source,'Confirm current price, service and carrier acceptance in Click & Drop.'].join('\n');}
+function makePrint(){const table=$('printTable');table.replaceChildren();for(const line of quoteText().split('\n').slice(1)){const row=document.createElement('tr'),split=line.indexOf(':'),label=document.createElement('td'),value=document.createElement('td');label.textContent=split<0?'Note':line.slice(0,split);value.textContent=split<0?line:line.slice(split+1).trim();row.append(label,value);table.append(row);}}
+['bottles','blueKits','blackKits','length','width','height','destination','postcode','packedWeight','otherCountry','manualPrice','manualService','packingCost','markup','quoteCurrency','quoteFx'].forEach(id=>{$(id).addEventListener('input',update);$(id).addEventListener('change',update);});
+['convertAmount','convertFrom','convertTo','convertRate','convertUplift'].forEach(id=>{$(id).addEventListener('input',convert);$(id).addEventListener('change',convert);});
+document.querySelectorAll('input[name="wscPostageSource"]').forEach(el=>el.addEventListener('change',update));$('guideType').addEventListener('change',populateGuide);$('guideChoice').addEventListener('change',applyGuide);
+$('copyQuote').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(quoteText());$('actionMessage').textContent='Quote copied.';}catch(error){$('actionMessage').textContent='Copy was unavailable. Use Print / save PDF instead.';}});$('printQuote').addEventListener('click',()=>{if(currentQuote){makePrint();document.body.classList.add('wsc-postage-printing');try{window.print();}catch(error){document.body.classList.remove('wsc-postage-printing');throw error;}}});
+window.addEventListener('afterprint',()=>document.body.classList.remove('wsc-postage-printing'));
+let permissionTimer=null, opening=false, lastUser='';
+window.wscStopPostagePermissionChecks=()=>{if(permissionTimer!==null){clearInterval(permissionTimer);permissionTimer=null;}};
+window.wscClosePostageQuotes=()=>{window.wscStopPostagePermissionChecks();document.getElementById('wscPostageScreen').hidden=true;wscSetStockManagerView(true,true);};
+window.wscOpenPostageQuotes=async()=>{
+  if(opening)return;
+  const email=String(window.getCurrentStaffEmail?.()||'').trim().toLowerCase();
+  if(!email){window.showWSCMessage('Postage Quotes','Please sign in first.');return;}
+  opening=true;wscBOMLoading('Opening Postage Quotes…');
+  try {
+    // Fresh backend permission check for every entry, using the existing Worker action.
+    const result=await wscAdminRequest('getWSCPermissions',{includePostageQuoteRates:true});
+    if(String(window.getCurrentStaffEmail?.()||'').trim().toLowerCase()!==email)throw new Error('The signed-in user changed. Please open Postage Quotes again.');
+    if(result.functions?.POSTAGE_QUOTES!==true || !result.postageQuoteRates || typeof result.postageQuoteRates!=='object')throw new Error('Postage Quotes is unavailable. Check your permissions and that the updated Apps Script is deployed.');
+    RATES=result.postageQuoteRates;delete result.postageQuoteRates;
+    wscPermissions=result;wscPermissionEmail=email;wscPaintPermissions(result);
+    if(lastUser!==email){
+      document.getElementById('wscPostageForm').reset();lastUser=email;
+      $('destination').replaceChildren();populateDestinations();populateGuide();convert();
+    } else {update();convert();}
+    document.getElementById('wscStockManagerScreen').hidden=true;
+    const screen=document.getElementById('wscPostageScreen');screen.hidden=false;
+    window.scrollTo(0,0);document.getElementById('wscPostageHeading').focus({preventScroll:true});
+    window.wscStopPostagePermissionChecks();
+    permissionTimer=setInterval(()=>{if(!document.hidden&&!screen.hidden)void wscRefreshPermissions();},60000);
+  } catch(error) {window.showWSCMessage('Postage Quotes',String(error?.message||error));}
+  finally{opening=false;wscBOMLoadingEnd();}
+};
+
+})();
 </script>
 </body>
 </html>
