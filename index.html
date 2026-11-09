@@ -453,6 +453,7 @@ input[type="reset"]:disabled,
        alt="About Warehouse Stock Control">
   </a> 
 
+  <div id="wscHomeHeader">
   <h2 style="text-align:center;">
   Welcome to<br>Warehouse Stock Control<br>ITS Europe
   </h2>
@@ -472,7 +473,16 @@ input[type="reset"]:disabled,
 </div>
 
 
+  </div>
+  <nav id="wscHomeNavigation" aria-label="Home navigation">
+    <button id="wscStockManagerButton" type="button" onclick="wscSetStockManagerView(true, true)" style="width:100%;margin:15px 0;background:#294766;color:white;border-radius:12px;">📦 Stock Manager</button>
+    <p id="wscStockManagerSummary" role="status" aria-live="polite" hidden style="text-align:center;font-size:12px;margin:0 0 10px;"></p>
   <button id="wscDatesHomeButton" data-wsc-area="DATES" type="button" onclick="wscOpenDates()" style="width:100%; margin:30px 0 30px; background:#54799A; color:white;">📅 Check Dates</button>
+  <button id="wscHomeReportsButton" type="button" onclick="showReportsScreen()" style="width:100%; margin:12px 0 8px; background:#54799A; color:white;">📄 Reports</button>
+  </nav>
+  <section id="wscStockManagerScreen" aria-labelledby="wscStockManagerHeading" hidden>
+    <button type="button" onclick="wscSetStockManagerView(false, true)" style="width:100%;">🏠 Home</button>
+    <h2 id="wscStockManagerHeading" tabindex="-1" style="text-align:center;">📦 Stock Manager</h2>
   <button id="wscWeeklyBOMButton" data-wsc-area="WEEKLY_BOM" type="button" onclick="wscStartWeeklyBOM(this)" style="display:none;width:100%;margin:15px 0;background:#54799A;color:white;">🧩 Weekly BOM</button>
 
   <div class="wsc-module" data-module="ST"><div class="wsc-module-header">
@@ -491,11 +501,11 @@ input[type="reset"]:disabled,
     <button class="wsc-module-main" data-wsc-area="TR" type="button" onclick="wscModuleMainClick('TR')">🎪 TR – Trade Show</button>
     <button class="wsc-module-arrow" type="button" aria-label="Expand open Trade Shows" onclick="wscToggleModule('TR')" hidden>⌄</button>
   </div><div class="wsc-module-count" hidden></div><div class="wsc-module-detail" hidden><div id="homeTradeShowSessions"></div></div></div>
-  <button id="wscHomeReportsButton" type="button" onclick="showReportsScreen()" style="width:100%; margin:12px 0 8px; background:#54799A; color:white;">📄 Reports</button>
   <div class="wsc-module" data-module="QB" id="wscQbModule" hidden><div class="wsc-module-header wsc-attention">
     <button class="wsc-module-main" type="button" onclick="wscToggleModule('QB')">📋 Outstanding QB Commitments</button>
     <button class="wsc-module-arrow" type="button" onclick="wscToggleModule('QB')">⌄</button>
   </div><div class="wsc-module-count"></div><div class="wsc-module-detail" hidden id="wscOutstandingQBList"></div></div>
+  </section>
   <button id="wscAdminCog" type="button" onclick="wscOpenAdmin()" aria-label="Administrator settings" title="Administrator settings" style="display:none; position:fixed; right:16px; bottom:16px; z-index:1200; width:52px; height:52px; border-radius:50%; padding:0; font-size:25px; background:#164b84; color:white; box-shadow:0 2px 12px #0004;">⚙️</button>
   <div id="homeSessionsLoading" role="status" aria-live="polite" style="display:none; padding:15px; text-align:center;">
     <div style="display:inline-flex;align-items:center;gap:14px;padding:18px 24px;border-radius:12px;background:white;box-shadow:0 5px 24px rgba(0,0,0,.2);color:#304B70;font-weight:600;max-width:calc(100% - 30px);">
@@ -5072,6 +5082,36 @@ async function hideITSSplash() {
 }
   
 
+// Stock Manager is a view inside Welcome, so existing module and sign-in
+// navigation continues to hide the entire Home area as before.
+function wscSetStockManagerView(open, moveFocus) {
+  const header=document.getElementById('wscHomeHeader');
+  const navigation=document.getElementById('wscHomeNavigation');
+  const manager=document.getElementById('wscStockManagerScreen');
+  if(!header||!navigation||!manager)return;
+  header.hidden=!!open;navigation.hidden=!!open;manager.hidden=!open;
+  if(moveFocus) {
+    window.scrollTo(0,0);
+    const target=document.getElementById(open?'wscStockManagerHeading':'wscStockManagerButton');
+    if(target)target.focus({preventScroll:true});
+  }
+}
+// Preserve the Home overview while keeping its navigation to three buttons.
+// Open stock takes remain available through Stock Manager rather than Home.
+function wscUpdateStockManagerSummary() {
+  const summary=document.getElementById('wscStockManagerSummary');
+  if(!summary)return;
+  const parts=[];
+  if(wscPermissions) ['SC','DL','TR','QB'].forEach(area=>{
+    const module=document.querySelector('.wsc-module[data-module="'+area+'"]');
+    if(!module||module.hidden||module.style.display==='none')return;
+    const count=module.querySelector('.wsc-module-count');
+    if(count&&!count.hidden&&count.textContent.trim())parts.push(count.textContent.trim());
+  });
+  summary.textContent=parts.join(' • ');
+  summary.hidden=parts.length===0;
+}
+
 function wscModuleMainClick(area) {
   // Main buttons always open the working module. The separate arrow expands
   // outstanding sessions on Home; it must not hijack navigation.
@@ -5153,14 +5193,17 @@ function wscUpdateHomeModules() {
       ownCount ? ownCount + ' yours' : '',
       otherCount ? otherCount + ' other' : ''
     ].filter(Boolean).join(', ');
-    counter.textContent = count + ' open ' + label + (count === 1 ? '' : 's') + (ownership ? ' — ' + ownership : '');
+    const labelText = count === 1 ? label : (area === 'DL' ? 'deliveries' : label + 's');
+    counter.textContent = count + ' open ' + labelText + (ownership ? ' — ' + ownership : '');
     if (count === 0) detail.hidden = true;
   });
+  wscUpdateStockManagerSummary();
 }
 async function wscLoadOutstandingQB() {
   const module = document.getElementById('wscQbModule');
   const list = document.getElementById('wscOutstandingQBList');
   if (!module || !list) return;
+  try {
   module.hidden = true;
   list.replaceChildren();
   let result = wscHomeDashboardLists?.getHomeQBCommitments;
@@ -5252,9 +5295,11 @@ async function wscLoadOutstandingQB() {
     actions.append(review,commit);
     item.append(actions); list.appendChild(item);
   });
+  } finally {wscUpdateStockManagerSummary();}
 }
 
  async function showWelcomeScreen() {
+  wscSetStockManagerView(false);
   const datesScreen=document.getElementById('wscDatesScreen'); if(datesScreen) datesScreen.style.display='none';
   const datesAmend=document.getElementById('wscDatesAmendScreen');if(datesAmend)datesAmend.style.display='none';
   void wscRefreshPermissions();
@@ -7517,6 +7562,7 @@ function wscPaintPermissions(permissions) {
   });
   const trButton = document.getElementById("tradeShowCommitQBButton");
   if(trButton?.dataset.reportNumber)wscPaintLiveQBButton(trButton,trButton.dataset.reportNumber);
+  wscUpdateStockManagerSummary();
 }
 
 async function wscRefreshPermissions() {
