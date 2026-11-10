@@ -278,6 +278,15 @@ input[type="reset"]:disabled,
 
   </style>
 <style>
+#wscShopifyInvoiceScreen[hidden],#wscShopifyInvoiceScreen [hidden]{display:none!important}
+#wscShopifyInvoiceScreen{max-width:900px;margin:0 auto}
+#wscShopifyInvoiceScreen .wsc-invoice-card{background:white;border:1px solid #d5dce4;border-radius:12px;padding:20px;margin:18px 0}
+#wscShopifyInvoiceScreen label,#wscShopifyInvoiceScreen small{display:block;margin:12px 0 6px}
+#wscShopifyInvoiceScreen input{box-sizing:border-box;width:100%;min-height:44px;padding:10px 12px;border:1px solid #bac8d7;border-radius:7px;font-size:16px}
+#wscShopifyInvoiceScreen button{width:100%;margin:12px 0 4px}
+#wscShopifyInvoiceScreen button:disabled{opacity:.55}
+#wscShopifyInvoiceScreen .wsc-invoice-result{background:#eef4f9;color:#203247;border:1px solid #bac8d7;text-align:left}
+#wscInvoicePdfLink a{display:inline-block;padding:12px 0;color:#1b4f83;font-weight:bold}
 #wscPostageScreen[hidden]{display:none!important} #wscPostageScreen{width:100%;max-width:1200px;margin:0 auto;box-sizing:border-box}
 #wscPostageScreen *{box-sizing:border-box} #wscPostageScreen .layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,350px);gap:18px;align-items:start}
 #wscPostageScreen .layout{display:block}
@@ -516,6 +525,7 @@ input[type="reset"]:disabled,
   <button id="wscDatesHomeButton" data-wsc-area="DATES" type="button" onclick="wscOpenDates()" style="width:100%; margin:30px 0 30px; background:#54799A; color:white;">📅 Check Dates</button>
   <button id="wscHomeReportsButton" type="button" onclick="showReportsScreen()" style="width:100%; margin:12px 0 8px; background:#54799A; color:white;">📄 Reports</button>
   <button id="wscPostageQuotesButton" data-wsc-area="POSTAGE_QUOTES" type="button" onclick="wscOpenPostageQuotes()" style="display:none;width:100%;margin:35px 0 15px;background:#54799A;color:white;">📮 Postage Quotes</button>
+  <button id="wscShopifyInvoiceButton" data-wsc-area="SHOPIFY_INVOICES" type="button" onclick="wscOpenShopifyInvoices()" style="display:none;width:100%;margin:15px 0;background:#54799A;color:white;">🧾 Shopify Invoices</button>
   </nav>
   <section id="wscStockManagerScreen" aria-labelledby="wscStockManagerHeading" hidden>
     <button type="button" onclick="wscSetStockManagerView(false, true)" style="width:100%;">🏠 Home</button>
@@ -591,6 +601,31 @@ input[type="reset"]:disabled,
     </form>
     <dialog id="wscPQPdfDialog" aria-labelledby="wscPQPdfTitle"><h3 id="wscPQPdfTitle">Choose a quote</h3><p>Select the details to include in your PDF.</p><div class="pdf-options"><button class="primary" id="wscPQPrintInternal" type="button">In-house quote — all details</button><button class="primary" id="wscPQPrintCustomer" type="button">Customer quote — address, parcel and price</button><button class="secondary" id="wscPQPrintCancel" type="button">Cancel</button></div></dialog>
     <p class="pqp-footer">No orders or labels are created. Confirm the parcel and contents with Royal Mail.</p>
+  </section>
+  <section id="wscShopifyInvoiceScreen" hidden aria-labelledby="wscShopifyInvoiceHeading">
+    <button type="button" onclick="wscCloseShopifyInvoices()" style="width:100%">🏠 Home</button>
+    <h2 id="wscShopifyInvoiceHeading" tabindex="-1" style="text-align:center">🧾 Shopify Invoices</h2>
+    <div class="wsc-invoice-card">
+      <label for="wscInvoiceSearch"><strong>Shopify order number</strong></label>
+      <input id="wscInvoiceSearch" type="text" autocomplete="off" maxlength="80" placeholder="For example, 10897">
+      <button id="wscInvoiceFind" type="button">🔍 Search orders</button>
+      <p id="wscInvoiceSearchStatus" role="status" aria-live="polite"></p>
+      <div id="wscInvoiceResults"></div>
+    </div>
+    <div id="wscInvoiceDetails" class="wsc-invoice-card" hidden>
+      <h3 id="wscInvoiceOrderHeading"></h3>
+      <p id="wscInvoiceOrderStatus"></p>
+      <label for="wscInvoiceSupplyDate"><strong>Supply date</strong></label>
+      <input id="wscInvoiceSupplyDate" type="date">
+      <small>Check that this is the date the goods or services were supplied.</small>
+      <button id="wscInvoicePreview" type="button">📄 Prepare invoice PDF</button>
+      <div id="wscInvoicePdfLink"></div>
+      <label for="wscInvoiceRecipient"><strong>Email invoice to</strong></label>
+      <input id="wscInvoiceRecipient" type="email" autocomplete="off" maxlength="254" placeholder="Enter recipient email address">
+      <button id="wscInvoiceSend" type="button" disabled>✉️ Email invoice PDF</button>
+      <p id="wscInvoiceMessage" role="status" aria-live="polite"></p>
+      <small>After sending, the order details are cleared from this screen.</small>
+    </div>
   </section>
   <button id="wscAdminCog" type="button" onclick="wscOpenAdmin()" aria-label="Administrator settings" title="Administrator settings" style="display:none; position:fixed; right:16px; bottom:16px; z-index:1200; width:52px; height:52px; border-radius:50%; padding:0; font-size:25px; background:#164b84; color:white; box-shadow:0 2px 12px #0004;">⚙️</button>
   <div id="homeSessionsLoading" role="status" aria-live="polite" style="display:none; padding:15px; text-align:center;">
@@ -5175,6 +5210,9 @@ function wscSetStockManagerView(open, moveFocus) {
   const navigation=document.getElementById('wscHomeNavigation');
   const manager=document.getElementById('wscStockManagerScreen');
   if(!header||!navigation||!manager)return;
+  const invoice=document.getElementById('wscShopifyInvoiceScreen');
+  if(invoice && !invoice.hidden && typeof window.wscClearShopifyInvoices==='function')window.wscClearShopifyInvoices();
+  if(invoice)invoice.hidden=true;
   const postage=document.getElementById('wscPostageScreen');if(postage)postage.hidden=true;
   if(typeof window.wscStopPostagePermissionChecks==='function')window.wscStopPostagePermissionChecks();
   header.hidden=!!open;navigation.hidden=!!open;manager.hidden=!open;
@@ -7169,7 +7207,7 @@ if (["ST","SC"].includes(selectedReportType)) {
 window.WSC_ADMIN_URL = "https://warehouse-stock-reports.tmerry.workers.dev";
 let wscAdminData = null;
 let wscPermissions = null;
-const wscLabels = {POSTAGE_QUOTES:"📮 Postage Quotes",WEEKLY_BOM:"🧩 Weekly BOM",BOM:"🧩 BOM – Bill of Materials",ST:"📦 ST – Stock Take",SC:"📋 SC – Stock Count",TR:"🎪 TR – Trade Show",DL:"🚚 DL – Delivery",DATES:"📅 Check Dates"};
+const wscLabels = {SHOPIFY_INVOICES:"🧾 Shopify Invoices",POSTAGE_QUOTES:"📮 Postage Quotes",WEEKLY_BOM:"🧩 Weekly BOM",BOM:"🧩 BOM – Bill of Materials",ST:"📦 ST – Stock Take",SC:"📋 SC – Stock Count",TR:"🎪 TR – Trade Show",DL:"🚚 DL – Delivery",DATES:"📅 Check Dates"};
 async function wscAdminRequest(action, extra={}) {
   const idToken = await window.getCurrentStaffToken();
   const response = await fetch(window.WSC_ADMIN_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,idToken,...extra})});
@@ -7635,6 +7673,8 @@ async function wscConfirmStockQBReviewResolved(number) {
 function wscPaintPermissions(permissions) {
   const cog = document.getElementById("wscAdminCog");
   const areas = permissions?.functions || {};
+  const invoice=document.getElementById('wscShopifyInvoiceScreen');
+  if(invoice && !invoice.hidden && areas.SHOPIFY_INVOICES!==true && typeof window.wscCloseShopifyInvoices==='function') window.wscCloseShopifyInvoices();
   const postage=document.getElementById('wscPostageScreen');
   if(postage && !postage.hidden && areas.POSTAGE_QUOTES!==true && typeof window.wscClosePostageQuotes==='function') window.wscClosePostageQuotes();
   document.querySelectorAll("[data-wsc-area]").forEach(button => {
@@ -7752,7 +7792,7 @@ function wscSwitchRow(label,enabled,onChange,disabled=false){
 function wscRenderAdminStaff(){
   const box=document.getElementById("wscStaffToggles"),email=document.getElementById("wscStaffSelect").value;
   box.replaceChildren();const member=wscAdminData?.staff.find(s=>s.email===email);if(!member)return;
-  ["ST","SC","TR","DL","DATES","WEEKLY_BOM","POSTAGE_QUOTES"].forEach(area=>box.appendChild(wscSwitchRow(wscLabels[area],member.functions[area],input=>wscSaveSwitch(input,"STAFF",area,email))));
+  ["ST","SC","TR","DL","DATES","WEEKLY_BOM","POSTAGE_QUOTES","SHOPIFY_INVOICES"].forEach(area=>box.appendChild(wscSwitchRow(wscLabels[area],member.functions[area],input=>wscSaveSwitch(input,"STAFF",area,email))));
 }
 function wscRenderAdminQB(){
   const box=document.getElementById("wscQBToggles");box.replaceChildren();
@@ -7983,7 +8023,7 @@ function wscIdleVisible(id) {
   return !!el && el.getClientRects().length>0 && getComputedStyle(el).visibility!=='hidden';
 }
 function wscIdleSafeToRefresh() {
-  return wscIdleVisible('welcomeScreen') && !wscIdleVisible('wscPostageScreen') && wscPendingRequests===0 &&
+  return wscIdleVisible('welcomeScreen') && !wscIdleVisible('wscPostageScreen') && !wscIdleVisible('wscShopifyInvoiceScreen') && wscPendingRequests===0 &&
     !document.querySelector('dialog[open]:not(#wscIdleDialog)') &&
     !(typeof wscLiveQBUI!=='undefined' && wscLiveQBUI.busy) &&
     !document.querySelector('input:focus,textarea:focus,select:focus');
@@ -9351,6 +9391,79 @@ window.wscOpenPostageQuotes=async()=>{
 };
 
 })();
+</script>
+<script>
+(function(){
+  const id=name=>document.getElementById('wscInvoice'+name);
+  const screen=()=>document.getElementById('wscShopifyInvoiceScreen');
+  let selected=null,previewKey='',pdfUrl='',serial=0,busy=false,timer=null,mailUncertain=false;
+  function clearPdf(){if(pdfUrl){URL.revokeObjectURL(pdfUrl);pdfUrl='';}previewKey='';id('PdfLink').replaceChildren();id('Send').disabled=true;}
+  function clear(){serial++;selected=null;mailUncertain=false;clearPdf();id('Search').value='';id('SearchStatus').textContent='';id('Results').replaceChildren();id('OrderHeading').textContent='';id('OrderStatus').textContent='';id('SupplyDate').value='';id('Recipient').value='';id('Message').textContent='';id('Details').hidden=true;}
+  function stopTimer(){if(timer!==null){clearInterval(timer);timer=null;}}
+  function setBusy(value,label){busy=value;for(const name of ['Search','Find','SupplyDate','Recipient','Preview'])id(name).disabled=value;id('Send').disabled=value||!previewKey||mailUncertain;if(value)wscBOMLoading(label||'Processing…');else wscBOMLoadingEnd();}
+  const currentKey=()=>selected?[selected.id,selected.updatedAt,selected.issueDate,id('SupplyDate').value].join('|'):'';
+  function current(seq,staff){return serial===seq && !screen().hidden && String(window.getCurrentStaffEmail?.()||'').toLowerCase()===staff;}
+  window.wscClearShopifyInvoices=()=>{stopTimer();clear();};
+  window.wscCloseShopifyInvoices=()=>{window.wscClearShopifyInvoices();screen().hidden=true;wscSetStockManagerView(false,false);window.scrollTo(0,0);const button=document.getElementById('wscShopifyInvoiceButton');if(button && button.style.display!=='none')button.focus({preventScroll:true});};
+  window.wscOpenShopifyInvoices=async()=>{
+    if(busy)return;const staff=String(window.getCurrentStaffEmail?.()||'').toLowerCase();if(!staff){window.showWSCMessage('Shopify Invoices','Please sign in first.');return;}
+    setBusy(true,'Opening Shopify Invoices…');
+    try{
+      const permissions=await wscAdminRequest('getWSCPermissions');
+      if(staff!==String(window.getCurrentStaffEmail?.()||'').toLowerCase() || permissions.functions?.SHOPIFY_INVOICES!==true)throw new Error('Shopify Invoices access is unavailable for this account.');
+      wscPermissions=permissions;wscPermissionEmail=staff;wscPaintPermissions(permissions);clear();
+      document.getElementById('wscHomeHeader').hidden=true;document.getElementById('wscHomeNavigation').hidden=true;document.getElementById('wscStockManagerScreen').hidden=true;
+      const postage=document.getElementById('wscPostageScreen');if(postage)postage.hidden=true;if(typeof window.wscStopPostagePermissionChecks==='function')window.wscStopPostagePermissionChecks();
+      screen().hidden=false;window.scrollTo(0,0);document.getElementById('wscShopifyInvoiceHeading').focus({preventScroll:true});
+      stopTimer();timer=setInterval(()=>{if(!document.hidden&&!screen().hidden)void wscRefreshPermissions();},60000);
+    }catch(error){window.showWSCMessage('Shopify Invoices',String(error.message||error));}finally{setBusy(false);}
+  };
+  async function choose(order){
+    if(busy)return;clearPdf();selected=null;id('Details').hidden=true;id('Message').textContent='';const seq=++serial,staff=String(window.getCurrentStaffEmail?.()||'').toLowerCase();setBusy(true,'Loading Shopify order…');
+    try{
+      const result=await wscAdminRequest('getShopifyInvoiceOrder',{orderId:order.id});if(!current(seq,staff))return;
+      selected=result.order;if(!selected?.id||!selected.updatedAt||!selected.issueDate)throw new Error('Shopify did not return the complete order.');
+      id('OrderHeading').textContent='Order '+selected.name;id('OrderStatus').textContent='Payment: '+String(selected.status||'Unknown').replace(/_/g,' ');
+      id('SupplyDate').value=selected.date||'';id('Recipient').value=selected.email||'';id('Details').hidden=false;id('Details').scrollIntoView({behavior:'smooth',block:'start'});
+    }catch(error){if(current(seq,staff))id('SearchStatus').textContent=String(error.message||error);}finally{setBusy(false);}
+  }
+  id('Find').addEventListener('click',async()=>{
+    if(busy)return;const term=id('Search').value.trim();if(!/^[A-Za-z0-9#][A-Za-z0-9#_.-]{1,79}$/.test(term)){id('SearchStatus').textContent='Enter at least two characters from the order number.';return;}
+    clearPdf();selected=null;id('Details').hidden=true;id('Results').replaceChildren();id('SearchStatus').textContent='';const seq=++serial,staff=String(window.getCurrentStaffEmail?.()||'').toLowerCase();setBusy(true,'Searching Shopify orders…');
+    try{
+      const result=await wscAdminRequest('searchShopifyInvoiceOrders',{term});if(!current(seq,staff))return;
+      const rows=Array.isArray(result.orders)?result.orders:[];id('SearchStatus').textContent=rows.length?(rows.length+' order(s) found'+(result.more?' — enter more of the number to narrow the results.':'.')):'No matching orders found. Older orders may require additional Shopify access.';
+      for(const order of rows){const b=document.createElement('button');b.type='button';b.className='wsc-invoice-result';const date=order.createdAt?new Date(order.createdAt).toLocaleDateString('en-GB'):'';b.textContent=order.name+' — '+date+' — '+String(order.status||'Unknown').replace(/_/g,' ');b.addEventListener('click',()=>choose(order));id('Results').appendChild(b);}
+    }catch(error){if(current(seq,staff))id('SearchStatus').textContent=String(error.message||error);}finally{setBusy(false);}
+  });
+  id('Search').addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();id('Find').click();}});
+  id('Search').addEventListener('input',()=>{if(!busy){serial++;selected=null;clearPdf();id('Results').replaceChildren();id('Details').hidden=true;id('SearchStatus').textContent='';}});
+  id('SupplyDate').addEventListener('change',()=>{clearPdf();id('Message').textContent='Prepare the invoice again after changing the supply date.';});
+  id('Preview').addEventListener('click',async()=>{
+    if(busy||!selected)return;if(!/^\d{4}-\d{2}-\d{2}$/.test(id('SupplyDate').value)){id('Message').textContent='Enter the date of supply.';return;}
+    clearPdf();id('Message').textContent='';const seq=serial,staff=String(window.getCurrentStaffEmail?.()||'').toLowerCase(),order=selected,date=id('SupplyDate').value;setBusy(true,'Preparing invoice PDF…');
+    try{
+      const result=await wscAdminRequest('getShopifyInvoicePdf',{orderId:order.id,expectedUpdatedAt:order.updatedAt,supplyDate:date,issueDate:order.issueDate});if(!current(seq,staff))return;
+      if(!result.pdfBase64)throw new Error('The PDF could not be prepared.');const raw=atob(result.pdfBase64),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
+      pdfUrl=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));const link=document.createElement('a');link.href=pdfUrl;link.target='_blank';link.rel='noopener';link.download=result.filename||'ITS_Europe_Invoice.pdf';link.textContent='Open / download invoice PDF';id('PdfLink').appendChild(link);
+      previewKey=currentKey();id('Message').textContent='Review the PDF and recipient before emailing.';
+    }catch(error){if(current(seq,staff))id('Message').textContent=String(error.message||error);}finally{setBusy(false);}
+  });
+  id('Send').addEventListener('click',async()=>{
+    if(busy||!selected||mailUncertain)return;if(!previewKey||previewKey!==currentKey()){clearPdf();id('Message').textContent='Prepare and check the invoice first.';return;}
+    const recipient=id('Recipient').value.trim();if(!/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(recipient)){id('Message').textContent='Enter one valid recipient email address.';return;}
+    if(!window.confirm('Email invoice '+selected.name+' to '+recipient+'?'))return;
+    const seq=serial,staff=String(window.getCurrentStaffEmail?.()||'').toLowerCase(),order=selected,date=id('SupplyDate').value;
+    if(!window.crypto?.randomUUID){id('Message').textContent='Your browser cannot safely start this email. Please use an up-to-date browser.';return;}
+    const requestId=window.crypto.randomUUID();setBusy(true,'Emailing the invoice…');
+    try{
+      await wscAdminRequest('emailShopifyInvoice',{orderId:order.id,expectedUpdatedAt:order.updatedAt,supplyDate:date,issueDate:order.issueDate,recipient,requestId});if(!current(seq,staff))return;
+      clear();id('SearchStatus').textContent='Invoice emailed. The order details have been cleared from WSC.';
+    }catch(error){if(current(seq,staff)){mailUncertain=true;id('Message').textContent='The email outcome could not be confirmed: '+String(error.message||error)+'. Check the sending mailbox and recipient before trying again.';}}
+    finally{setBusy(false);}
+  });
+})();
+
 </script>
 </body>
 </html>
