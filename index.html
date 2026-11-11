@@ -9428,7 +9428,7 @@ window.wscOpenPostageQuotes=async()=>{
 (function(){
   const id=name=>document.getElementById('wscInvoice'+name);
   const screen=()=>document.getElementById('wscShopifyInvoiceScreen');
-  let selected=null,previewKey='',pdfUrl='',serial=0,busy=false,timer=null,mailUncertain=false;
+  let selected=null,previewKey='',pdfUrl='',serial=0,busy=false,confirming=false,timer=null,mailUncertain=false;
   function clearPdf(){if(pdfUrl){URL.revokeObjectURL(pdfUrl);pdfUrl='';}previewKey='';id('PdfLink').replaceChildren();id('Send').disabled=true;}
   function clear(){serial++;selected=null;mailUncertain=false;clearPdf();id('Search').value='';id('SearchStatus').textContent='';id('Results').replaceChildren();id('OrderHeading').textContent='';id('OrderStatus').textContent='';id('SupplyDate').value='';id('Recipient').value='';id('Message').textContent='';id('Details').hidden=true;}
   function stopTimer(){if(timer!==null){clearInterval(timer);timer=null;}}
@@ -9482,10 +9482,18 @@ window.wscOpenPostageQuotes=async()=>{
     }catch(error){if(current(seq,staff))id('Message').textContent=String(error.message||error);}finally{setBusy(false);}
   });
   id('Send').addEventListener('click',async()=>{
-    if(busy||!selected||mailUncertain)return;if(!previewKey||previewKey!==currentKey()){clearPdf();id('Message').textContent='Prepare and check the invoice first.';return;}
+    if(busy||confirming||!selected||mailUncertain)return;if(!previewKey||previewKey!==currentKey()){clearPdf();id('Message').textContent='Prepare and check the invoice first.';return;}
     const recipient=id('Recipient').value.trim();if(!/^[^\s@,;]+@[^\s@,;]+\.[^\s@,;]+$/.test(recipient)){id('Message').textContent='Enter one valid recipient email address.';return;}
-    if(!window.confirm('Email invoice '+selected.name+' to '+recipient+'?'))return;
-    const seq=serial,staff=String(window.getCurrentStaffEmail?.()||'').toLowerCase(),order=selected,date=id('SupplyDate').value;
+    const seq=serial,staff=String(window.getCurrentStaffEmail?.()||'').toLowerCase(),order=selected,date=id('SupplyDate').value,confirmedPreview=previewKey;
+    let confirmed=false;confirming=true;
+    try{
+      confirmed=await window.showWSCConfirm('Email Invoice','Email invoice <strong>'+escapeHtml(order.name)+'</strong> to <strong>'+escapeHtml(recipient)+'</strong>?',{confirmLabel:'Send invoice',cancelLabel:'Cancel'});
+    }catch(error){if(current(seq,staff))id('Message').textContent='Unable to show confirmation. Please try again.';return;}finally{confirming=false;}
+    if(!confirmed)return;
+    if(!current(seq,staff)||selected!==order||busy||mailUncertain||!previewKey||previewKey!==confirmedPreview||previewKey!==currentKey()||id('Recipient').value.trim()!==recipient){
+      if(current(seq,staff))id('Message').textContent='The order or recipient changed. Please review and confirm again.';
+      return;
+    }
     if(!window.crypto?.randomUUID){id('Message').textContent='Your browser cannot safely start this email. Please use an up-to-date browser.';return;}
     const requestId=window.crypto.randomUUID();setBusy(true,'Emailing the invoice…');
     try{
