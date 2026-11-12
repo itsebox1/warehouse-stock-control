@@ -1,0 +1,31 @@
+:is(button, input[type="button"], input[type="submit"], input[type="reset"], [role="button"]):not(:disabled, [aria-disabled="true"]):active {
+  filter: brightness(.88);
+}
+
+input[type="file"]:not(:disabled):active::file-selector-button {
+  filter: brightness(.88);
+}
+
+.wsc-button-pressed {
+  filter: brightness(.88);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .wsc-button-pressed {
+    animation: wsc-button-press 220ms ease-out both;
+  }
+
+  @keyframes wsc-button-press {
+    0%, 25% {
+      scale: .97;
+      translate: 0 1px;
+      filter: brightness(.88);
+    }
+
+    100% {
+      scale: 1;
+      translate: 0 0;
+      filter: brightness(1);
+    }
+  }
+}

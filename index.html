@@ -22,6 +22,8 @@
 #wscDatesScreen input,#wscDatesAmendScreen input,#wscDatesScreen select,#wscDatesAmendScreen select,#wscDatesScreen textarea,#wscDatesAmendScreen textarea{font-size:16px!important;max-width:100%;}#wscDatesScreen,#wscDatesAmendScreen{width:100%;box-sizing:border-box;}@keyframes wscUnifiedSpin {to {transform:rotate(360deg)}}
 </style>
   <title>Warehouse Stock Control</title>
+  <link rel="stylesheet" href="./wsc-buttons.css?v=1.0.5">
+  <script src="./wsc-buttons.js?v=1.0.5" defer></script>
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#163e6e">
   <link rel="icon" type="image/png" sizes="192x192" href="wsc-icon-192.png">
@@ -8150,11 +8152,14 @@ window.addEventListener('focus',()=>wscIdleActivity());
 
 // ----- END WSC DEVICE PIN LOCK -----
 
- document.getElementById("loginButton").addEventListener("click", async () => {
+ document.getElementById("loginButton").addEventListener("click", async (event) => {
+  const button = event.currentTarget;
+  if (button.disabled) return;
   const email = document.getElementById("loginEmail").value.trim();
   const password = document.getElementById("loginPassword").value;
   const message = document.getElementById("loginMessage");
 
+  button.disabled = true;
   message.textContent = "Signing in...";
 
   try {
@@ -8162,6 +8167,8 @@ window.addEventListener('focus',()=>wscIdleActivity());
     message.textContent = "";
   } catch (error) {
     message.textContent = "Sign-in failed: " + error.message;
+  } finally {
+    button.disabled = false;
   }
 }); 
 
@@ -8577,7 +8584,7 @@ async function getQuickBooksCommitStatusForST(reportNumber) {
 }
   
 // WSC deployment version. Update version.txt LAST, after any backend deployments.
-const WSC_VERSION = "1.0.4";
+const WSC_VERSION = "1.0.5";
 
 function isNewerWSCVersion(remote, current) {
   const r = remote.split(".").map(Number);
@@ -9944,7 +9951,7 @@ window.wscOpenPostageQuotes=async()=>{
    const postage=document.getElementById('wscPostageScreen');if(postage)postage.hidden=true;
    const invoices=document.getElementById('wscShopifyInvoiceScreen');if(invoices)invoices.hidden=true;
    const f=frame();if(!f)throw new Error('Batch Orders is unavailable.');
-   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=20261112-parcels');batchUser=user;}
+   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=1.0.5');batchUser=user;}
    screen().hidden=false;window.scrollTo(0,0);document.getElementById('wscBatchOrderHeading').focus({preventScroll:true});
    if(permissionTimer!==null)clearInterval(permissionTimer);permissionTimer=setInterval(()=>{if(!document.hidden&&isActive())void wscRefreshPermissions();},60000);
   }catch(error){window.showWSCMessage('Batch Orders',String(error?.message||error));}
