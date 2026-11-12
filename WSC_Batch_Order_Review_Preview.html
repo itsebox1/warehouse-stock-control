@@ -30,6 +30,15 @@
 .customer-choices{list-style:none;margin:-5px 0 0;padding:0;max-height:240px;overflow:auto;background:#fff;border:1px solid #a9becf;border-radius:0 0 7px 7px;box-shadow:0 4px 10px rgba(33,49,70,.12)}
 .customer-choices li{padding:10px 12px;cursor:pointer;border-bottom:1px solid #e6edf2}.customer-choices li:last-child{border-bottom:0}.customer-choices li:hover,.customer-choices li.active{background:#e6f1fa;color:#183a5a}
 .qb-customer-panel #qbCustomerAddress strong{display:block;margin-top:10px}
+
+.document-actions{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:14px}
+.document-actions button{min-height:48px;white-space:nowrap}.post-globe{display:inline-block}
+.is-loading .post-globe{animation:post-spin 1s linear infinite}@keyframes post-spin{to{transform:rotate(360deg)}}
+.parcel-details{border:1px solid #c8d4df;border-radius:8px;padding:14px;margin-top:14px;background:#f9fbfd}
+.post-box{border-top:1px solid #d5dfe8;padding:12px 0}.post-box-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.post-destination{grid-template-columns:1fr 1fr}
+@media(max-width:650px){.document-actions{align-items:stretch;flex-direction:column}.document-actions button{width:100%}.post-box-grid{grid-template-columns:1fr 1fr}}
+@media(prefers-reduced-motion:reduce){.is-loading .post-globe{animation:none}}
 </style>
 </head>
 <body><main>
@@ -82,15 +91,23 @@
     <p class="muted">QuickBooks customer, product, account and VAT details still need to be connected and checked.</p>
    </section>
    <section class="card" aria-labelledby="typeTitle"><h2 id="typeTitle">Choose document and charges</h2>
-    <fieldset style="border:0;padding:0;margin:0"><legend style="font-weight:bold;font-size:.9rem;margin-bottom:8px">Document type</legend><div class="type-row"><label class="choice"><input type="radio" name="documentType" value="Invoice" checked> Invoice</label><label class="choice"><input type="radio" name="documentType" value="Pro Forma"> Pro Forma</label></div></fieldset>
+    <div class="document-actions"><fieldset style="border:0;padding:0;margin:0"><legend style="font-weight:bold;font-size:.9rem;margin-bottom:8px">Document type</legend><div class="type-row"><label class="choice"><input type="radio" name="documentType" value="Invoice" checked> Invoice</label><label class="choice"><input type="radio" name="documentType" value="Pro Forma"> Pro Forma</label></div></fieldset><button id="generatePostage" class="primary" type="button"><span class="post-globe" aria-hidden="true">🌐</span> Generate Postage</button></div>
     <div class="charge"><label class="charge-title"><input id="bank" type="checkbox"> Bank charge</label><div id="bankFields" class="field" hidden><label for="bankAmount">Bank charge (£)</label><input id="bankAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Enter amount"></div><p class="muted">The real charge still needs to be configured.</p></div>
     <div class="charge"><label class="charge-title"><input id="smallFee" type="checkbox"> Small order fee — £25.00</label><p id="smallFeeHint" class="muted"></p><p class="muted">Preview assumption: the £250 threshold is before VAT and delivery; this still needs confirming.</p></div>
-    <div class="charge"><label class="charge-title"><input id="postage" type="checkbox"> Post — Royal Mail Tracked 24</label>
+    <div class="charge"><label class="charge-title"><input id="postage" type="checkbox"> Post</label>
      <div id="postFields" class="post-fields" hidden>
-      <p class="muted">The postage price is calculated automatically from the order, delivery address and packed boxes when WSC is connected.</p>
+      <div class="field"><label for="postService">Royal Mail service</label><select id="postService"><option value="tracked24">Royal Mail Tracked 24</option><option value="tracked48">Royal Mail Tracked 48</option><option value="international">International</option></select></div>
       <div class="grid post-adjustments"><div class="field"><label for="postPacking">Packaging fee for the order (£)</label><input id="postPacking" type="number" min="0" step="0.01" value="0" inputmode="decimal"><small>Leave blank or 0 if not required.</small></div><div class="field"><label for="postMarkup">Add percentage (%)</label><input id="postMarkup" type="number" min="0" step="0.1" value="10" inputmode="decimal"><small>Applied to postage plus packaging. Leave blank or 0 if not required.</small></div></div>
-      <div class="post-breakdown" aria-live="polite"><div><span id="postBaseLabel">Tracked 24 postage</span><strong id="postBaseDisplay">—</strong></div><div><span>Packaging</span><strong id="postPackingDisplay">—</strong></div><div><span>Percentage uplift</span><strong id="postMarkupDisplay">—</strong></div><div><span>Postage charge for invoice</span><strong id="postChargeDisplay">—</strong></div></div>
-      <p id="postCalcStatus" class="muted" role="status"></p>
+      <div class="post-breakdown" aria-live="polite"><div><span id="postBaseLabel">Royal Mail postage</span><strong id="postBaseDisplay">—</strong></div><div><span>Packaging</span><strong id="postPackingDisplay">—</strong></div><div><span>Percentage uplift</span><strong id="postMarkupDisplay">—</strong></div><div><span>Postage charge for invoice</span><strong id="postChargeDisplay">—</strong></div></div>
+      <p id="postCalcStatus" class="muted" role="status" aria-live="polite"></p>
+      <div id="postParcelDetails" class="parcel-details" hidden>
+       <h3>Check packed parcels</h3><p class="muted">WSC does not yet have verified packed weights and box rules for every product. Enter the actual packed details for this order to get a live price.</p>
+       <div class="grid post-destination"><div class="field"><label for="postCountry">Delivery country code (3 letters)</label><input id="postCountry" maxlength="3" autocomplete="off" placeholder="e.g. GBR"></div><div class="field"><label for="postCode">Delivery postcode</label><input id="postCode" maxlength="30" autocomplete="off"></div></div>
+       <div id="postBoxes"></div><button id="postAddBox" class="minor" type="button">＋ Add another box</button>
+       <div id="postVatFields" class="field" hidden><label for="postVat">How should the Royal Mail VAT amount be handled?</label><select id="postVat"><option value="">Check with Royal Mail</option><option value="included">Returned price already includes VAT</option><option value="add">Add the returned VAT to the price</option></select></div>
+       <p class="muted">Check the delivery country, postcode, dimensions, packed weight and VAT treatment before using the price.</p>
+       <button id="postGetPrices" class="primary" type="button">Generate Postage</button>
+      </div>
      </div>
     </div>
     <div class="totals" aria-live="polite"><div class="total-row"><span>Products</span><span id="sumGoods">—</span></div><div class="total-row"><span>Bank charge</span><span id="sumBank">—</span></div><div class="total-row"><span>Small order fee</span><span id="sumFee">—</span></div><div class="total-row"><span>Postage</span><span id="sumPost">—</span></div><div class="total-row strong"><span>Preview total</span><span id="sumTotal">—</span></div><small>Invoice VAT is not calculated in this preview; check the VAT treatment of the postage price.</small></div>
@@ -702,80 +719,126 @@ function usesBulk(row){const total=quantityForSku(row);return total!==null&&tota
 function priceFor(row){if(priceChoice==='example')return 800;if(priceChoice!=='sheet')return null;const entry=matchedEntry(row);if(!entry||(entry.substitution&&row.matchPriceApproval!=='yes'))return null;return WSCPriceSheets.displayedPence(usesBulk(row)?entry.bulk:entry.price);}
 function lineTotal(row){const pence=priceFor(row),q=Number(row.quantity);if(pence===null||!Number.isSafeInteger(q)||q<=0)return null;const product=pence*q;return Number.isSafeInteger(product)?product:null;}
 function goodsTotal(){const rows=includedItems();if(!rows.length)return null;let sum=0;for(const row of rows){const line=lineTotal(row);if(line===null||!Number.isSafeInteger(sum+line))return null;sum+=line;}return sum;}
-// A future WSC integration must provide wscPrepareBatchPostage. It must resolve
-// the confirmed customer in QB and produce packed, weighed parcels; the preview
-// never invents those details. This contract is not present in WSC today.
-function postBridgeReady(){return typeof window.wscPrepareBatchPostage==='function'&&typeof window.wscAdminRequest==='function'&&typeof window.getCurrentStaffToken==='function'&&typeof window.getCurrentStaffEmail==='function';}
-function postStaff(){try{return postBridgeReady()?String(window.getCurrentStaffEmail()||'').trim().toLowerCase():'';}catch(_){return '';}}
+// Postage is read-only. A price is never inferred from an unverified box.
+let postParcelSignature='';
+const POST_SERVICES={tracked24:'Royal Mail Tracked 24',tracked48:'Royal Mail Tracked 48',international:'International'};
+const POST_COUNTRY_CODES={"Denmark": "DNK", "France": "FRA", "Germany": "DEU", "Ireland": "IRL", "Monaco": "MCO", "Austria": "AUT", "Belgium": "BEL", "Bulgaria": "BGR", "Croatia": "HRV", "Cyprus": "CYP", "Czech Republic": "CZE", "Estonia": "EST", "Finland": "FIN", "Greece": "GRC", "Hungary": "HUN", "Italy": "ITA", "Latvia": "LVA", "Lithuania": "LTU", "Luxembourg": "LUX", "Malta": "MLT", "Netherlands": "NLD", "Poland": "POL", "Portugal": "PRT", "Romania": "ROU", "Slovakia": "SVK", "Slovenia": "SVN", "Spain": "ESP", "Sweden": "SWE", "Albania": "ALB", "Andorra": "AND", "Armenia": "ARM", "Azerbaijan": "AZE", "Belarus": "BLR", "Bosnia and Herzegovina": "BIH", "Faroe Islands": "FRO", "Georgia": "GEO", "Gibraltar": "GIB", "Greenland": "GRL", "Iceland": "ISL", "Kazakhstan": "KAZ", "Kyrgyzstan": "KGZ", "Liechtenstein": "LIE", "Moldova": "MDA", "Montenegro": "MNE", "North Macedonia": "MKD", "Norway": "NOR", "Russia": "RUS", "San Marino": "SMR", "Serbia": "SRB", "Switzerland": "CHE", "Tajikistan": "TJK", "Turkey": "TUR", "Turkmenistan": "TKM", "Ukraine": "UKR", "Uzbekistan": "UZB", "Vatican City": "VAT", "United Kingdom": "GBR", "Guernsey": "GGY", "Isle of Man": "IMN", "Jersey": "JEY"};
+function postBridgeReady(){const bridge=customerBridge();return !!bridge&&typeof bridge.quotePostage==='function';}
+function postStaff(){return customerStaff();}
 function clearPostLive(){postSerial++;if(postTimer!==null){clearTimeout(postTimer);postTimer=null;}postAuto={status:'idle',key:'',message:'',raw:null,boxes:0,source:'',expires:0};}
-function clearPostForChangedOrder(){clearPostLive();}
+function clearPostForChangedOrder(){clearPostLive();postParcelSignature='';$('postParcelDetails').hidden=true;}
 function postProblem(message){const e=new Error(message);e.expectedPostageProblem=true;return e;}
-function postIsCurrent(serial,key,email){return serial===postSerial&&$('postage').checked&&confirmedSignature===detailsSignature()&&key===detailsSignature()&&(examplePricing||postStaff()===email);}
-function ensureAutoPostage(){
- if(!$('postage').checked||confirmedSignature===null||confirmedSignature!==detailsSignature())return;
- const key=detailsSignature(),email=postStaff(),bridge=postBridgeReady();
- if(postAuto.key===key&&postAuto.email===email&&postAuto.bridge===bridge){
-  if(postAuto.status!=='ready'||postAuto.source==='example'||Date.now()<postAuto.expires)return;
- }
- clearPostLive();const serial=postSerial;
- postAuto={status:'loading',key,email,bridge,raw:null,boxes:0,source:'',expires:0,message:'Calculating Royal Mail Tracked 24 postage…'};
- if(examplePricing){postAuto={...postAuto,status:'ready',raw:9.30,boxes:2,source:'example',message:'Example only: simulated postage for two boxes. This is not a live quote.'};return;}
- if(!bridge){postAuto.status='unavailable';postAuto.message=customerBridge()?'Automatic postage still needs verified packed-box weights and packing rules in WSC. No postage price is available.':'Automatic postage needs the WSC and QuickBooks connection. No price is available in this preview.';return;}
- if(!email){postAuto.status='unavailable';postAuto.message='Sign in to WSC to calculate postage.';return;}
- const rows=includedItems();
- if(rows.some(row=>!matchedEntry(row)||!matchedEntry(row).verified)){
-  postAuto.status='unavailable';postAuto.message='A product needs confirming in WSC before postage can be calculated.';return;
- }
- calculateAutoPostage(serial,key,email,rows.map(row=>({sku:matchedEntry(row).sku,quantity:Number(row.quantity)})));
+function postCountryFromAddress(value){
+ const s=String(value||'').trim(),normal=s.toLowerCase().replace(/[.,]/g,'').replace(/\s+/g,' ');
+ const alias={'uk':'GBR','u k':'GBR','gb':'GBR','great britain':'GBR','england':'GBR','scotland':'GBR','wales':'GBR','northern ireland':'GBR','united kingdom of great britain and northern ireland':'GBR','us':'USA','usa':'USA'};
+ if(alias[normal])return alias[normal];
+ if(/^[A-Za-z]{3}$/.test(s))return s.toUpperCase();
+ const pair=Object.entries(POST_COUNTRY_CODES).find(([name])=>name.toLowerCase()===normal);
+ return pair?pair[1]:'';
 }
-async function calculateAutoPostage(serial,key,email,lines){
+function postAddBox(value={}){
+ const list=$('postBoxes'),row=document.createElement('div');row.className='post-box';
+ const n=list.children.length+1;
+ const title=document.createElement('strong');title.textContent='Box '+n;row.append(title);
+ const fields=document.createElement('div');fields.className='grid post-box-grid';
+ for(const [key,label,step] of [['weight','Packed weight (kg)','0.001'],['length','Length (cm)','0.1'],['width','Width (cm)','0.1'],['height','Height (cm)','0.1']]){
+  const wrap=document.createElement('div');wrap.className='field';const lab=document.createElement('label');lab.textContent=label;const input=document.createElement('input');
+  input.type='number';input.min='0';input.step=step;input.inputMode='decimal';input.className='box-'+key;input.value=String(value[key]??'');lab.append(input);wrap.append(lab);fields.append(wrap);
+ }
+ row.append(fields);const remove=document.createElement('button');remove.type='button';remove.className='minor';remove.textContent='Remove box';remove.addEventListener('click',()=>{row.remove();[...list.children].forEach((el,i)=>{el.querySelector('strong').textContent='Box '+(i+1);});clearPostLive();update();});row.append(remove);list.append(row);
+}
+function postOpenParcelDetails(){
+ const key=detailsSignature();
+ if(postParcelSignature!==key){
+  const ship=customerSnapshot()?.shippingAddress;
+  $('postCountry').value=postCountryFromAddress(ship?.country);$('postCode').value=String(ship?.postcode||'');
+  $('postBoxes').replaceChildren();postAddBox();$('postVat').value='';$('postVatFields').hidden=true;postParcelSignature=key;
+ }
+ $('postParcelDetails').hidden=false;
+}
+function postPlan(){
+ const country=$('postCountry').value.trim().toUpperCase(),postcode=$('postCode').value.trim(),service=$('postService').value,boxes=[...$('postBoxes').children];
+ if(!/^[A-Z]{3}$/.test(country))throw postProblem('Enter the three-letter delivery country code.');
+ if((country==='GBR'||country==='IMN')&&!postcode)throw postProblem('Enter the delivery postcode.');
+ if(service==='international'&&['GBR','IMN'].includes(country))throw postProblem('Choose Tracked 24 or Tracked 48 for this UK destination.');
+ if(service!=='international'&&!['GBR','IMN'].includes(country))throw postProblem('Choose International for this destination.');
+ if(!boxes.length||boxes.length>25)throw postProblem('Enter between 1 and 25 packed boxes.');
+ const parcels=boxes.map((box,i)=>{
+  const read=key=>WSCInvoicePostage.number(box.querySelector('.box-'+key).value,3);
+  const kg=read('weight'),dims=['length','width','height'].map(read);
+  if(kg===null||kg<=0||dims.some(x=>x===null||x<=0))throw postProblem('Enter the actual packed weight and all three dimensions for box '+(i+1)+'.');
+  const grams=Math.ceil(kg*1000-1e-7),suggestion=WSCInvoicePostage.suggestFormat(dims,kg,country);
+  if(!Number.isSafeInteger(grams)||grams<=0||!suggestion.format)throw postProblem('Check the Royal Mail parcel format and limits for box '+(i+1)+'.');
+  return {country,postcode,weightGrams:grams,packageFormat:suggestion.format};
+ });
+ return {service,parcels,vat:$('postVat').value};
+}
+function postKey(){return JSON.stringify([detailsSignature(),$('postService').value,$('postCountry').value,$('postCode').value,$('postVat').value,[...$('postBoxes').querySelectorAll('input')].map(el=>el.value)]);}
+function postIsCurrent(serial,key,email){return serial===postSerial&&$('postage').checked&&confirmedSignature===detailsSignature()&&key===postKey()&&(examplePricing||postStaff()===email);}
+function postMatches(service,category){
+ if(!service||String(service.brand||'').replace(/[\s_-]+/g,'').toLowerCase()!=='royalmail')return false;
+ const name=String(service.serviceName||'');
+ if(/\breturns?\b/i.test(name))return false;
+ if(category==='international')return /\binternational\b/i.test(name);
+ return !/\binternational\b/i.test(name)&&new RegExp('(?:^|[^a-z0-9])tracked[\\s_-]*'+(category==='tracked24'?'24':'48')+'(?:[^0-9]|$)','i').test(name);
+}
+function postSelectCheapest(services,plan,parcel){
+ if(!Array.isArray(services))throw postProblem('Royal Mail did not return an available service list.');
+ if(services.some(s=>s&&!Object.prototype.hasOwnProperty.call(s,'brand')))throw postProblem('The updated WSC Code.gs needs to be deployed before checking Royal Mail services.');
+ const eligible=services.filter(s=>postMatches(s,plan.service)&&typeof s.cost==='number'&&Number.isFinite(s.cost)&&s.cost>=0&&s.cost<=1000000&&(!s.packageFormat||s.packageFormat===parcel.packageFormat)&&(!Number.isFinite(s.minWeightGrams)||parcel.weightGrams>=s.minWeightGrams)&&(!Number.isFinite(s.maxWeightGrams)||parcel.weightGrams<=s.maxWeightGrams));
+ if(!eligible.length)throw postProblem('Royal Mail returned no matching '+POST_SERVICES[plan.service]+' services for these parcel details.');
+ if(eligible.some(s=>s.vatCost===null||typeof s.vatCost!=='number'||s.vatCost>0)){
+  if(!['included','add'].includes(plan.vat)){const error=postProblem('Check how Royal Mail returned VAT, choose the VAT treatment below, and generate postage again.');error.needsVat=true;throw error;}
+  if(plan.vat==='add'&&eligible.some(s=>typeof s.vatCost!=='number'||!Number.isFinite(s.vatCost)||s.vatCost<0))throw postProblem('Royal Mail did not provide every VAT amount needed to compare these prices.');
+ }
+ return eligible.map(s=>({name:String(s.serviceName),code:String(s.serviceCode||''),amount:s.cost+(plan.vat==='add'?(s.vatCost||0):0)}))
+  .sort((a,b)=>a.amount-b.amount||a.name.localeCompare(b.name)||a.code.localeCompare(b.code))[0];
+}
+async function generatePostage(){
+ if(confirmedSignature===null||confirmedSignature!==detailsSignature()){ $('error').textContent='Confirm the order details before generating postage.';return; }
+ $('postage').checked=true;
+ if(examplePricing){
+  clearPostLive();postAuto={status:'ready',key:postKey(),email:'',raw:9.30,boxes:2,source:'example',serviceName:POST_SERVICES[$('postService').value],expires:0,message:'Example only: simulated postage for two boxes. This is not a live quote.'};update();return;
+ }
+ if(!postBridgeReady()||!postStaff()){clearPostLive();postAuto.status='error';postAuto.message='Live postage needs WSC and Postage Quotes access. Sign in and check your permissions.';update();return;}
+ if($('postParcelDetails').hidden){postOpenParcelDetails();clearPostLive();postAuto.message='Enter and check the packed parcel details below, then select Generate Postage.';update();$('postParcelDetails').scrollIntoView?.({block:'nearest',behavior:'smooth'});return;}
+ let plan;try{plan=postPlan();}catch(error){clearPostLive();postAuto.status='error';postAuto.message=error.message;update();return;}
+ clearPostLive();const serial=postSerial,key=postKey(),email=postStaff(),bridge=customerBridge();postAuto={status:'loading',key,email,raw:null,boxes:0,source:'',expires:0,message:'Checking live Royal Mail prices…'};update();
  try{
-  const plan=await window.wscPrepareBatchPostage({customer:$('customer').value.trim(),items:lines});
-  if(!postIsCurrent(serial,key,email))return;
-  if(!plan||!plan.customerId||!plan.destination||plan.destination.confirmed!==true)throw postProblem('The customer delivery address needs to be matched in QuickBooks before postage can be calculated.');
-  const country=String(plan.destination.country||'').trim().toUpperCase(),postcode=String(plan.destination.postcode||'').trim();
-  if(!/^[A-Z]{3}$/.test(country)||!postcode)throw postProblem('The delivery country and postcode are needed to calculate postage.');
-  if(!Array.isArray(plan.parcels)||!plan.parcels.length||plan.parcels.length>25)throw postProblem('The number of packed boxes needs checking before postage can be calculated.');
-  let microPounds=0;const quotedAt=[];
-  for(const parcel of plan.parcels){
-   if(!parcel||!Number.isSafeInteger(parcel.weightGrams)||parcel.weightGrams<=0||parcel.weightIncludesPackaging!==true||!Array.isArray(parcel.dimensionsCm)||parcel.dimensionsCm.length!==3||parcel.dimensionsCm.some(n=>!Number.isFinite(n)||n<=0))throw postProblem('Packed box weights and dimensions are needed to calculate postage.');
-   const suggestion=WSCInvoicePostage.suggestFormat(parcel.dimensionsCm,parcel.weightGrams/1000,country);
-   if(!suggestion.format||(parcel.packageFormat&&parcel.packageFormat!==suggestion.format))throw postProblem('The Royal Mail parcel format needs checking before postage can be calculated.');
-   const response=await window.wscAdminRequest('getWSCPermissions',{postageQuoteRequest:{country,weightGrams:parcel.weightGrams,postcode,packageFormat:suggestion.format}});
-   if(!postIsCurrent(serial,key,email))return;
-   const matches=(Array.isArray(response?.quote?.services)?response.quote.services:[]).filter(s=>s&&/(?:^|[^a-z0-9])tracked[\s_-]*24(?:[^0-9]|$)/i.test(String(s.serviceName||''))&&typeof s.cost==='number'&&Number.isFinite(s.cost)&&s.cost>=0&&s.cost<=1000000);
-   const selected=plan.serviceCode?matches.filter(s=>String(s.serviceCode||'')===String(plan.serviceCode)):matches;
-   if(selected.length!==1)throw postProblem(selected.length?'The Tracked 24 service needs to be configured in WSC.':'Royal Mail did not return an available Tracked 24 price for the delivery.');
-   const service=selected[0],vat=typeof service.vatCost==='number'&&Number.isFinite(service.vatCost)&&service.vatCost>=0?service.vatCost:null;
-   if((vat===null||vat>0)&&!['included','add'].includes(plan.vatTreatment))throw postProblem('The Royal Mail VAT treatment needs to be configured in WSC.');
-   if(plan.vatTreatment==='add'&&vat===null)throw postProblem('Royal Mail did not provide the VAT amount needed for this quote.');
-   const raw=service.cost+(plan.vatTreatment==='add'?vat:0),part=Math.round(raw*1000000);
-   if(!Number.isSafeInteger(part)||!Number.isSafeInteger(microPounds+part))throw postProblem('The postage amount needs checking.');
-   microPounds+=part;quotedAt.push(String(response.quote.quotedAt||''));
+  let total=0;const selected=[],timestamps=[];
+  for(let i=0;i<plan.parcels.length;i++){
+   const quote=await bridge.quotePostage(plan.parcels[i]);if(!postIsCurrent(serial,key,email))return;
+   const pick=postSelectCheapest(quote?.services,plan,plan.parcels[i]),micros=Math.round(pick.amount*1000000);
+   if(!Number.isSafeInteger(micros)||!Number.isSafeInteger(total+micros))throw postProblem('The postage amount needs checking.');
+   total+=micros;selected.push(pick.name);timestamps.push(String(quote.quotedAt||''));
   }
   if(!postIsCurrent(serial,key,email))return;
-  postAuto={...postAuto,status:'ready',raw:microPounds/1000000,boxes:plan.parcels.length,source:'live',quotedAt:quotedAt.join(', '),expires:Date.now()+300000,message:'Royal Mail Tracked 24 price calculated for '+plan.parcels.length+' '+(plan.parcels.length===1?'box.':'boxes.')+' Invoice VAT is not calculated in this preview.'};
+  const names=[...new Set(selected)];
+  postAuto={status:'ready',key,email,raw:total/1000000,boxes:plan.parcels.length,source:'live',serviceName:names.join(' / '),quotedAt:timestamps.join(', '),expires:Date.now()+300000,message:'Cheapest available '+POST_SERVICES[plan.service]+': '+names.join(' / ')+'. Price checked for '+plan.parcels.length+' '+(plan.parcels.length===1?'box.':'boxes.')+' Invoice VAT is not calculated in this preview.'};
   postTimer=setTimeout(()=>{postTimer=null;update();},300001);
- }catch(error){if(postIsCurrent(serial,key,email)){postAuto.status='error';postAuto.message=error?.expectedPostageProblem?error.message:'Unable to calculate postage. Check the WSC connection and try again.';}}
+ }catch(error){if(postIsCurrent(serial,key,email)){postAuto.status='error';postAuto.message=error?.expectedPostageProblem?error.message:String(error?.message||'Unable to calculate postage. Check the WSC connection and try again.');if(error?.needsVat)$('postVatFields').hidden=false;}}
  finally{if(postIsCurrent(serial,key,email))update();}
 }
 function getPostQuote(){
  if(!$('postage').checked)return {total:0,off:true};
- ensureAutoPostage();
- if(postAuto.status!=='ready')return {total:null,error:postAuto.message||'Confirm the order details to calculate postage.'};
+ if(postAuto.status==='ready'&&postAuto.source==='live'&&(postAuto.key!==postKey()||postAuto.email!==postStaff()||Date.now()>=postAuto.expires)){clearPostLive();postAuto.message='The postage details changed or the live price expired. Generate postage again.';}
+ if(postAuto.status!=='ready')return {total:null,error:postAuto.message||'Select Generate Postage to get a price.'};
  const packaging=$('postPacking').value.trim()===''?0:WSCInvoicePostage.number($('postPacking').value,2),markup=$('postMarkup').value.trim()===''?0:WSCInvoicePostage.number($('postMarkup').value,4);
  if(packaging===null||markup===null)return {total:null,error:'Enter a valid packaging fee and percentage (use 0 if not needed).'};
  const parts=WSCInvoicePostage.calculate(postAuto.raw,packaging,markup);
  if(!parts)return {total:null,error:'The postage or percentage is too large to calculate.'};
- return {...parts,source:postAuto.source,boxes:postAuto.boxes,service:'Royal Mail Tracked 24',raw:postAuto.raw,packaging,markup,quotedAt:postAuto.quotedAt||''};
+ return {...parts,source:postAuto.source,boxes:postAuto.boxes,service:postAuto.serviceName,category:POST_SERVICES[$('postService').value],raw:postAuto.raw,packaging,markup,quotedAt:postAuto.quotedAt||''};
 }
 function updatePost(){
  const selected=$('postage').checked;$('postFields').hidden=!selected;
+ $('generatePostage').disabled=postAuto.status==='loading';$('postGetPrices').disabled=postAuto.status==='loading';
+ $('generatePostage').classList.toggle('is-loading',postAuto.status==='loading');
  const q=getPostQuote(),display=x=>x===null||x===undefined?'—':money(x);
  for(const [id,key] of [['postBaseDisplay','postage'],['postPackingDisplay','packing'],['postMarkupDisplay','uplift'],['postChargeDisplay','total']])$(id).textContent=q.off?'—':display(q[key]);
- $('postBaseLabel').textContent=q.boxes?'Tracked 24 postage ('+q.boxes+' '+(q.boxes===1?'box':'boxes')+')':'Tracked 24 postage';
+ $('postBaseLabel').textContent=q.boxes?(q.service||q.category)+' ('+q.boxes+' '+(q.boxes===1?'box':'boxes')+')':'Royal Mail postage';
  $('postCalcStatus').textContent=q.off?'':q.error||postAuto.message;return q;
 }
+
 function setStep(step){$('uploadStep').hidden=step!==1;$('reviewStep').hidden=step!==2;$('stepIndicator').textContent=step===1?'Step 1 of 2 — Select an order':'Step 2 of 2 — Confirm the details';window.scrollTo({top:0,behavior:'smooth'});}
 function update(){
  const goods=goodsTotal();
@@ -787,7 +850,7 @@ function update(){
  $('sumTotal').textContent=goods!==null&&bank!==null&&post!==null&&fee!==null?money(goods+bank+post+fee):'—';$('batchCount').textContent=orders.length+' '+(orders.length===1?'order':'orders')+' in batch';
 }
 function invalidate(){if(confirmedSignature!==null&&detailsSignature()!==confirmedSignature){clearPostForChangedOrder();confirmedSignature=null;examplePricing=false;manualFee=false;$('confirmedArea').hidden=true;$('detailError').textContent='The order details changed. Please confirm them again.';}}
-function reset(){form.reset();items.replaceChildren();addItem();clearCustomerLookup();editing=null;exampleSource=false;savedSources=[];lastSourceSignature=null;confirmedSignature=null;examplePricing=false;manualFee=false;purchaseOrder='';priceCustomer='';priceChoice='';priceBook=null;priceTables=[];priceUploadCustomer='';priceLoadId++;clearPostLive();$('priceMapper').hidden=true;$('priceError').textContent='';$('sourceInfo').textContent='';$('uploadError').textContent='';$('extractStatus').textContent='';$('recognitionNotes').textContent='';$('detailError').textContent='';$('error').textContent='';$('confirmedArea').hidden=true;showPriceStatus();setStep(1);update();}
+function reset(){form.reset();postParcelSignature='';$('postParcelDetails').hidden=true;$('postBoxes').replaceChildren();items.replaceChildren();addItem();clearCustomerLookup();editing=null;exampleSource=false;savedSources=[];lastSourceSignature=null;confirmedSignature=null;examplePricing=false;manualFee=false;purchaseOrder='';priceCustomer='';priceChoice='';priceBook=null;priceTables=[];priceUploadCustomer='';priceLoadId++;clearPostLive();$('priceMapper').hidden=true;$('priceError').textContent='';$('sourceInfo').textContent='';$('uploadError').textContent='';$('extractStatus').textContent='';$('recognitionNotes').textContent='';$('detailError').textContent='';$('error').textContent='';$('confirmedArea').hidden=true;showPriceStatus();setStep(1);update();}
 function inputSources(){return [...savedSources,...($('emailFile').files?.[0]?[$('emailFile').files[0].name]:[]),...($('pdfFile').files?.[0]?[$('pdfFile').files[0].name]:[]),...($('emailText').value.trim()?['Pasted email text']:[]),...(exampleSource?['Example order']:[])];}
 function sourceSignature(){const fileInfo=id=>{const file=$(id).files?.[0];return file?[file.name,file.size,file.lastModified]:null;};return JSON.stringify([fileInfo('emailFile'),fileInfo('pdfFile'),$('emailText').value,savedSources]);}
 async function readOrder(){
@@ -829,17 +892,18 @@ function confirmDetails(){
 function save(finish){
  const invalid=validateDetails();if(invalid||confirmedSignature!==detailsSignature()){$('error').textContent=invalid||'Confirm the order details again.';return;}
  const postQuote=updatePost(),goods=goodsTotal(),bank=$('bank').checked?(goods!==null?amount($('bankAmount')):null):0,post=postQuote.total,fee=goods===null?null:($('smallFee').checked?2500:0);
+ if($('postage').checked&&post===null){$('error').textContent=postQuote.error||'Generate postage before confirming this order.';return;}
  const complete=goods!==null&&bank!==null&&post!==null&&fee!==null;
  const selected=includedItems().map(row=>{const entry=matchedEntry(row);return {...row,originalSku:row.sku,sku:entry?entry.sku:row.sku,productName:entry?entry.name:'',sheetProductName:entry?entry.sheetName:'',sheetRow:entry?entry.row:null,priceSourceSku:entry?entry.priceSku:'',priceSubstitutionConfirmed:!!entry?.substitution&&row.matchPriceApproval==='yes',unitPrice:priceFor(row),lineAmount:lineTotal(row)};});
- const postState={packing:$('postPacking').value,markup:$('postMarkup').value};
+ const postState={packing:$('postPacking').value,markup:$('postMarkup').value,service:$('postService').value};
  const order={customer:$('customer').value.trim(),customerQB:customerSnapshot(),items:selected,sourceRows:getItems(),po:purchaseOrder,sources:inputSources(),type:document.querySelector('[name=documentType]:checked').value,example:examplePricing,priceChoice,priceBook,bankOn:$('bank').checked,bankInput:$('bankAmount').value,postOn:$('postage').checked,postState,postQuote,feeOn:$('smallFee').checked,feeManual:manualFee,goods,bank,post,fee,total:complete?goods+bank+post+fee:null};
  const savedIndex=editing===null?orders.length:editing;if(editing===null)orders.push(order);else orders[editing]=order;reset();if(finish){invoicePreviewIndex=savedIndex;showBatch();}else window.scrollTo({top:0,behavior:'smooth'});
 }
 function showBatch(){
  form.hidden=true;$('exampleButton').hidden=true;$('batchReview').hidden=false;const list=$('batchList');list.replaceChildren();let total=0,hasExample=false;
  orders.forEach((o,index)=>{if(o.total!==null){total+=o.total;hasExample=true;}const card=make('article','','order'),heading=make('div','','order-title');heading.append(make('strong',(index+1)+'. '+o.customer),make('span',o.type,'status'));
-  card.append(heading,make('p',o.items.map(i=>i.sku+(i.productName?' — '+i.productName:'')+(i.sheetProductName&&i.sheetProductName!==i.productName?' (price sheet: '+i.sheetProductName+')':'')+(i.priceSubstitutionConfirmed?' (price from '+i.priceSourceSku+')':'')+' × '+i.quantity).join(' · ')),make('p',o.total===null?'Prices or charges need checking or are awaiting connection.':(o.example?'Example preview total: ':'Preview total: ')+money(o.total)),make('p','Selected: '+[o.bankOn?'Bank charge':'',o.feeOn?'Small order fee':'',o.postOn?'Royal Mail Tracked 24':''].filter(Boolean).join(', ')));
-  if(o.postOn){const q=o.postQuote;card.append(make('p',q&&q.total!==null?'Tracked 24 postage ('+q.boxes+' '+(q.boxes===1?'box':'boxes')+'): '+money(q.postage)+' + packaging '+money(q.packing)+' + '+q.markup+'% uplift '+money(q.uplift)+' = '+money(q.total)+(q.source==='live'?' (live quote; recheck before use)':' (example only — simulated, not live)'):'Postage needs a valid quote.','muted'));}
+  card.append(heading,make('p',o.items.map(i=>i.sku+(i.productName?' — '+i.productName:'')+(i.sheetProductName&&i.sheetProductName!==i.productName?' (price sheet: '+i.sheetProductName+')':'')+(i.priceSubstitutionConfirmed?' (price from '+i.priceSourceSku+')':'')+' × '+i.quantity).join(' · ')),make('p',o.total===null?'Prices or charges need checking or are awaiting connection.':(o.example?'Example preview total: ':'Preview total: ')+money(o.total)),make('p','Selected: '+[o.bankOn?'Bank charge':'',o.feeOn?'Small order fee':'',o.postOn?(o.postQuote?.category||'Postage'):''].filter(Boolean).join(', ')));
+  if(o.postOn){const q=o.postQuote;card.append(make('p',q&&q.total!==null?(q.service||q.category||'Royal Mail')+' postage ('+q.boxes+' '+(q.boxes===1?'box':'boxes')+'): '+money(q.postage)+' + packaging '+money(q.packing)+' + '+q.markup+'% uplift '+money(q.uplift)+' = '+money(q.total)+(q.source==='live'?' (live quote; recheck before use)':' (example only — simulated, not live)'):'Postage needs a valid quote.','muted'));}
   const actions=make('div','','order-buttons'),edit=make('button','Edit','minor'),remove=make('button','Remove','danger'),preview=make('button',o.type==='Pro Forma'?'View pro forma preview':'View invoice preview','minor');edit.type=remove.type=preview.type='button';edit.addEventListener('click',()=>editOrder(index));remove.addEventListener('click',()=>{orders.splice(index,1);update();showBatch();});preview.addEventListener('click',()=>{renderInvoicePreview(index);$('invoicePreview').scrollIntoView({block:'start',behavior:'smooth'});});actions.append(edit,remove,preview);card.append(actions);list.append(card);
  });
  if(!orders.length){list.append(make('p','There are no orders in this batch.'));$('invoicePreview').hidden=true;}else{invoicePreviewIndex=Math.max(0,Math.min(invoicePreviewIndex,orders.length-1));renderInvoicePreview(invoicePreviewIndex);}$('batchTotal').textContent=hasExample?money(total):'—';window.scrollTo({top:0,behavior:'smooth'});
@@ -860,7 +924,7 @@ function renderInvoicePreview(index){
  billing.append(make('strong','Bill to'),make('div',o.customerQB?.displayName||o.customer));const billLines=addressLines(o.customerQB?.billingAddress);if(billLines.length)billLines.forEach(line=>billing.append(make('div',line)));else billing.append(make('div','Billing address not available','invoice-missing'));
  shipping.append(make('strong','Ship to'));const shipLines=addressLines(o.customerQB?.shippingAddress);if(shipLines.length)shipLines.forEach(line=>shipping.append(make('div',line)));else shipping.append(make('div','Delivery address not available','invoice-missing'));address.append(billing,shipping);host.append(address);
  const meta=make('div','','invoice-blue invoice-meta'),shippingInfo=make('div'),details=make('div'),extra=make('div');
- shippingInfo.append(make('strong','Shipping info'),make('div',o.postOn?'Royal Mail Tracked 24':'Not selected'));
+ shippingInfo.append(make('strong','Shipping info'),make('div',o.postOn?(o.postQuote?.service||o.postQuote?.category||'Royal Mail'):'Not selected'));
  details.append(make('strong',o.type==='Pro Forma'?'Pro forma details':'Invoice details'),make('div',(o.type==='Pro Forma'?'Pro forma':'Invoice')+' number: Not created'),make('div','Date and terms: Not set'));
  extra.append(make('strong','Purchase order'),make('div',o.po||'Not provided'));meta.append(shippingInfo,details,extra);host.append(meta);
  const wrapper=make('div','','invoice-table-wrap'),table=make('table','','invoice-items'),thead=make('thead'),head=make('tr');
@@ -870,7 +934,7 @@ function renderInvoicePreview(index){
  for(const item of o.items)addLine(item.sku,item.productName||item.sheetProductName||'Product details awaiting connection',item.quantity,asMoney(item.unitPrice),asMoney(item.lineAmount));
  if(o.bankOn)addLine('Bank charge','Bank charge','1',asMoney(o.bank),asMoney(o.bank));
  if(o.feeOn)addLine('Small order fee','Small order fee','1',asMoney(o.fee),asMoney(o.fee));
- if(o.postOn)addLine('Post','Royal Mail Tracked 24 (including packaging and percentage)','1',asMoney(o.post),asMoney(o.post));
+ if(o.postOn)addLine('Post',(o.postQuote?.service||o.postQuote?.category||'Royal Mail')+' (including packaging and percentage)','1',asMoney(o.post),asMoney(o.post));
  table.append(body);wrapper.append(table);host.append(wrapper);
  const totals=make('div','','invoice-amounts');
  function totalLine(label,value,strong){const line=make('div','','invoice-amount-row'+(strong?' invoice-final':''));line.append(make('span',label),make('strong',value));totals.append(line);}
@@ -882,7 +946,7 @@ function renderInvoicePreview(index){
 function editOrder(index){
  const o=orders[index];form.hidden=false;$('batchReview').hidden=true;$('exampleButton').hidden=false;reset();editing=index;exampleSource=o.example;savedSources=o.sources;purchaseOrder=o.po;$('sourceInfo').textContent='Previously selected: '+savedSources.join(', ');$('customer').value=o.customer;priceCustomer=WSCPriceSheets.key(o.customer);priceChoice=o.priceChoice;priceBook=o.priceBook;showPriceStatus();items.replaceChildren();(o.sourceRows||o.items).forEach(addItem);
  document.querySelectorAll('[name=documentType]').forEach(r=>r.checked=r.value===o.type);$('bank').checked=o.bankOn;$('bankAmount').value=o.bankInput;$('postage').checked=o.postOn;
- const ps=o.postState||{};for(const [id,key] of [['postPacking','packing'],['postMarkup','markup']])if(ps[key]!==undefined)$(id).value=ps[key];
+ const ps=o.postState||{};for(const [id,key] of [['postPacking','packing'],['postMarkup','markup'],['postService','service']])if(ps[key]!==undefined)$(id).value=ps[key];
  clearPostLive();$('smallFee').checked=o.feeOn;manualFee=o.feeManual;lastSourceSignature=sourceSignature();update();setStep(2);scheduleCustomerLookup(true,o.customerQB?.id||'');
 }
 function option(select,value,label){const o=document.createElement('option');o.value=String(value);o.textContent=label;select.append(o);}
@@ -940,9 +1004,12 @@ $('noPriceSheet').addEventListener('click',()=>{if(!$('customer').value.trim()){
 function handleChange(event){
  if(event.target===$('customer')){refreshCustomerPrice();scheduleCustomerLookup();}if(event.target.matches('.sku input'))matchForRow(event.target.closest('.item'));
  if(event.target.id==='postage'&&!$('postage').checked)clearPostLive();
+ if(event.target.id==='postService'||event.target.closest('#postParcelDetails'))clearPostLive();
  invalidate();update();
 }
 form.addEventListener('input',handleChange);form.addEventListener('change',handleChange);$('smallFee').addEventListener('input',()=>{manualFee=true;});$('smallFee').addEventListener('change',()=>{manualFee=true;update();});
+$('generatePostage').addEventListener('click',generatePostage);$('postGetPrices').addEventListener('click',generatePostage);
+$('postAddBox').addEventListener('click',()=>{if($('postBoxes').children.length>=25){$('postCalcStatus').textContent='A maximum of 25 boxes can be checked at once.';return;}postAddBox();clearPostLive();update();});
 $('addItem').addEventListener('click',()=>{addItem();invalidate();update();});$('next').addEventListener('click',()=>save(false));$('complete').addEventListener('click',()=>save(true));
 $('more').addEventListener('click',()=>{form.hidden=false;$('batchReview').hidden=true;$('exampleButton').hidden=false;reset();});
 $('homeButton').addEventListener('click',()=>{const host=customerBridge();if(host&&typeof host.close==='function'){host.close();return;}if(!$('batchReview').hidden){form.hidden=false;$('batchReview').hidden=true;$('exampleButton').hidden=false;}setStep(1);});
