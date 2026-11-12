@@ -9638,7 +9638,7 @@ window.wscOpenPostageQuotes=async()=>{
    const postage=document.getElementById('wscPostageScreen');if(postage)postage.hidden=true;
    const invoices=document.getElementById('wscShopifyInvoiceScreen');if(invoices)invoices.hidden=true;
    const f=frame();if(!f)throw new Error('Batch Orders is unavailable.');
-   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html');batchUser=user;}
+   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=20261112-layout');batchUser=user;}
    screen().hidden=false;window.scrollTo(0,0);document.getElementById('wscBatchOrderHeading').focus({preventScroll:true});
    if(permissionTimer!==null)clearInterval(permissionTimer);permissionTimer=setInterval(()=>{if(!document.hidden&&isActive())void wscRefreshPermissions();},60000);
   }catch(error){window.showWSCMessage('Batch Orders',String(error?.message||error));}
