@@ -29,6 +29,7 @@
 .qb-customer-panel{background:#edf4fa;border:1px solid #c8d9e6;border-radius:8px;padding:12px 14px;margin-top:10px}.qb-customer-panel p{margin:0 0 6px}.qb-customer-panel select{width:100%;padding:10px;border:1px solid #bac8d7;border-radius:6px;margin:6px 0;background:white}.qb-customer-panel button{margin-top:8px}.qb-customer-panel #qbCustomerAddress{font-size:.88rem}.sr-qb{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 .customer-choices{list-style:none;margin:-5px 0 0;padding:0;max-height:240px;overflow:auto;background:#fff;border:1px solid #a9becf;border-radius:0 0 7px 7px;box-shadow:0 4px 10px rgba(33,49,70,.12)}
 .customer-choices li{padding:10px 12px;cursor:pointer;border-bottom:1px solid #e6edf2}.customer-choices li:last-child{border-bottom:0}.customer-choices li:hover,.customer-choices li.active{background:#e6f1fa;color:#183a5a}
+.qb-customer-panel #qbCustomerAddress strong{display:block;margin-top:10px}
 </style>
 </head>
 <body><main>
@@ -53,7 +54,7 @@
    <div class="field"><label for="customer">1. Customer</label><input id="customer" type="text" autocomplete="off" placeholder="Start typing a customer name" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="qbCustomerMatches"><ul id="qbCustomerMatches" class="customer-choices" role="listbox" aria-label="Matching customers" hidden></ul></div>
    <div class="qb-customer-panel" aria-label="QuickBooks customer and delivery address">
  <p id="qbCustomerStatus" class="muted" role="status" aria-live="polite"></p>
- <div id="qbCustomerAddress"></div><button id="qbCustomerRetry" class="minor" type="button" hidden>Try customer lookup again</button>
+ <div id="qbCustomerAddress"></div><button id="qbCustomerRetry" class="minor" type="button" hidden>Try customer lookup again</button> <button id="qbCustomerRefresh" class="minor" type="button" hidden>Refresh customer list</button>
 </div>
    <h3 style="margin-top:20px">2. Item (SKU) &nbsp; 3. Quantity</h3><div id="items"></div><button id="addItem" class="minor" type="button">＋ Add another product</button>
    <div class="price-panel" aria-labelledby="priceSourceTitle">
@@ -534,7 +535,10 @@ function addItem(values={}){
 function getItems(){return [...items.children].map(row=>({sku:row.querySelector('.sku input').value.trim(),quantity:row.querySelector('.quantity input').value.trim(),priorOrderNote:row.dataset.priorOrderNote||'',priorOrderDecision:row.querySelector('.prior-review select')?.value||'',matchSelection:row.dataset.matchSelection||'',matchMode:row.dataset.matchMode||'',matchBook:row.dataset.matchBook||'',matchInput:row.dataset.matchInput||'',matchPriceApproval:row.dataset.matchPriceApproval||''}));}
 function includedItems(){return getItems().filter(row=>!row.priorOrderNote||row.priorOrderDecision==='include');}
 function detailsSignature(){return JSON.stringify([$('customer').value.trim(),getItems(),priceChoice,priceBook?.storedAt||'',customerSnapshot()]);}
-// Customer search uses WSC's authenticated, read-only QuickBooks bridge.
+// Customer names are loaded from the authenticated private WSC index once per
+// signed-in user. A chosen customer is then verified in QuickBooks, read only.
+let customerIndexEntries=null,customerIndexOwner='',customerIndexPromise=null,customerIndexGeneration=0;
+const WSC_CUSTOMER_INDEX_CMD='WSC_BATCH_CUSTOMER_INDEX_V1',WSC_CUSTOMER_PICK_CMD='WSC_BATCH_CUSTOMER_PICK_V1:';
 function customerBridge(){
  try{const host=window.parent;if(host===window||window.location.origin!=='https://itsebox1.github.io'||host.location.origin!==window.location.origin)return null;
   const bridge=host.wscBatchBridge;return bridge&&typeof bridge.searchCustomers==='function'&&typeof bridge.staffEmail==='function'?bridge:null;
@@ -542,18 +546,40 @@ function customerBridge(){
 }
 function customerStaff(){try{return String(customerBridge()?.staffEmail()||'').trim().toLowerCase();}catch(_){return '';}}
 function customerKey(v){return String(v||'').normalize('NFKC').trim().toLowerCase().replace(/\s+/g,'');}
+function customerExactKey(v){return String(v||'').normalize('NFKC').trim().toLowerCase();}
 function addressLines(address){if(!address)return [];return [...(Array.isArray(address.lines)?address.lines:[]),address.city,address.region,address.postcode,address.country].map(x=>String(x||'').trim()).filter(Boolean);}
-function clearCustomerLookup(){customerLookupSerial++;if(customerLookupTimer!==null){clearTimeout(customerLookupTimer);customerLookupTimer=null;}customerState={status:'idle',query:'',matches:[],selected:null,staff:'',exactCount:0,totalMatches:0,activeIndex:-1,error:''};paintCustomerLookup();}
+function customerFingerprint(name,company){let h=2166136261,s=String(name)+'\u0000'+String(company);for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return(h>>>0).toString(16).padStart(8,'0');}
+function resetCustomerIndex(){customerIndexGeneration++;customerIndexEntries=null;customerIndexOwner='';customerIndexPromise=null;}
+function ensureCustomerIndex(){
+ const bridge=customerBridge(),staff=customerStaff();if(!bridge||!staff)return Promise.reject(Error('Sign in to WSC to search customers.'));
+ if(customerIndexOwner&&customerIndexOwner!==staff)resetCustomerIndex();
+ if(customerIndexEntries&&customerIndexOwner===staff)return Promise.resolve(customerIndexEntries);
+ if(customerIndexPromise&&customerIndexOwner===staff)return customerIndexPromise;
+ const generation=++customerIndexGeneration;customerIndexOwner=staff;
+ const promise=bridge.searchCustomers(WSC_CUSTOMER_INDEX_CMD).then(data=>{
+  if(generation!==customerIndexGeneration||customerStaff()!==staff)throw Error('The signed-in WSC user changed.');
+  if(!data||data.kind!=='index'||!Array.isArray(data.entries)||!Number.isSafeInteger(data.count)||data.count!==data.entries.length)throw Error('Updated QuickBooks.gs customer index is not installed or deployed.');
+  const entries=data.entries.map(row=>{
+   if(!Array.isArray(row)||!Number.isSafeInteger(row[0])||row[0]<2||typeof row[1]!=='string'||!row[1].trim()||typeof row[2]!=='string')throw Error('The private customer index is invalid.');
+   const name=row[1].trim(),company=row[2].trim();return {row:row[0],displayName:name,companyName:company,nameKey:customerKey(name),companyKey:customerKey(company)};
+  });
+  customerIndexEntries=entries;return entries;
+ });
+ customerIndexPromise=promise;promise.then(()=>{if(customerIndexPromise===promise)customerIndexPromise=null;},()=>{if(customerIndexPromise===promise)customerIndexPromise=null;});return promise;
+}
+function clearCustomerLookup(){customerLookupSerial++;if(customerLookupTimer!==null){clearTimeout(customerLookupTimer);customerLookupTimer=null;}customerState={status:'idle',query:'',matches:[],selected:null,picked:null,staff:'',totalMatches:0,activeIndex:-1,error:''};paintCustomerLookup();}
 function customerLookupError(error){
  const message=String(error?.message||error||'');
- if(/lookup has not been deployed|wscBatchCustomerSearch_ is not defined|is not defined.*wscBatchCustomerSearch_/i.test(message))return 'The QuickBooks customer lookup is not installed in the current Apps Script deployment. Ask an administrator to update and deploy Code.gs and QuickBooks.gs.';
+ if(/customer index changed/i.test(message))return 'The customer list has changed. Select Refresh customer list and try again.';
+ if(/could not be matched in QuickBooks/i.test(message))return 'This customer could not be matched in QuickBooks. Refresh the customer list or check their QuickBooks name.';
+ if(/More than one QuickBooks customer matched/i.test(message))return 'More than one QuickBooks customer matched. Check the correct customer in QuickBooks.';
+ if(/customer index.*not installed|customer lookup has not been deployed|safety limit|wscBatchCustomerSearch_ is not defined/i.test(message))return 'The updated QuickBooks.gs customer search needs to be saved and deployed in Apps Script.';
+ if(/customer index sheet is unavailable|customer index is empty|unexpected column headings|private customer index is invalid/i.test(message))return 'WSC could not read the private customer list. Ask an administrator to check the customer index.';
  if(/QuickBooks Live is not connected|QuickBooks.*not connected|unauthori[sz]ed|invalid.grant|token.*expired/i.test(message))return 'QuickBooks is not connected or its connection has expired. Ask an administrator to check the QuickBooks connection.';
  if(/company ID is missing or invalid/i.test(message))return 'The QuickBooks company connection is missing its company ID. Ask an administrator to check the WSC setup.';
- if(/access is disabled|permission|not permitted|not authori[sz]ed/i.test(message))return 'Your account does not have access to this customer lookup. Ask an administrator to check Batch Orders permissions.';
- if(/safety limit/i.test(message))return 'There are too many customers for this lookup. Ask an administrator to check the customer search.';
+ if(/access is disabled|permission|not permitted|not authori[sz]ed/i.test(message))return 'WSC could not access the customer list. Ask an administrator to check Batch Orders and the private list permissions.';
  if(/failed to fetch|network|timeout|timed out|abort/i.test(message))return 'The customer search could not reach WSC. Check your connection and try again.';
- const http=/QuickBooks HTTP\s+(\d{3})/i.exec(message);
- if(http)return 'QuickBooks could not complete the customer search (HTTP '+http[1]+'). Ask an administrator to check the QuickBooks connection.';
+ const http=/QuickBooks HTTP\s+(\d{3})/i.exec(message);if(http)return 'QuickBooks could not check the selected customer (HTTP '+http[1]+'). Ask an administrator to check the QuickBooks connection.';
  return 'Could not look up customers. Try again, or ask an administrator to check the WSC and QuickBooks connection.';
 }
 function highlightCustomer(index){
@@ -568,77 +594,87 @@ function renderCustomerMatches(){
  customerState.matches.forEach((customer,index)=>{
   const row=document.createElement('li');row.id='wsc-customer-option-'+index;row.setAttribute('role','option');row.setAttribute('aria-selected','false');
   const company=customer.companyName&&customerKey(customer.companyName)!==customerKey(customer.displayName)?' — '+customer.companyName:'';
-  const postcode=customer.shippingAddress?.postcode?' · '+customer.shippingAddress.postcode:'';
-  row.textContent=customer.displayName+company+postcode;row.addEventListener('click',()=>chooseQBCustomer(index));list.append(row);
+  row.textContent=customer.displayName+company;row.addEventListener('click',()=>chooseQBCustomer(index));list.append(row);
  });
  list.hidden=false;input.setAttribute('aria-expanded','true');input.removeAttribute('aria-activedescendant');customerState.activeIndex=-1;
 }
 function paintCustomerLookup(){
- const status=$('qbCustomerStatus'),box=$('qbCustomerAddress'),list=$('qbCustomerMatches'),retry=$('qbCustomerRetry'),input=$('customer');
- const footer=$('batchPreviewFooter');if(footer)footer.textContent=customerBridge()?'WSC Batch Orders · QuickBooks customer lookup is read-only · Invoice creation disabled':'WSC workflow preview · Files are read locally · No QuickBooks connection';
- const notice=$('previewNotice');if(notice&&customerBridge())notice.textContent='Preview only. Customer names and delivery addresses can be looked up in QuickBooks. Uploaded prices are kept in this browser. VAT and live invoice creation are not connected.';
+ const status=$('qbCustomerStatus'),box=$('qbCustomerAddress'),list=$('qbCustomerMatches'),retry=$('qbCustomerRetry'),input=$('customer'),refresh=$('qbCustomerRefresh');
+ if(refresh)refresh.hidden=!customerBridge()||exampleInputSource();
+ const footer=$('batchPreviewFooter');if(footer)footer.textContent=customerBridge()?'WSC Batch Orders · Private customer list · QuickBooks read-only · Invoice creation disabled':'WSC workflow preview · Files are read locally · No QuickBooks connection';
+ const notice=$('previewNotice');if(notice&&customerBridge())notice.textContent='Preview only. Search the saved customer list; the selected customer and delivery address are checked in QuickBooks. Uploaded prices are kept in this browser. VAT and live invoice creation are not connected.';
  list.hidden=true;list.replaceChildren();input.setAttribute('aria-expanded','false');input.removeAttribute('aria-activedescendant');box.replaceChildren();retry.hidden=true;retry.textContent='Try customer lookup again';
- if(!input.value.trim()){status.textContent=exampleInputSource()?'Example order: type Example to select the example customer.':'Start typing a customer name to search QuickBooks.';return;}
- if(isExample()){status.textContent='Example customer selected. No QuickBooks customer or address is looked up.';return;}
- if(!customerBridge()&&!exampleInputSource()){status.textContent='Open Batch Orders inside WSC to search QuickBooks customers.';return;}
- if(!customerStaff()&&!exampleInputSource()){status.textContent='Sign in to WSC to search QuickBooks customers.';return;}
- if(customerState.status==='short'){status.textContent='Type at least 2 characters to search customers.';return;}
- if(customerState.status==='loading'||customerState.status==='waiting'){status.textContent='Searching customers in QuickBooks…';return;}
  if(customerState.status==='error'){status.textContent=customerState.error||customerLookupError();retry.hidden=false;return;}
- if(customerState.status==='notfound'){status.textContent=exampleInputSource()?'No example customer matches. Type Example.':'No QuickBooks customers matched. Check the name or try different characters.';retry.hidden=false;return;}
+ if(!input.value.trim()){
+  status.textContent=exampleInputSource()?'Example order: type Example to select the example customer.':customerState.status==='loading'?'Loading the private customer list…':'Start typing a customer name to search the saved list.';return;
+ }
+ if(isExample()){status.textContent='Example customer selected. No QuickBooks customer or address is looked up.';return;}
+ if(!customerBridge()&&!exampleInputSource()){status.textContent='Open Batch Orders inside WSC to search customers.';return;}
+ if(!customerStaff()&&!exampleInputSource()){status.textContent='Sign in to WSC to search customers.';return;}
+ if(customerState.status==='short'){status.textContent='Type at least 2 characters to search customers.';return;}
+ if(customerState.status==='loading'){status.textContent='Loading the private customer list…';return;}
+ if(customerState.status==='resolving'){status.textContent='Checking the selected customer and delivery address in QuickBooks…';return;}
+ if(customerState.status==='notfound'){status.textContent=exampleInputSource()?'No example customer matches. Type Example.':'No customers in the saved list matched. Try another name or refresh the list.';return;}
  if(customerState.status==='ready'){
   if(!customerState.selected){
    if(customerState.matches.length)renderCustomerMatches();
    const total=Number.isSafeInteger(customerState.totalMatches)?customerState.totalMatches:customerState.matches.length;
    status.textContent=total>customerState.matches.length?'Showing '+customerState.matches.length+' of '+total+' customers. Type more to narrow the list.':'Choose the correct customer from the list.';return;
   }
-  const c=customerState.selected;status.textContent='QuickBooks customer: '+c.displayName;retry.textContent='Refresh address from QuickBooks';retry.hidden=false;
-  box.append(make('strong','Delivery address'));const lines=addressLines(c.shippingAddress);
-  if(lines.length)for(const line of lines)box.append(make('div',line));else box.append(make('p','No delivery address is saved for this customer in QuickBooks.','muted'));
+  const c=customerState.selected;status.textContent='QuickBooks customer: '+c.displayName;retry.textContent='Refresh customer details';retry.hidden=false;
+  const addDetail=(label,value)=>{if(value)box.append(make('div',label+': '+String(value)));};
+  addDetail('QuickBooks customer ID',c.id);addDetail('Company',c.companyName);addDetail('Contact',c.contactName);addDetail('Email',c.email);addDetail('Telephone',c.phone);addDetail('Mobile',c.mobile);
+  function addAddress(label,address,missing){box.append(make('strong',label));const lines=addressLines(address);if(lines.length)for(const line of lines)box.append(make('div',line));else box.append(make('p',missing,'muted'));}
+  addAddress('Delivery address',c.shippingAddress,'No delivery address is saved for this customer in QuickBooks.');
+  addAddress('Billing address',c.billingAddress,'No billing address is saved for this customer in QuickBooks.');
   return;
  }
- status.textContent='Start typing a customer name to search QuickBooks.';
+ status.textContent='Start typing a customer name to search the saved list.';
 }
 function scheduleCustomerLookup(force=false,preferredId=''){
  const query=$('customer').value.trim(),bridge=customerBridge(),staff=customerStaff();
  if(!force&&customerState.query===query&&customerState.staff===staff&&customerState.status!=='idle')return;
  customerLookupSerial++;if(customerLookupTimer!==null){clearTimeout(customerLookupTimer);customerLookupTimer=null;}
- const serial=customerLookupSerial;customerState={status:'idle',query,matches:[],selected:null,staff,exactCount:0,totalMatches:0,activeIndex:-1,error:''};
- if(!query){paintCustomerLookup();return;}
- if(query.length<2){customerState.status='short';paintCustomerLookup();return;}
- if(query.length>100){customerState.status='error';customerState.error='Enter no more than 100 characters for the customer name.';paintCustomerLookup();return;}
+ const serial=customerLookupSerial;customerState={status:'idle',query,matches:[],selected:null,picked:null,staff,totalMatches:0,activeIndex:-1,error:''};
  if(exampleInputSource()){
-  if(customerKey('Example Customer').includes(customerKey(query))){customerState.status='ready';customerState.totalMatches=1;customerState.matches=[{id:'example',displayName:'Example Customer',companyName:'',shippingAddress:null,billingAddress:null}];}
+  if(!query){paintCustomerLookup();return;}
+  if(query.length<2){customerState.status='short';paintCustomerLookup();return;}
+  if(customerKey('Example Customer').includes(customerKey(query))){customerState.status='ready';customerState.totalMatches=1;customerState.matches=[{row:0,displayName:'Example Customer',companyName:''}];}
   else customerState.status='notfound';paintCustomerLookup();return;
  }
  if(!bridge||!staff){paintCustomerLookup();return;}
- customerState.status='waiting';paintCustomerLookup();
- customerLookupTimer=setTimeout(async()=>{
-  customerLookupTimer=null;if(serial!==customerLookupSerial)return;customerState.status='loading';paintCustomerLookup();
-  try{
-   const result=await bridge.searchCustomers(query);
-   if(serial!==customerLookupSerial||$('customer').value.trim()!==query||customerStaff()!==staff)return;
-   if(!result||!Array.isArray(result.matches)||!Number.isSafeInteger(result.exactCount)||result.exactCount<0)throw Error('Invalid customer lookup response');
-   const matches=result.matches.filter(c=>c&&/^\d+$/.test(String(c.id||''))&&typeof c.displayName==='string');
-   customerState.matches=matches;customerState.exactCount=result.exactCount;customerState.totalMatches=Number.isSafeInteger(result.totalMatches)?result.totalMatches:matches.length;customerState.status=matches.length?'ready':'notfound';
-   customerState.selected=preferredId?matches.find(c=>c.id===preferredId)||null:null;
-   paintCustomerLookup();invalidate();update();
-  }catch(error){if(serial===customerLookupSerial&&$('customer').value.trim()===query){customerState.status='error';customerState.error=customerLookupError(error);customerState.selected=null;paintCustomerLookup();invalidate();update();}}
- },350);
+ if(query.length===1){customerState.status='short';paintCustomerLookup();return;}
+ if(query.length>100){customerState.status='error';customerState.error='Enter no more than 100 characters for the customer name.';paintCustomerLookup();return;}
+ customerState.status='loading';paintCustomerLookup();
+ ensureCustomerIndex().then(entries=>{
+  if(serial!==customerLookupSerial||$('customer').value.trim()!==query||customerStaff()!==staff)return;
+  if(!query){customerState.status='idle';paintCustomerLookup();return;}
+  const key=customerKey(query),all=entries.filter(c=>c.nameKey.includes(key)||c.companyKey.includes(key));
+  customerState.matches=all.slice(0,25);customerState.totalMatches=all.length;customerState.status=all.length?'ready':'notfound';
+  if(preferredId){const exact=all.filter(c=>customerExactKey(c.displayName)===customerExactKey(query));if(exact.length===1){resolveCustomer(exact[0],preferredId);return;}}
+  paintCustomerLookup();invalidate();update();
+ }).catch(error=>{if(serial===customerLookupSerial&&$('customer').value.trim()===query){customerState.status='error';customerState.error=customerLookupError(error);paintCustomerLookup();invalidate();update();}});
 }
-function chooseQBCustomer(index){
- const chosen=customerState.matches[index];if(!chosen)return;
- customerLookupSerial++;if(customerLookupTimer!==null){clearTimeout(customerLookupTimer);customerLookupTimer=null;}
- customerState.selected=chosen;customerState.query=chosen.displayName;$('customer').value=chosen.displayName;refreshCustomerPrice();
- paintCustomerLookup();invalidate();update();
+function resolveCustomer(chosen,expectedId=''){
+ if(chosen.row===0&&exampleInputSource()){customerState.selected=chosen;customerState.query=chosen.displayName;$('customer').value=chosen.displayName;refreshCustomerPrice();paintCustomerLookup();invalidate();update();return;}
+ const bridge=customerBridge(),staff=customerStaff();if(!bridge||!staff)return;
+ const serial=++customerLookupSerial;customerState.query=chosen.displayName;customerState.staff=staff;customerState.status='resolving';customerState.picked=chosen;customerState.selected=null;customerState.error='';$('customer').value=chosen.displayName;refreshCustomerPrice();paintCustomerLookup();invalidate();update();
+ const command=WSC_CUSTOMER_PICK_CMD+chosen.row+':'+customerFingerprint(chosen.displayName,chosen.companyName);
+ bridge.searchCustomers(command).then(result=>{
+  if(serial!==customerLookupSerial||$('customer').value.trim()!==chosen.displayName||customerStaff()!==staff)return;
+  const c=result?.customer;if(result?.kind!=='resolved'||!c||!/^\d+$/.test(String(c.id||''))||typeof c.displayName!=='string')throw Error('Updated QuickBooks.gs customer index is not installed or deployed.');
+  if(expectedId&&String(c.id)!==String(expectedId))throw Error('More than one QuickBooks customer matched. Check the customer in QuickBooks.');
+  customerState.selected=c;customerState.status='ready';customerState.query=c.displayName;$('customer').value=c.displayName;refreshCustomerPrice();paintCustomerLookup();invalidate();update();
+ }).catch(error=>{if(serial===customerLookupSerial&&$('customer').value.trim()===chosen.displayName){customerState.status='error';customerState.error=customerLookupError(error);customerState.selected=null;paintCustomerLookup();invalidate();update();}});
 }
-function customerSnapshot(){const c=customerState.selected;return c?{id:c.id,displayName:c.displayName,shippingAddress:c.shippingAddress||null,billingAddress:c.billingAddress||null}:null;}
+function chooseQBCustomer(index){const chosen=customerState.matches[index];if(chosen)resolveCustomer(chosen);}
+function customerSnapshot(){const c=customerState.selected;return c?{id:c.id,displayName:c.displayName,companyName:c.companyName||'',contactName:c.contactName||'',email:c.email||'',phone:c.phone||'',mobile:c.mobile||'',shippingAddress:c.shippingAddress||null,billingAddress:c.billingAddress||null}:null;}
 function customerGuard(){
  if(isExample()||!customerBridge())return '';
  if(!customerStaff())return 'Sign in to WSC to check the QuickBooks customer.';
- if(['waiting','loading'].includes(customerState.status))return 'Please wait while the QuickBooks customer is checked.';
+ if(customerState.status==='loading'||customerState.status==='resolving')return 'Please wait while the QuickBooks customer is checked.';
  if(customerState.status==='short')return 'Type at least 2 characters to search customers.';
- if(customerState.status==='notfound')return 'Check the customer name; no QuickBooks customer was found.';
+ if(customerState.status==='notfound')return 'Check the customer name; no customer was found in the saved list.';
  if(customerState.status==='error')return 'The QuickBooks customer could not be checked. Try again.';
  if(!customerState.selected)return 'Choose the correct QuickBooks customer from the list.';
  return '';
@@ -889,7 +925,8 @@ function usePriceSheet(){
 }
 $('uploadNext').addEventListener('click',readOrder);$('reviewBack').addEventListener('click',()=>setStep(1));$('confirmDetails').addEventListener('click',confirmDetails);
 $('uploadPrice').addEventListener('click',()=>{if(!$('customer').value.trim()){$('priceError').textContent='Enter the customer before uploading a price sheet.';return;}$('priceError').textContent='';$('priceFile').click();});
-$('qbCustomerRetry').addEventListener('click',()=>{const preferredId=customerState.selected?.id||'';scheduleCustomerLookup(true,preferredId);invalidate();update();});
+$('qbCustomerRetry').addEventListener('click',()=>{const picked=customerState.picked,preferredId=customerState.selected?.id||'';if(picked)resolveCustomer(picked,preferredId);else {resetCustomerIndex();scheduleCustomerLookup(true);}invalidate();update();});
+$('qbCustomerRefresh').addEventListener('click',()=>{resetCustomerIndex();scheduleCustomerLookup(true);invalidate();update();});
 $('customer').addEventListener('keydown',event=>{
  const list=$('qbCustomerMatches');
  if(event.key==='Enter'){event.preventDefault();if(!list.hidden&&customerState.activeIndex>=0)chooseQBCustomer(customerState.activeIndex);return;}
