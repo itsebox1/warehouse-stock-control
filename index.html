@@ -531,6 +531,7 @@ input[type="reset"]:disabled,
     <h2 id="wscPostMenuHeading" tabindex="-1" style="text-align:center;">📮 Post Manager</h2>
     <button id="wscPostageQuotesButton" data-wsc-area="POSTAGE_QUOTES" type="button" onclick="wscOpenPostageQuotes()" style="display:none;width:100%;margin:15px 0;background:#54799A;color:white;">📮 Postage Quotes</button>
     <button id="wscShopifyInvoiceButton" data-wsc-area="SHOPIFY_INVOICES" type="button" onclick="wscOpenShopifyInvoices()" style="display:none;width:100%;margin:15px 0;background:#54799A;color:white;">🧾 Shopify Invoices</button>
+    <button id="wscBatchOrderButton" data-wsc-area="BATCH_ORDERS" type="button" onclick="wscOpenBatchOrders()" style="display:none;width:100%;margin:15px 0;background:#54799A;color:white;">📋 Batch Orders</button>
   </section>
   <section id="wscStockManagerScreen" aria-labelledby="wscStockManagerHeading" hidden>
     <button type="button" onclick="wscSetStockManagerView(false, true)" style="width:100%;">🏠 Home</button>
@@ -557,6 +558,11 @@ input[type="reset"]:disabled,
     <button class="wsc-module-main" type="button" onclick="wscToggleModule('QB')">📋 Outstanding QB Commitments</button>
     <button class="wsc-module-arrow" type="button" onclick="wscToggleModule('QB')">⌄</button>
   </div><div class="wsc-module-count"></div><div class="wsc-module-detail" hidden id="wscOutstandingQBList"></div></div>
+  </section>
+  <section id="wscBatchOrderScreen" hidden aria-labelledby="wscBatchOrderHeading">
+    <button type="button" onclick="wscCloseBatchOrders()" style="width:100%;">🏠 Home</button>
+    <h2 id="wscBatchOrderHeading" tabindex="-1" style="text-align:center;">📋 Batch Orders</h2>
+    <iframe id="wscBatchOrderFrame" title="Batch order review" style="display:block;width:100%;height:calc(100dvh - 145px);min-height:480px;border:0;background:#f3f6fa;"></iframe>
   </section>
   <section id="wscPostageScreen" hidden aria-labelledby="wscPostageHeading">
     <button type="button" onclick="wscClosePostageQuotes()" style="width:100%;">🏠 Home</button>
@@ -5224,6 +5230,7 @@ function wscSetStockManagerView(open, moveFocus) {
   if(invoice)invoice.hidden=true;
   const postage=document.getElementById('wscPostageScreen');if(postage)postage.hidden=true;
   if(typeof window.wscStopPostagePermissionChecks==='function')window.wscStopPostagePermissionChecks();
+  if(typeof window.wscHideBatchOrders==='function')window.wscHideBatchOrders();
   header.hidden=!!open;navigation.hidden=!!open;manager.hidden=!open;
   if(moveFocus) {
     window.scrollTo(0,0);
@@ -5238,12 +5245,13 @@ function wscSetPostView(open, moveFocus) {
   const manager=document.getElementById('wscStockManagerScreen');
   const postMenu=document.getElementById('wscPostMenuScreen');
   if(!header||!navigation||!manager||!postMenu)return;
-  if(open && !(wscPermissions?.functions?.POSTAGE_QUOTES===true || wscPermissions?.functions?.SHOPIFY_INVOICES===true))return;
+  if(open && !(wscPermissions?.functions?.POSTAGE_QUOTES===true || wscPermissions?.functions?.SHOPIFY_INVOICES===true || wscPermissions?.functions?.BATCH_ORDERS===true))return;
   const invoice=document.getElementById('wscShopifyInvoiceScreen');
   if(invoice && !invoice.hidden && typeof window.wscClearShopifyInvoices==='function')window.wscClearShopifyInvoices();
   if(invoice)invoice.hidden=true;
   const postage=document.getElementById('wscPostageScreen');if(postage)postage.hidden=true;
   if(typeof window.wscStopPostagePermissionChecks==='function')window.wscStopPostagePermissionChecks();
+  if(typeof window.wscHideBatchOrders==='function')window.wscHideBatchOrders();
   header.hidden=!!open;navigation.hidden=!!open;manager.hidden=true;postMenu.hidden=!open;
   if(moveFocus) {
     window.scrollTo(0,0);
@@ -7236,7 +7244,7 @@ if (["ST","SC"].includes(selectedReportType)) {
 window.WSC_ADMIN_URL = "https://warehouse-stock-reports.tmerry.workers.dev";
 let wscAdminData = null;
 let wscPermissions = null;
-const wscLabels = {SHOPIFY_INVOICES:"🧾 Shopify Invoices",POSTAGE_QUOTES:"📮 Postage Quotes",WEEKLY_BOM:"🧩 Weekly BOM",BOM:"🧩 BOM – Bill of Materials",ST:"📦 ST – Stock Take",SC:"📋 SC – Stock Count",TR:"🎪 TR – Trade Show",DL:"🚚 DL – Delivery",DATES:"📅 Check Dates"};
+const wscLabels = {BATCH_ORDERS:"📋 Batch Orders",SHOPIFY_INVOICES:"🧾 Shopify Invoices",POSTAGE_QUOTES:"📮 Postage Quotes",WEEKLY_BOM:"🧩 Weekly BOM",BOM:"🧩 BOM – Bill of Materials",ST:"📦 ST – Stock Take",SC:"📋 SC – Stock Count",TR:"🎪 TR – Trade Show",DL:"🚚 DL – Delivery",DATES:"📅 Check Dates"};
 async function wscAdminRequest(action, extra={}) {
   const idToken = await window.getCurrentStaffToken();
   const response = await fetch(window.WSC_ADMIN_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,idToken,...extra})});
@@ -7710,7 +7718,8 @@ function wscPaintPermissions(permissions) {
     button.style.display = areas[button.dataset.wscArea] === true ? "" : "none";
   });
   const postButton=document.getElementById('wscPostButton');
-  const canUsePost=areas.POSTAGE_QUOTES===true || areas.SHOPIFY_INVOICES===true;
+  const canUsePost=areas.POSTAGE_QUOTES===true || areas.SHOPIFY_INVOICES===true || areas.BATCH_ORDERS===true;
+  if(areas.BATCH_ORDERS!==true && typeof window.wscClearBatchOrders==='function'){const active=document.getElementById('wscBatchOrderScreen');if(active&&!active.hidden&&typeof window.wscCloseBatchOrders==='function')window.wscCloseBatchOrders();window.wscClearBatchOrders();}
   if(postButton)postButton.style.display=canUsePost?'':'none';
   const postMenu=document.getElementById('wscPostMenuScreen');
   if(postMenu && !postMenu.hidden && !canUsePost)wscSetPostView(false,false);
@@ -7826,7 +7835,7 @@ function wscSwitchRow(label,enabled,onChange,disabled=false){
 function wscRenderAdminStaff(){
   const box=document.getElementById("wscStaffToggles"),email=document.getElementById("wscStaffSelect").value;
   box.replaceChildren();const member=wscAdminData?.staff.find(s=>s.email===email);if(!member)return;
-  ["ST","SC","TR","DL","DATES","WEEKLY_BOM","POSTAGE_QUOTES","SHOPIFY_INVOICES"].forEach(area=>box.appendChild(wscSwitchRow(wscLabels[area],member.functions[area],input=>wscSaveSwitch(input,"STAFF",area,email))));
+  ["ST","SC","TR","DL","DATES","WEEKLY_BOM","POSTAGE_QUOTES","SHOPIFY_INVOICES","BATCH_ORDERS"].forEach(area=>box.appendChild(wscSwitchRow(wscLabels[area],member.functions[area],input=>wscSaveSwitch(input,"STAFF",area,email))));
 }
 function wscRenderAdminQB(){
   const box=document.getElementById("wscQBToggles");box.replaceChildren();
@@ -8057,7 +8066,7 @@ function wscIdleVisible(id) {
   return !!el && el.getClientRects().length>0 && getComputedStyle(el).visibility!=='hidden';
 }
 function wscIdleSafeToRefresh() {
-  return wscIdleVisible('welcomeScreen') && !wscIdleVisible('wscPostageScreen') && !wscIdleVisible('wscShopifyInvoiceScreen') && wscPendingRequests===0 &&
+  return wscIdleVisible('welcomeScreen') && !wscIdleVisible('wscPostageScreen') && !wscIdleVisible('wscShopifyInvoiceScreen') && !wscIdleVisible('wscBatchOrderScreen') && wscPendingRequests===0 &&
     !document.querySelector('dialog[open]:not(#wscIdleDialog)') &&
     !(typeof wscLiveQBUI!=='undefined' && wscLiveQBUI.busy) &&
     !document.querySelector('input:focus,textarea:focus,select:focus');
@@ -8120,6 +8129,7 @@ function wscIdleActivity(event) {
   }
   wscLastActivity=Date.now();
 }
+window.wscBatchIdleActivity=()=>{wscIdleActivity();return !wscIdleDialog;};
 for(const type of ['pointerdown','keydown','wheel','touchstart','input'])document.addEventListener(type,wscIdleActivity,{capture:true,passive:false});
 setInterval(()=>{if(Date.now()-wscLastActivity>=WSC_IDLE_MS)wscLockForInactivity();},1000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)wscIdleActivity();});
@@ -9579,6 +9589,51 @@ window.wscOpenPostageQuotes=async()=>{
     }catch(error){if(current(seq,staff)){mailUncertain=true;id('Message').textContent='The email outcome could not be confirmed: '+String(error.message||error)+'. Check the sending mailbox and recipient before trying again.';}}
     finally{setBusy(false);}
   });
+})();
+
+</script>
+<script>
+// Batch Orders is loaded on the same WSC origin. The bridge only exposes the
+// authorised, read-only customer lookup; QuickBooks tokens stay server-side.
+(function(){
+ let batchUser='',opening=false,permissionTimer=null;
+ const screen=()=>document.getElementById('wscBatchOrderScreen');
+ const frame=()=>document.getElementById('wscBatchOrderFrame');
+ function isActive(){const s=screen();return !!s&&!s.hidden&&!document.getElementById('wscIdleDialog')&&wscPermissions?.functions?.BATCH_ORDERS===true;}
+ function email(){return isActive()?String(window.getCurrentStaffEmail?.()||'').trim().toLowerCase():'';}
+ window.wscBatchBridge=Object.freeze({
+  staffEmail:email,
+  noteActivity(){return typeof window.wscBatchIdleActivity==='function'?window.wscBatchIdleActivity():isActive();},
+  close(){window.wscCloseBatchOrders();},
+  async searchCustomers(term){
+   const user=email();if(!user)throw new Error('Sign in to WSC and open Batch Orders.');
+   if(typeof term!=='string'||term.trim().length<2||term.trim().length>100)throw new Error('Enter a customer name.');
+   const result=await wscAdminRequest('getWSCPermissions',{batchCustomerRequest:{term:term.trim()}});
+   if(email()!==user)throw new Error('WSC was locked or the signed-in user changed.');
+   if(!result.batchCustomerLookup)throw new Error('The WSC customer lookup has not been deployed.');
+   return result.batchCustomerLookup;
+  }
+ });
+ window.wscHideBatchOrders=()=>{const s=screen();if(s)s.hidden=true;if(permissionTimer!==null){clearInterval(permissionTimer);permissionTimer=null;}};
+ window.wscClearBatchOrders=()=>{window.wscHideBatchOrders();const f=frame();if(f)f.removeAttribute('src');batchUser='';};
+ window.wscCloseBatchOrders=()=>{window.wscHideBatchOrders();wscSetPostView(false,true);};
+ window.wscOpenBatchOrders=async()=>{
+  if(opening)return;opening=true;
+  try{
+   await wscRefreshPermissions();
+   if(wscPermissions?.functions?.BATCH_ORDERS!==true)throw new Error('Batch Orders access is disabled for this account.');
+   const user=String(window.getCurrentStaffEmail?.()||'').trim().toLowerCase();if(!user)throw new Error('Please sign in to WSC first.');
+   document.getElementById('wscHomeHeader').hidden=true;document.getElementById('wscHomeNavigation').hidden=true;
+   document.getElementById('wscStockManagerScreen').hidden=true;document.getElementById('wscPostMenuScreen').hidden=true;
+   const postage=document.getElementById('wscPostageScreen');if(postage)postage.hidden=true;
+   const invoices=document.getElementById('wscShopifyInvoiceScreen');if(invoices)invoices.hidden=true;
+   const f=frame();if(!f)throw new Error('Batch Orders is unavailable.');
+   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html');batchUser=user;}
+   screen().hidden=false;window.scrollTo(0,0);document.getElementById('wscBatchOrderHeading').focus({preventScroll:true});
+   if(permissionTimer!==null)clearInterval(permissionTimer);permissionTimer=setInterval(()=>{if(!document.hidden&&isActive())void wscRefreshPermissions();},60000);
+  }catch(error){window.showWSCMessage('Batch Orders',String(error?.message||error));}
+  finally{opening=false;}
+ };
 })();
 
 </script>
