@@ -297,6 +297,12 @@ input[type="reset"]:disabled,
 #wscPostageScreen label{display:block;font-size:14px;font-weight:bold;margin:0 0 6px;color:#304861} #wscPostageScreen input:not([type=radio]),#wscPostageScreen select{width:100%;min-height:44px;padding:10px 12px;border:1px solid #bac8d7;border-radius:7px;background:white;color:#203247;font-size:16px}
 #wscPostageScreen .quantity-card{border:1px solid #d5dce4;border-radius:9px;padding:12px} #wscPostageScreen small,#wscPostageScreen .hint,#wscPostageScreen .section-tip{font-size:12px;color:#5f6f82}
 #wscPostageScreen .quantity-card small{display:block;margin-top:7px} #wscPostageScreen .calculated,#wscPostageScreen .guide-result{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;background:#edf5f7;border-radius:8px;padding:12px;margin-top:14px}
+#wscPostageScreen .parcel-plan{display:grid;gap:12px;margin-top:14px}
+#wscPostageScreen .plan-box{border:1px solid #d5dce4;border-radius:8px;padding:12px;margin:0;min-width:0}
+#wscPostageScreen .plan-box legend{font-weight:bold;padding:0 5px}
+#wscPostageScreen .plan-box small{display:block;margin-bottom:8px}
+#wscPostageScreen .parcel-summary{white-space:pre-line}
+#wscPostageScreen .live-parcel{margin:12px 0}
 #wscPostageScreen .tiny-heading{font-size:13px;font-weight:bold;margin:16px 0 8px} #wscPostageScreen .mode-switch{display:flex;flex-wrap:wrap;gap:8px;border:0;padding:0;margin:0 0 15px}
 #wscPostageScreen .mode-switch label{display:flex;gap:7px;align-items:center;border:1px solid #bac8d7;border-radius:8px;padding:10px;margin:0;cursor:pointer} #wscPostageScreen input[type=radio]{width:auto;margin:0;accent-color:#244b72}
 #wscPostageScreen .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0} #wscPostageScreen [hidden]{display:none!important}
@@ -576,15 +582,18 @@ input[type="reset"]:disabled,
   <div class="calculated"><span>Estimated goods weight <small>· excludes packaging</small></span><strong id="wscPQGoodsWeight" aria-live="polite">—</strong></div>
  </section>
  <section class="card" data-wsc-quote-step="2" hidden><div class="section-heading"><div class="number">02</div><div><h2>Choose your packaging</h2><p>Box suggestions come from your existing PandP guide.</p></div></div>
-  <div class="grid two"><div><label for="wscPQGuideType">Packing guide</label><select id="wscPQGuideType"><option value="bottles">Average bottles</option><option value="blue">Blue kits</option><option value="black">Large black kits</option><option value="mixed" hidden disabled>Mixed items (automatic)</option><option value="custom">Custom packaging</option></select></div><div id="wscPQGuideChoiceWrap"><label for="wscPQGuideChoice">Guide quantity</label><select id="wscPQGuideChoice"></select></div></div>
+  <div class="grid two"><div><label for="wscPQGuideType">Packing guide</label><select id="wscPQGuideType"><option value="bottles">Average bottles</option><option value="blue">Blue kits</option><option value="black">Large black kits</option><option value="auto" hidden disabled>Automatic packing plan</option><option value="custom">Custom packaging</option></select></div><div id="wscPQGuideChoiceWrap"><label for="wscPQGuideChoice">Guide quantity</label><select id="wscPQGuideChoice"></select></div></div>
   <div class="guide-result"><span>Suggested packaging</span><strong id="wscPQBoxName">—</strong></div>
   <p id="wscPQSuggestionMessage" class="section-tip" role="status" aria-live="polite"></p>
   <button id="wscPQAutoBox" class="secondary" type="button" style="width:100%;">↻ Suggest box from quantities</button>
-  <div class="tiny-heading">Actual parcel dimensions <span class="hint">(cm, editable)</span></div><div class="grid three"><div><label for="wscPQLength">Length</label><input id="wscPQLength" type="number" min="0.01" step="0.1" inputmode="decimal"></div><div><label for="wscPQWidth">Width</label><input id="wscPQWidth" type="number" min="0.01" step="0.1" inputmode="decimal"></div><div><label for="wscPQHeight">Height</label><input id="wscPQHeight" type="number" min="0.01" step="0.1" inputmode="decimal"></div></div>
-  <p class="section-tip">The guide is a starting point. Confirm the actual packed size and weight.</p>
+  <div id="wscPQParcelList" class="parcel-plan" hidden></div>
+  <div id="wscPQSingleDimensions"><div class="tiny-heading">Parcel dimensions <span class="hint">(cm, editable)</span></div><div class="grid three"><div><label for="wscPQLength">Length</label><input id="wscPQLength" type="number" min="0.01" step="0.1" inputmode="decimal"></div><div><label for="wscPQWidth">Width</label><input id="wscPQWidth" type="number" min="0.01" step="0.1" inputmode="decimal"></div><div><label for="wscPQHeight">Height</label><input id="wscPQHeight" type="number" min="0.01" step="0.1" inputmode="decimal"></div></div>
+  </div>
+  <p class="section-tip">Check the dimensions and weight after packing. You can edit the estimates.</p>
  </section>
- <section class="card" data-wsc-quote-step="3" hidden><div class="section-heading"><div class="number">03</div><div><h2>Delivery details</h2><p>Enter the destination and packed weight.</p></div></div>
-  <div class="grid three"><div><label for="wscPQDestination">Destination</label><select id="wscPQDestination"></select></div><div><label for="wscPQPostcode">Postcode <span class="hint">(optional)</span></label><input id="wscPQPostcode" type="text" autocomplete="off" placeholder="Enter postcode"></div><div><label for="wscPQPackedWeight">Packed weight (kg)</label><input id="wscPQPackedWeight" type="number" min="0.001" step="0.001" placeholder="Enter packed weight" inputmode="decimal"></div></div>
+ <section class="card" data-wsc-quote-step="3" hidden><div class="section-heading"><div class="number">03</div><div><h2>Delivery details</h2><p>Enter the destination and check the packed weight.</p></div></div>
+  <div class="grid three"><div><label for="wscPQDestination">Destination</label><select id="wscPQDestination"></select></div><div><label for="wscPQPostcode">Postcode <span class="hint">(optional)</span></label><input id="wscPQPostcode" type="text" autocomplete="off" placeholder="Enter postcode"></div><div id="wscPQSingleWeight"><label for="wscPQPackedWeight">Packed weight (kg)</label><input id="wscPQPackedWeight" type="number" min="0.001" step="0.001" placeholder="Enter packed weight" inputmode="decimal"></div></div>
+  <div id="wscPQMultiDelivery" hidden><p id="wscPQDeliveryWeights" class="parcel-summary"></p><small>Use Back to edit the weight or dimensions for a box.</small></div>
   <div id="wscPQOtherCountryWrap" hidden style="margin-top:14px"><label for="wscPQOtherCountry">Other destination</label><input id="wscPQOtherCountry" type="text" placeholder="Enter destination"><label for="wscPQOtherCountryCode" style="margin-top:12px;">Country code for live prices (three letters)</label><input id="wscPQOtherCountryCode" type="text" maxlength="3" placeholder="For example USA" autocapitalize="characters"></div>
   <div style="margin-top:14px"><label for="wscPQDestinationAddress">Destination address <span class="hint">(needed for a customer quote)</span></label><textarea id="wscPQDestinationAddress" rows="3" maxlength="500" autocomplete="street-address" placeholder="Recipient, street and town"></textarea><small>The postcode and destination above will also be included on the customer quote.</small><p id="wscPQAddressMessage" class="address-warning" role="status" hidden></p></div>
   <p class="section-tip">Choose an island or territory separately where listed. For live prices, the postcode is sent to Royal Mail; saved rates do not use it.</p>
@@ -592,20 +601,23 @@ input[type="reset"]:disabled,
  <section class="card" data-wsc-quote-step="4" hidden><div class="section-heading"><div class="number">04</div><div><h2>Postage and quote</h2><p>Request live Click &amp; Drop prices, or enter a verified price.</p></div></div>
   <fieldset class="mode-switch"><legend class="sr-only">Postage price source</legend><label><input type="radio" name="wscPostageSource" value="live" checked> Live Click &amp; Drop</label><label><input type="radio" name="wscPostageSource" value="manual"> Enter a price</label><label><input type="radio" name="wscPostageSource" value="table"> Saved reference rates (3 Nov 2026)</label></fieldset>
   <div id="wscPQLiveFields">
-   <label for="wscPQPackageFormat">Royal Mail package format</label><select id="wscPQPackageFormat" aria-describedby="wscPQFormatHint"><option value="">Choose the parcel format</option><option value="SmallParcel">Small parcel</option><option value="MediumParcel">Medium parcel</option><option value="LargeParcel">Large parcel</option><option value="LargeLetter">Large letter</option><option value="Letter">Letter</option></select>
+   <div id="wscPQSingleFormat"><label for="wscPQPackageFormat">Royal Mail package format</label><select id="wscPQPackageFormat" aria-describedby="wscPQFormatHint"><option value="">Choose the parcel format</option><option value="SmallParcel">Small parcel</option><option value="MediumParcel">Medium parcel</option><option value="LargeParcel">Large parcel</option><option value="LargeLetter">Large letter</option><option value="Letter">Letter</option></select>
    <small id="wscPQFormatHint" role="status" aria-live="polite">Enter the packed dimensions, destination and weight to suggest a format.</small>
+   </div>
+   <p id="wscPQMultiFormats" class="parcel-summary" hidden></p>
    <button id="wscPQFetchLive" class="primary" type="button">🌐 Get live prices</button>
-   <label for="wscPQLiveService">Available service</label><select id="wscPQLiveService" disabled><option value="">Get live prices first</option></select>
+   <div id="wscPQSingleService"><label for="wscPQLiveService">Available service</label><select id="wscPQLiveService" disabled><option value="">Get live prices first</option></select></div>
+   <div id="wscPQLiveParcelServices" hidden></div>
    <div id="wscPQLiveVatWrap" hidden style="margin-top:12px"><label for="wscPQLiveVatTreatment">Confirm VAT treatment with Click &amp; Drop</label><select id="wscPQLiveVatTreatment"><option value="">Choose how to handle VAT</option><option value="included">The Royal Mail cost already includes VAT</option><option value="add">Add the returned VAT to the cost</option></select><small>Royal Mail returns separate cost and VAT fields. Check how your account displays the total.</small></div>
    <p id="wscPQLiveStatus" class="section-tip" role="status">Enter parcel details, choose a format and get live prices.</p>
   </div>
-  <div id="wscPQManualFields" class="grid two" hidden><div><label for="wscPQManualPrice">Postage price (£)</label><div class="cost-field"><span>£</span><input id="wscPQManualPrice" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal"></div></div><div><label for="wscPQManualService">Service</label><input id="wscPQManualService" type="text" placeholder="Enter the service name"></div></div>
+  <div id="wscPQManualFields" class="grid two" hidden><div><label for="wscPQManualPrice">Total postage price (£)</label><div class="cost-field"><span>£</span><input id="wscPQManualPrice" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal"></div></div><div><label for="wscPQManualService">Service</label><input id="wscPQManualService" type="text" placeholder="Enter the service name"></div></div>
   <div class="grid two" style="margin-top:14px"><div><label for="wscPQPackingCost">Packaging cost (£) <span class="hint">(optional)</span></label><div class="cost-field"><span>£</span><input id="wscPQPackingCost" type="number" min="0" step="0.01" value="0" inputmode="decimal"></div></div><div><label for="wscPQMarkup">Add percentage</label><input id="wscPQMarkup" type="number" min="0" step="0.1" value="10" inputmode="decimal"><small>Applied to postage plus packaging.</small></div></div>
  </section>
  </div><aside class="right" data-wsc-quote-step="5" hidden><section class="card" aria-label="Quote summary"><div class="summary-head"><h2>Quote summary</h2><span class="tag">Guide only</span></div>
   <div class="grid two" style="margin-top:14px"><div><label for="wscPQQuoteCurrency">Quote currency</label><select id="wscPQQuoteCurrency"><option value="GBP">£ Pound sterling</option><option value="EUR">€ Euro</option><option value="USD">$ US dollar</option></select></div><div id="wscPQQuoteFxWrap" hidden><label for="wscPQQuoteFx">Exchange rate <span class="hint">(£1 = ?)</span></label><input id="wscPQQuoteFx" type="number" min="0.000001" step="0.0001" placeholder="Enter current rate" inputmode="decimal"><small>Enter your chosen rate; this is not a live rate.</small></div></div><p class="summary-dest" id="wscPQSummaryDest">—</p>
  <div class="estimate"><span>ESTIMATED POSTAGE</span><strong id="wscPQPostageDisplay">—</strong><p id="wscPQServiceDisplay">Complete the delivery details</p></div>
- <dl class="breakdown"><div><dt>Destination address</dt><dd id="wscPQSummaryAddress">—</dd></div><div><dt>Packaging</dt><dd id="wscPQSummaryBox">—</dd></div><div><dt>Parcel dimensions</dt><dd id="wscPQSummaryDimensions">—</dd></div><div><dt>Packed weight</dt><dd id="wscPQSummaryWeight">—</dd></div><div><dt>Packaging cost</dt><dd id="wscPQSummaryPacking">—</dd></div><div><dt id="wscPQSummaryMarkupLabel">Uplift</dt><dd id="wscPQSummaryMarkup">—</dd></div><div class="total"><dt>Suggested charge</dt><dd id="wscPQChargeDisplay">—</dd></div></dl>
+ <dl class="breakdown"><div><dt>Destination address</dt><dd id="wscPQSummaryAddress">—</dd></div><div><dt>Packaging</dt><dd id="wscPQSummaryBox">—</dd></div><div><dt>Parcel dimensions</dt><dd id="wscPQSummaryDimensions" class="parcel-summary">—</dd></div><div><dt>Packed weight</dt><dd id="wscPQSummaryWeight" class="parcel-summary">—</dd></div><div><dt>Packaging cost</dt><dd id="wscPQSummaryPacking">—</dd></div><div><dt id="wscPQSummaryMarkupLabel">Uplift</dt><dd id="wscPQSummaryMarkup">—</dd></div><div class="total"><dt>Suggested charge</dt><dd id="wscPQChargeDisplay">—</dd></div></dl>
  <p id="wscPQQuoteNotice" class="notice" role="status">—</p>
  <div class="actions"><button class="primary" type="button" id="wscPQCopyQuote">Copy quote</button><button class="secondary" type="button" id="wscPQPrintQuote">Print / save PDF</button></div>
  <a class="quiet" href="https://send.royalmail.com/" target="_blank" rel="noopener">Check price with Royal Mail ↗</a><div id="wscPQActionMessage" class="hint" role="status" style="text-align:center;margin-top:8px"></div>
@@ -8565,7 +8577,7 @@ async function getQuickBooksCommitStatusForST(reportNumber) {
 }
   
 // WSC deployment version. Update version.txt LAST, after any backend deployments.
-const WSC_VERSION = "1.0.3";
+const WSC_VERSION = "1.0.4";
 
 function isNewerWSCVersion(remote, current) {
   const r = remote.split(".").map(Number);
@@ -9302,161 +9314,444 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+<script src="./wsc-packing.js?v=20261112-parcels"></script>
 <section id="wscPostagePrint" aria-label="Printable postage quotation"><div id="wscPQPrintCustomerGreeting" hidden><p id="wscPQPrintGreeting"></p><p>Here is your quotation for the following:</p></div><h1 id="wscPQPrintHeading">WSC — Postage Quote</h1><p id="wscPQPrintIntro">Estimate only. Confirm price and service with Royal Mail Click &amp; Drop.</p><table id="wscPQPrintTable"></table><p id="wscPQPrintFooter">Check dimensions, contents and carrier acceptance. Saved reference rates, where selected, are dated 3 November 2026.</p></section>
 <script>
 (function(){
-let RATES={};
-const bottleGuides=[['25','Poolcase',[22,24,10]],['36','Red',[26,21,16]],['40','Blue',[23,23,23]],['50','Blue',[23,23,23]],['60','Blue',[23,23,23]],['80','Green',[31,23,23]],['130','Orange',[33,26,32]],['200 SW','Yellow',[43,32,27]],['200 DW','Grey',[43,24,37]],['360','Purple',[51,38,36]],['400','Pink',[61,31,46]],['800','Alpha',[61,39,61]]];
-const blueGuides=Array.from({length:25},(_,i)=>{const n=i+1;if(n<=2)return [String(n),'Green',[31,23,23]];if(n<=4)return [String(n),'Orange',[33,26,32]];if(n===5)return [String(n),'Yellow',[43,32,27]];if(n<=8)return [String(n),'Purple',[51,38,36]];if(n<=12)return [String(n),'iDip Box',[50,33,55]];return [String(n),'Pink',[61,31,46]];});
-const blackGuides=Array.from({length:14},(_,i)=>{const n=i+1;if(n===1)return [String(n),'K7',[45,35,11]];if(n===2)return [String(n),'Orange',[33,26,32]];if(n<=4)return [String(n),'Grey',[43,24,37]];if(n<=7)return [String(n),'Purple',[51,38,36]];return [String(n),'Black Case',[62,37,53]];});
-const $=id=>document.getElementById('wscPQ'+id.charAt(0).toUpperCase()+id.slice(1)), money=(n,c='GBP')=>new Intl.NumberFormat('en-GB',{style:'currency',currency:c}).format(n);
-const num=id=>{const input=$(id),v=input.value.trim();return v===''?null:Number(v);};
-const clean=n=>Number.isFinite(n)&&n>=0;
-const kilo=n=>n.toFixed(3).replace(/0+$/,'').replace(/\.$/,'');
-let currentQuote=null, mixedGuides=[], autoSuggestionSignature=null, autoFormatSignature=null;
-const postageCountryCodes={"Denmark":"DNK","France":"FRA","Germany":"DEU","Ireland":"IRL","Monaco":"MCO","Austria":"AUT","Belgium":"BEL","Bulgaria":"BGR","Croatia":"HRV","Cyprus":"CYP","Czech Republic":"CZE","Estonia":"EST","Finland":"FIN","Greece":"GRC","Hungary":"HUN","Italy":"ITA","Latvia":"LVA","Lithuania":"LTU","Luxembourg":"LUX","Malta":"MLT","Netherlands":"NLD","Poland":"POL","Portugal":"PRT","Romania":"ROU","Slovakia":"SVK","Slovenia":"SVN","Spain":"ESP","Sweden":"SWE","Albania":"ALB","Andorra":"AND","Armenia":"ARM","Azerbaijan":"AZE","Belarus":"BLR","Bosnia and Herzegovina":"BIH","Faroe Islands":"FRO","Georgia":"GEO","Gibraltar":"GIB","Greenland":"GRL","Iceland":"ISL","Kazakhstan":"KAZ","Kyrgyzstan":"KGZ","Liechtenstein":"LIE","Moldova":"MDA","Montenegro":"MNE","North Macedonia":"MKD","Norway":"NOR","Russia":"RUS","San Marino":"SMR","Serbia":"SRB","Switzerland":"CHE","Tajikistan":"TJK","Turkey":"TUR","Turkmenistan":"TKM","Ukraine":"UKR","Uzbekistan":"UZB","Vatican City":"VAT","United Kingdom":"GBR","Guernsey":"GGY","Isle of Man":"IMN","Jersey":"JEY"};
-let liveServices=[], liveSignature='', liveRequestSerial=0, liveBusy=false, liveExpiresAt=0, liveExpiryTimer=null;
-function stopLiveExpiryTimer(){if(liveExpiryTimer!==null){clearTimeout(liveExpiryTimer);liveExpiryTimer=null;}}
-function liveQuery(){
-  const destination=$('destination').value, country=destination==='__other__'?$('otherCountryCode').value.trim().toUpperCase():postageCountryCodes[destination]||'';
-  return {country:country,weightGrams:Math.ceil(num('packedWeight')*1000-1e-7),postcode:$('postcode').value.trim(),packageFormat:$('packageFormat').value};
+let RATES = {};
+const packingGuide = window.WSCPacking;
+const $ = id => document.getElementById('wscPQ' + id.charAt(0).toUpperCase() + id.slice(1));
+const money = (n, currency = 'GBP') => new Intl.NumberFormat('en-GB', {style:'currency', currency}).format(n);
+const num = id => $(id).value.trim() === '' ? null : Number($(id).value);
+const clean = n => Number.isFinite(n) && n >= 0;
+const kilo = n => Number(n.toFixed(3)).toString();
+const quantityFields = ['bottles', 'blueKits', 'blackKits'];
+const sizeFields = ['length', 'width', 'height'];
+const formatLabels = {Letter:'Letter', LargeLetter:'Large letter', SmallParcel:'Small parcel',
+  MediumParcel:'Medium parcel', LargeParcel:'Large parcel'};
+const estimateNote = 'Estimated from the PandP guide using the upper goods weight plus a carton and packing allowance.';
+let currentQuote = null, plannedParcels = [], packingEdited = false;
+let autoSuggestionSignature = null, autoFormatSignature = null;
+let liveResults = [], liveSignature = '', liveRequestSerial = 0, liveBusy = false;
+let liveExpiresAt = 0, liveExpiryTimer = null;
+
+function countryName() {
+  const destination = $('destination').value;
+  return destination === '__other__' ? $('otherCountry').value.trim() : destination;
 }
-function liveKey(){return JSON.stringify([liveQuery(),['length','width','height'].map(num),countryName()]);}
-function clearLiveIfChanged(){
-  if(liveSignature && liveSignature!==liveKey()){
-    liveServices=[];liveSignature='';liveExpiresAt=0;stopLiveExpiryTimer();liveRequestSerial++;
-    const list=$('liveService');list.replaceChildren(new Option('Get live prices first',''));list.disabled=true;
-    $('liveStatus').textContent='Parcel details changed. Get live prices again.';
+function destinationCode() {
+  const destination = $('destination').value;
+  return destination === '__other__' ? $('otherCountryCode').value.trim().toUpperCase() :
+    packingGuide.countryCode(destination);
+}
+function quoteParcels() {
+  return plannedParcels.length > 1 ? plannedParcels : [{
+    name: plannedParcels[0]?.name || selectedGuide()?.[1] || 'Custom packaging',
+    dimensions: sizeFields.map(num), weight: num('packedWeight')
+  }];
+}
+function hasSize(parcel) { return parcel.dimensions.every(n => clean(n) && n > 0); }
+function hasWeight(parcel) { return clean(parcel.weight) && parcel.weight > 0; }
+function parcelHeading(parcel, index) { return 'Box ' + (index + 1) + ' · ' + parcel.name; }
+function parcelWeight(parcel) { return hasWeight(parcel) ? kilo(parcel.weight) + ' kg' : 'Enter packed weight'; }
+function liveQueries(parcels = quoteParcels()) {
+  const country = destinationCode(), postcode = $('postcode').value.trim();
+  return parcels.map(parcel => ({
+    country, postcode,
+    weightGrams: Math.ceil(parcel.weight * 1000 - 1e-7),
+    packageFormat: parcels.length === 1 ? $('packageFormat').value :
+      packingGuide.suggestFormat(parcel.dimensions, parcel.weight, country).format
+  }));
+}
+function liveKey() {
+  const parcels = quoteParcels();
+  return JSON.stringify([liveQueries(parcels), parcels.map(parcel => parcel.dimensions), countryName()]);
+}
+function stopLiveExpiryTimer() {
+  if (liveExpiryTimer !== null) clearTimeout(liveExpiryTimer);
+  liveExpiryTimer = null;
+}
+function clearLivePrices(status, optionLabel = 'Get live prices first') {
+  liveRequestSerial++;
+  liveSignature = '';
+  liveResults = [];
+  liveExpiresAt = 0;
+  stopLiveExpiryTimer();
+  $('liveService').replaceChildren(new Option(optionLabel, ''));
+  $('liveService').disabled = true;
+  $('liveParcelServices').replaceChildren();
+  $('liveStatus').textContent = status;
+}
+function fillLiveServiceSelect(select, services) {
+  select.replaceChildren(new Option(services.length ? 'Choose a service' : 'No services returned', ''));
+  for (const [index, item] of services.entries()) {
+    const vat = item.vatCost === null ? '' : ' · VAT field ' + money(item.vatCost);
+    select.add(new Option(item.serviceName + ' — ' + money(item.cost) + vat, String(index)));
+  }
+  select.disabled = !services.length;
+}
+function renderLiveServices(parcels) {
+  if (parcels.length === 1) {
+    fillLiveServiceSelect($('liveService'), liveResults[0].services);
+    return;
+  }
+  const list = $('liveParcelServices');
+  list.replaceChildren();
+  for (const [index, parcel] of parcels.entries()) {
+    const field = document.createElement('div');
+    field.className = 'live-parcel';
+    const label = document.createElement('label'), select = document.createElement('select');
+    select.id = 'wscPQLiveBox' + (index + 1);
+    label.htmlFor = select.id;
+    label.textContent = parcelHeading(parcel, index);
+    fillLiveServiceSelect(select, liveResults[index].services);
+    select.addEventListener('change', update);
+    field.append(label, select);
+    list.append(field);
   }
 }
-function currentLiveQuote(){
-  $('liveVatWrap').hidden=true;
-  if(liveSignature && Date.now()>=liveExpiresAt){liveServices=[];liveSignature='';liveExpiresAt=0;stopLiveExpiryTimer();const list=$('liveService');list.replaceChildren(new Option('Get live prices again',''));list.disabled=true;$('liveStatus').textContent='The live price has expired. Get live prices again.';}
-  clearLiveIfChanged();
-  if(!liveSignature || liveSignature!==liveKey())return {error:'Enter parcel details and select Get live prices.'};
-  const index=$('liveService').value;
-  if(index==='' || !liveServices[Number(index)])return {error:'Choose a live Royal Mail service.'};
-  const item=liveServices[Number(index)];
-  let price=item.cost, vatTreatment='No VAT returned';
-  if(item.vatCost===null || item.vatCost>0){
-    $('liveVatWrap').hidden=false;
-    const treatment=$('liveVatTreatment').value;
-    if(!treatment)return {error:'Check Click & Drop and choose how the returned VAT should be handled.'};
-    if(treatment==='add' && item.vatCost===null)return {error:'Royal Mail did not provide a VAT amount. Check Click & Drop or enter the final price manually.'};
-    if(treatment==='add'){price+=item.vatCost;vatTreatment='VAT added to returned cost';}
-    else{vatTreatment='Returned cost confirmed as VAT inclusive';}
+function currentLiveQuote() {
+  $('liveVatWrap').hidden = true;
+  if (liveSignature && Date.now() >= liveExpiresAt) {
+    clearLivePrices('The live price has expired. Get live prices again.');
+  } else if (liveSignature && liveSignature !== liveKey()) {
+    clearLivePrices('Parcel details changed. Get live prices again.');
   }
-  return {price:price,apiCost:item.cost,vatCost:item.vatCost,vatTreatment:vatTreatment,service:item.serviceName,source:'Live Click & Drop API · '+item.quotedAt};
+  if (!liveSignature) return {error:'Enter parcel details and select Get live prices.'};
+  if (liveResults.some(result => !result.services.length)) {
+    return {error:'Royal Mail did not return a service for every parcel. Check the parcel details or enter a verified total price.'};
+  }
+  const selects = liveResults.length === 1 ? [$('liveService')] : [...$('liveParcelServices').querySelectorAll('select')];
+  const chosen = selects.map((select, index) => select.value === '' ? null : liveResults[index].services[Number(select.value)]);
+  if (!chosen.length || chosen.some(item => !item)) return {error:'Choose a live Royal Mail service for each parcel.'};
+  const vatNeeded = chosen.some(item => item.vatCost === null || item.vatCost > 0);
+  const treatment = $('liveVatTreatment').value;
+  if (vatNeeded) {
+    $('liveVatWrap').hidden = false;
+    if (!treatment) return {error:'Check Click & Drop and choose how the returned VAT should be handled.'};
+    if (treatment === 'add' && chosen.some(item => item.vatCost === null)) {
+      return {error:'Royal Mail did not provide all VAT amounts. Check Click & Drop or enter the verified total price.'};
+    }
+  }
+  const apiCost = chosen.reduce((total, item) => total + item.cost, 0);
+  const vatCost = chosen.some(item => item.vatCost === null) ? null : chosen.reduce((total, item) => total + item.vatCost, 0);
+  const vatTreatment = !vatNeeded ? 'No VAT returned' : treatment === 'add' ?
+    'VAT added to returned cost' : 'Returned cost confirmed as VAT inclusive';
+  return {
+    price: apiCost + (vatNeeded && treatment === 'add' ? vatCost : 0), apiCost, vatCost, vatTreatment,
+    service: [...new Set(chosen.map(item => item.serviceName))].join(' / '),
+    parcelServices: chosen.map(item => item.serviceName),
+    source: 'Live Click & Drop API · ' + (liveResults[0].quotedAt || 'current quote')
+  };
 }
-async function fetchLivePrices(){
-  if(liveBusy)return;
-  const q=liveQuery(),dims=['length','width','height'].map(num);
-  if(!countryName() || !/^[A-Z]{3}$/.test(q.country)){ $('liveStatus').textContent='This destination needs a recognised three-letter country code for live prices; use Enter a price if unavailable.';return;}
-  if(!Number.isSafeInteger(q.weightGrams) || q.weightGrams<=0 || dims.some(n=>!clean(n)||n<=0) || !q.packageFormat){$('liveStatus').textContent='Enter the packed weight and dimensions, then choose a Royal Mail package format.';return;}
-  const signature=liveKey(),serial=++liveRequestSerial,email=String(window.getCurrentStaffEmail?.()||'').trim().toLowerCase();
-  liveSignature='';liveServices=[];liveExpiresAt=0;stopLiveExpiryTimer();const list=$('liveService');list.replaceChildren(new Option('Getting live prices…',''));list.disabled=true;liveBusy=true;$('fetchLive').disabled=true;$('liveStatus').textContent='Checking live Royal Mail prices…';update();
+async function fetchLivePrices() {
+  if (liveBusy) return;
+  const parcels = quoteParcels(), queries = liveQueries(parcels);
+  if (!countryName() || !/^[A-Z]{3}$/.test(destinationCode())) {
+    $('liveStatus').textContent = 'Enter a recognised three-letter delivery country code on step 3.';
+    return;
+  }
+  const invalid = queries.findIndex((query, index) => !hasSize(parcels[index]) ||
+    !hasWeight(parcels[index]) || !Number.isSafeInteger(query.weightGrams) || query.weightGrams <= 0 || !query.packageFormat);
+  if (invalid >= 0) {
+    $('liveStatus').textContent = 'Check the packed weight, dimensions and Royal Mail format for box ' + (invalid + 1) + '.';
+    return;
+  }
+  clearLivePrices('Checking live Royal Mail prices…', 'Getting live prices…');
+  const signature = liveKey(), serial = liveRequestSerial;
+  const email = String(window.getCurrentStaffEmail?.() || '').trim().toLowerCase();
+  const isCurrent = () => serial === liveRequestSerial && signature === liveKey() &&
+    email === String(window.getCurrentStaffEmail?.() || '').trim().toLowerCase() &&
+    !document.getElementById('wscPostageScreen').hidden;
+  liveBusy = true;
+  $('fetchLive').disabled = true;
+  update();
   try {
-    const data=await wscAdminRequest('getWSCPermissions',{postageQuoteRequest:q});
-    if(serial!==liveRequestSerial || signature!==liveKey() || email!==String(window.getCurrentStaffEmail?.()||'').trim().toLowerCase() || document.getElementById('wscPostageScreen').hidden)return;
-    $('liveVatTreatment').value='';$('liveVatWrap').hidden=true;liveServices=(data.quote?.services||[]).map(item=>({...item,quotedAt:data.quote.quotedAt}));liveSignature=signature;liveExpiresAt=Date.now()+300000;liveExpiryTimer=setTimeout(()=>{liveExpiryTimer=null;update();},300001);list.replaceChildren(new Option('Choose a service',''));
-    liveServices.forEach((item,i)=>{const option=new Option(item.serviceName+' — '+money(item.cost)+(item.vatCost===null?'':' · VAT field '+money(item.vatCost)),String(i));list.add(option);});
-    list.disabled=!liveServices.length;$('liveStatus').textContent=liveServices.length?'Choose a service. Prices expire after five minutes; check whether the cost includes VAT before quoting.':'Royal Mail returned no services for these details. Check the format or use a manual price.';
-  } catch(error) {
-    if(serial===liveRequestSerial && signature===liveKey()){$('liveStatus').textContent=String(error?.message||error);list.replaceChildren(new Option('Live prices unavailable',''));}
-  } finally{liveBusy=false;$('fetchLive').disabled=false;update();}
+    const results = await packingGuide.lookupParcelPrices(queries, async query => {
+      const data = await wscAdminRequest('getWSCPermissions', {postageQuoteRequest:query});
+      if (!Array.isArray(data.quote?.services)) throw Error('Royal Mail did not return a service list.');
+      return data.quote;
+    }, index => {
+      if (!isCurrent()) return false;
+      $('liveStatus').textContent = 'Checking Royal Mail prices for box ' + (index + 1) + ' of ' + parcels.length + '…';
+    });
+    if (!results || !isCurrent()) return;
+    $('liveVatTreatment').value = '';
+    liveResults = results;
+    liveSignature = signature;
+    liveExpiresAt = Date.now() + 300000;
+    liveExpiryTimer = setTimeout(() => {liveExpiryTimer = null; update();}, 300001);
+    renderLiveServices(parcels);
+    $('liveStatus').textContent = results.every(result => result.services.length)
+      ? (parcels.length > 1 ? 'Choose a service for each box.' : 'Choose a service.') + ' Live prices expire after five minutes.'
+      : 'A box has no available services. Check its measurements or enter a verified total price.';
+  } catch (error) {
+    if (isCurrent()) clearLivePrices(String(error?.message || error), 'Live prices unavailable');
+  } finally {
+    if (serial === liveRequestSerial && !isCurrent()) {
+      clearLivePrices('Quote details changed. Get live prices again.');
+    }
+    liveBusy = false;
+    $('fetchLive').disabled = false;
+    update();
+  }
 }
-function populateDestinations(){const select=$('destination');const first=document.createElement('option');first.value='';first.textContent='Select destination';select.append(first);for(const name of ['United Kingdom','Guernsey','Isle of Man','Jersey']){const opt=document.createElement('option');opt.value=name;opt.textContent=name;select.append(opt);}for(const name of Object.keys(RATES).sort((a,b)=>a.localeCompare(b))){const opt=document.createElement('option');opt.value=name;opt.textContent=name;select.append(opt);}const other=document.createElement('option');other.value='__other__';other.textContent='Other destination';select.append(other);select.value='';}
-function activeGuides(){const type=$('guideType').value;return type==='blue'?blueGuides:type==='black'?blackGuides:type==='mixed'?mixedGuides:bottleGuides;}
-function populateGuide(preferred){
- const type=$('guideType').value,select=$('guideChoice');select.replaceChildren();$('guideChoiceWrap').hidden=type==='custom';
- if(type==='custom'){$('boxName').textContent='Custom packaging';['length','width','height'].forEach(id=>$(id).value='');update();return;}
- for(const [quantity,name] of activeGuides()){const o=document.createElement('option');o.value=quantity;o.textContent=(type==='mixed'?'Combined item estimate':type==='bottles'?quantity+' bottle guide':quantity+' '+(type==='blue'?'blue':'black')+' kit'+(quantity==='1'?'':'s'))+' — '+name;select.append(o);}
- if(typeof preferred==='string' && [...select.options].some(o=>o.value===preferred))select.value=preferred;
- applyGuide();
+
+function populateDestinations() {
+  const select = $('destination');
+  const destinations = ['United Kingdom', 'Guernsey', 'Isle of Man', 'Jersey', ...Object.keys(RATES).sort()];
+  select.replaceChildren(new Option('Select destination', ''),
+    ...[...new Set(destinations)].map(name => new Option(name, name)), new Option('Other destination', '__other__'));
+  select.value = '';
 }
-function applyGuide(){const selected=activeGuides().find(x=>x[0]===$('guideChoice').value);if(!selected)return;$('boxName').textContent=selected[1]+' ('+selected[2].join(' × ')+' cm)';['length','width','height'].forEach((id,i)=>$(id).value=selected[2][i]);update();}
-function setMixedGuideVisible(show){const option=$('guideType').querySelector('option[value="mixed"]');option.hidden=!show;option.disabled=!show;}
-function chooseCustomPackaging(message){mixedGuides=[];setMixedGuideVisible(false);$('guideType').value='custom';populateGuide();$('suggestionMessage').textContent=message;}
-function suggestPackaging(force=false){
- const quantities=['bottles','blueKits','blackKits'].map(num), signature=JSON.stringify(quantities);
- if(!force && signature===autoSuggestionSignature)return;
- autoSuggestionSignature=signature;
- if(quantities.some(n=>!Number.isSafeInteger(n)||n<0)){chooseCustomPackaging('Enter a whole number of each item on step 1 to get a box suggestion.');return;}
- const types=[{type:'bottles',quantity:quantities[0],guides:bottleGuides},{type:'blue',quantity:quantities[1],guides:blueGuides},{type:'black',quantity:quantities[2],guides:blackGuides}].filter(item=>item.quantity>0);
- if(!types.length){chooseCustomPackaging('Enter product quantities on step 1 to get a box suggestion.');return;}
- if(types.length===1){
-   const item=types[0], suggestion=item.guides.find(row=>parseInt(row[0],10)>=item.quantity);
-   if(!suggestion){chooseCustomPackaging('These quantities exceed the single-box guide. Choose packaging and check whether more than one box is needed.');return;}
-   mixedGuides=[];setMixedGuideVisible(false);$('guideType').value=item.type;populateGuide(suggestion[0]);
-   $('suggestionMessage').textContent='Suggested from the PandP guide. Check the items fit and confirm the packed dimensions and weight.';
-   return;
- }
- // A mixed estimate needs a known capacity for every item type in the same box.
- const boxes=new Map();
- for(const item of types){
-   for(const [quantity,name,dimensions] of item.guides){
-     const key=name+'|'+dimensions.join('x');
-     if(!boxes.has(key))boxes.set(key,{name,dimensions,capacities:{}});
-     const capacity=parseInt(quantity,10), box=boxes.get(key);
-     box.capacities[item.type]=Math.max(box.capacities[item.type]||0,capacity);
-   }
- }
- const matches=[...boxes.values()].filter(box=>types.every(item=>box.capacities[item.type]>0) && types.reduce((used,item)=>used+item.quantity/box.capacities[item.type],0)<=1+1e-9);
- matches.sort((a,b)=>a.dimensions.reduce((x,y)=>x*y,1)-b.dimensions.reduce((x,y)=>x*y,1));
- if(!matches.length){chooseCustomPackaging('No single-box suggestion is available for this combination. Choose packaging and check whether more than one box is needed.');return;}
- const box=matches[0];mixedGuides=[['combined',box.name,box.dimensions]];setMixedGuideVisible(true);$('guideType').value='mixed';populateGuide('combined');
- $('suggestionMessage').textContent='Mixed-item estimate based on the PandP guide. Check the items fit and confirm the packed dimensions and weight.';
+function selectedGuide() {
+  return packingGuide.guides[$('guideType').value]?.find(row => row[0] === $('guideChoice').value);
 }
-function goodsWeight(){const values=['bottles','blueKits','blackKits'].map(num);if(values.some(n=>!clean(n)||!Number.isInteger(n)))return null;return [values[0]*0.032+values[1]*0.7+values[2],values[0]*0.04+values[1]*0.9+values[2]*1.8];}
-function estimate(){const country=$('destination').value,weight=num('packedWeight'),dims=['length','width','height'].map(num);if(!country)return {error:'Choose a destination to see a postage estimate.'};if(!clean(weight)||weight<=0)return {error:'Enter the actual packed weight to see a postage estimate.'};if(dims.some(v=>!clean(v)||v<=0))return {error:'Enter the actual packed dimensions to see a postage estimate.'};const bands=RATES[country];if(!bands)return {error:'No saved rate is available for this destination. Enter a Click & Drop price instead.'};const grams=Math.ceil(weight*1000-1e-7);const band=bands.find(b=>grams>b[0]&&grams<=b[1]);if(!band)return {error:'No saved rate covers this weight. Check the available services in Click & Drop.'};const sorted=[...dims].sort((a,b)=>b-a);const heavier=band[3]==='Tracked Heavier';const fits=heavier?(sorted[0]<=61&&sorted[1]<=46&&sorted[2]<=46&&weight<=20):(sorted[0]<=60&&dims.reduce((a,b)=>a+b,0)<90&&weight<=2);if(!fits)return {error:'This parcel is outside the size or weight guide for the listed service. Check another service in Click & Drop.'};return {price:band[2],service:band[3],band:'Up to '+kilo(band[1]/1000)+' kg',source:'Saved reference rates · 3 Nov 2026'};}
-function countryName(){return $('destination').value==='__other__'?$('otherCountry').value.trim():$('destination').value;}
-// Suggest standard Click & Drop formats from the packed measurements. Royal Mail
-// services and destination-specific restrictions must still be checked.
-function suggestRoyalMailFormat(){
- const dimensions=['length','width','height'].map(num), weight=num('packedWeight'), destination=$('destination').value;
- const country=destination==='__other__'?$('otherCountryCode').value.trim().toUpperCase():postageCountryCodes[destination]||'';
- const signature=JSON.stringify([dimensions,weight,country,countryName()]);
- if(signature===autoFormatSignature)return;
- autoFormatSignature=signature;
- const format=$('packageFormat'),hint=$('formatHint');
- let selected='',message='';
- if(dimensions.some(value=>!Number.isFinite(value)||value<=0))message='Enter the packed dimensions on step 2 to suggest a format.';
- else if(!countryName() || !/^[A-Z]{3}$/.test(country))message='Enter the destination on step 3 to suggest a format.';
- else if(!Number.isFinite(weight)||weight<=0)message='Enter the packed weight on step 3 to suggest a format.';
- else {
-   const sides=[...dimensions].sort((a,b)=>b-a), fits=limits=>sides.every((side,i)=>side<=limits[i]);
-   const uk=country==='GBR'||country==='IMN';
-   const lowWeightDestination=!uk && ['CUB','GMB','CYM'].includes(country) && weight>10;
-   if(lowWeightDestination)message='Check the destination’s Royal Mail weight limit and choose a suitable service.';
-   else if(fits([24,16.5,0.5]) && weight<=0.1)selected='Letter';
-   else if(fits([35.3,25,2.5]) && weight<=(uk?1:0.75))selected='LargeLetter';
-   else if(weight<=2 && (uk?fits([45,35,16]):sides[0]<=60 && dimensions.reduce((sum,n)=>sum+n,0)<90))selected='SmallParcel';
-   else if(weight<=20 && fits([61,46,46]))selected='MediumParcel';
-   else message='No standard format can be suggested for these measurements. Check Royal Mail or choose a format manually.';
-   if(selected){
-     message='Suggested from the packed dimensions, weight and destination. Check the service limits with Royal Mail.';
-     if(selected==='LargeLetter' && uk && weight>0.75)message='Large letter is available for some UK services up to 1 kg; check the selected service’s weight limit.';
-     else if(selected==='MediumParcel' && !uk)message='Medium parcel suggested. International service availability and destination weight limits vary.';
-   }
- }
- format.value=selected;hint.textContent=message;
+function populateGuide(preferred) {
+  const type = $('guideType').value, rows = packingGuide.guides[type] || [];
+  $('guideChoiceWrap').hidden = !rows.length;
+  const list = $('guideChoice');
+  list.replaceChildren(...rows.map(([quantity, name]) => {
+    const description = type === 'bottles' ? quantity + ' bottle guide' :
+      quantity + ' ' + packingGuide.labels[type].slice(0, -1) + (quantity === '1' ? '' : 's');
+    return new Option(description + ' — ' + name, quantity);
+  }));
+  if (rows.some(row => row[0] === preferred)) list.value = preferred;
 }
-function update(){suggestRoyalMailFormat();const g=goodsWeight();$('goodsWeight').textContent=g?kilo(g[0])+' – '+kilo(g[1])+' kg':'Enter whole numbers';const sourceMode=document.querySelector('input[name="wscPostageSource"]:checked').value,manual=sourceMode==='manual';$('manualFields').hidden=!manual;$('liveFields').hidden=sourceMode!=='live';$('otherCountryWrap').hidden=$('destination').value!=='__other__';const fxNeeded=$('quoteCurrency').value!=='GBP';$('quoteFxWrap').hidden=!fxNeeded;let quote=manual?{price:num('manualPrice'),service:$('manualService').value.trim()||'Service not entered',source:'Price entered by user'}:sourceMode==='live'?currentLiveQuote():estimate();const country=countryName(),weight=num('packedWeight'),dims=['length','width','height'].map(num),packing=num('packingCost'),markup=num('markup');let error=quote.error||'';if(!country)error='Enter a destination.';else if(!clean(weight)||weight<=0)error='Enter the actual packed weight.';else if(dims.some(v=>!clean(v)||v<=0))error='Enter the actual packed dimensions.';else if(manual&&(!clean(quote.price)))error='Enter the postage price from Click & Drop.';else if(!clean(packing)||!clean(markup))error='Enter a valid packaging cost and percentage.';const eligible=!error&&clean(quote.price);const increase=eligible?(quote.price+packing)*markup/100:null;const total=eligible?quote.price+packing+increase:null;const fx=num('quoteFx');const currency=$('quoteCurrency').value;let charge=eligible?money(total):'—';let fxError='';if(eligible&&fxNeeded){if(clean(fx)&&fx>0)charge=money(total*fx,currency)+' ('+money(total)+')';else fxError=' Enter a current exchange rate to convert the suggested charge.';}
- $('summaryAddress').textContent=$('destinationAddress').value.trim()||'Not entered';$('summaryDest').textContent=(country||'Destination not entered')+($('postcode').value.trim()?' · '+$('postcode').value.trim():'');$('summaryBox').textContent=$('boxName').textContent;$('summaryDimensions').textContent=dims.every(v=>clean(v)&&v>0)?dims.join(' × ')+' cm':'—';$('summaryWeight').textContent=clean(weight)&&weight>0?kilo(weight)+' kg':'—';$('summaryPacking').textContent=clean(packing)?money(packing):'—';$('summaryMarkupLabel').textContent='Uplift'+(clean(markup)?' ('+markup+'%)':'');$('summaryMarkup').textContent=eligible?money(increase):'—';$('postageDisplay').textContent=eligible?money(quote.price):'—';$('serviceDisplay').textContent=eligible?quote.service+(quote.band?' · '+quote.band:''):'No estimate available';$('chargeDisplay').textContent=charge;
- const notice=$('quoteNotice');const priceNote=manual?'Price entered manually. ':sourceMode==='live'?'Live Click & Drop cost'+(quote.vatCost===null?' (VAT field unavailable). ':(' · VAT field '+money(quote.vatCost)+'. '))+'Check whether VAT is included. ':'Saved reference rates dated 3 November 2026. ';notice.textContent=error||(priceNote+'Confirm the price, service, parcel size and contents with Click & Drop.'+fxError);notice.classList.toggle('good',eligible&&!fxError);$('copyQuote').disabled=!eligible||(fxNeeded&&!!fxError);$('printQuote').disabled=$('copyQuote').disabled;currentQuote=eligible&&!fxError?{country,postcode:$('postcode').value.trim(),address:$('destinationAddress').value.trim(),weight,dims,box:$('boxName').textContent,guide:$('guideType').selectedOptions[0]?.textContent||'',guideChoice:$('guideChoice').selectedOptions[0]?.textContent||'',bottles:$('bottles').value,blueKits:$('blueKits').value,blackKits:$('blackKits').value,goodsWeight:$('goodsWeight').textContent,packageFormat:sourceMode==='live'?$('packageFormat').value:'Not applicable',postage:quote.price,apiCost:sourceMode==='live'?quote.apiCost:null,vatCost:sourceMode==='live'?quote.vatCost:null,vatTreatment:sourceMode==='live'?quote.vatTreatment:'Not applicable',service:quote.service,source:quote.source,packing,markup,increase,total,charge,currency,fxRate:fxNeeded?fx:null,customerCharge:currency==='GBP'?money(total):money(total*fx,currency)}:null;}
+function setAutoGuide(show) {
+  const option = $('guideType').querySelector('option[value="auto"]');
+  option.hidden = !show;
+  option.disabled = !show;
+}
+function parcelInput(box, labelText, id, value, step, change) {
+  const field = document.createElement('div');
+  const label = document.createElement('label'), input = document.createElement('input');
+  input.id = id;
+  input.type = 'number';
+  input.step = step;
+  input.min = step;
+  input.inputMode = 'decimal';
+  input.value = String(value);
+  label.htmlFor = id;
+  label.textContent = labelText;
+  input.addEventListener('input', () => {
+    packingEdited = true;
+    change(input.value === '' ? null : Number(input.value));
+    update();
+  });
+  field.append(label, input);
+  box.append(field);
+}
+function renderPackingPlan() {
+  const multi = plannedParcels.length > 1;
+  $('singleDimensions').hidden = multi;
+  $('singleWeight').hidden = multi;
+  $('multiDelivery').hidden = !multi;
+  $('singleFormat').hidden = multi;
+  $('multiFormats').hidden = !multi;
+  $('singleService').hidden = multi;
+  $('liveParcelServices').hidden = !multi;
+  const list = $('parcelList');
+  list.hidden = !multi;
+  list.replaceChildren();
+  if (!multi) return;
+  for (const [index, parcel] of plannedParcels.entries()) {
+    const card = document.createElement('fieldset'), legend = document.createElement('legend');
+    card.className = 'plan-box';
+    legend.textContent = parcelHeading(parcel, index);
+    const goods = document.createElement('small');
+    goods.textContent = packingGuide.contents(parcel.counts);
+    const sizes = document.createElement('div');
+    sizes.className = 'grid two';
+    parcelInput(sizes, 'Packed weight (kg)', 'wscPQBoxWeight' + index, parcel.weight, '0.001',
+      value => {parcel.weight = value;});
+    for (const [side, label] of ['Length', 'Width', 'Height'].entries()) {
+      parcelInput(sizes, label + ' (cm)', 'wscPQBox' + index + label, parcel.dimensions[side], '0.01',
+        value => {parcel.dimensions[side] = value;});
+    }
+    card.append(legend, goods, sizes);
+    list.append(card);
+  }
+}
+function applyGuide(message = '') {
+  if (plannedParcels.length) $('packedWeight').value = '';
+  plannedParcels = [];
+  packingEdited = false;
+  setAutoGuide(false);
+  const name = selectedGuide()?.[1], dimensions = packingGuide.dimensions[name];
+  $('boxName').textContent = name ? name + ' (' + dimensions.join(' × ') + ' cm)' : 'Custom packaging';
+  sizeFields.forEach((id, i) => {$(id).value = dimensions?.[i] ?? '';});
+  $('suggestionMessage').textContent = message;
+  renderPackingPlan();
+  update();
+}
+function suggestPackaging(force = false) {
+  const quantities = quantityFields.map(num), signature = JSON.stringify(quantities);
+  if (!force && signature === autoSuggestionSignature) return;
+  autoSuggestionSignature = signature;
+  const lines = packingGuide.types.map((type, index) => ({type, quantity:quantities[index]})).filter(line => line.quantity > 0);
+  const valid = quantities.every(n => Number.isSafeInteger(n) && n >= 0);
+  const parcels = valid ? packingGuide.suggest(lines, destinationCode()) : [];
+  if (!parcels.length) {
+    $('guideType').value = 'custom';
+    populateGuide();
+    applyGuide(!valid ? 'Enter whole numbers on step 1.' : !lines.length ?
+      'Enter product quantities on step 1 to get a box suggestion.' :
+      'The guide could not find a plan within ' + packingGuide.maxBoxes + ' Royal Mail boxes. Check the quantities or enter custom parcel details.');
+    return;
+  }
+  plannedParcels = parcels;
+  packingEdited = false;
+  const first = parcels[0], multi = parcels.length > 1;
+  const type = !multi && lines.length === 1 ? lines[0].type : 'auto';
+  setAutoGuide(type === 'auto');
+  $('guideType').value = type;
+  const guide = packingGuide.guides[type]?.find(([quantity, name]) =>
+    name === first.name && parseInt(quantity, 10) >= lines[0].quantity);
+  populateGuide(guide?.[0]);
+  $('boxName').textContent = multi ? parcels.length + ' boxes' : first.name + ' (' + first.dimensions.join(' × ') + ' cm)';
+  sizeFields.forEach((id, i) => {$(id).value = multi ? '' : first.dimensions[i];});
+  $('packedWeight').value = multi ? '' : first.weight;
+  $('suggestionMessage').textContent = (multi ? '' : packingGuide.contents(first.counts) + ' · approx. ' +
+    kilo(first.weight) + ' kg packed. ') + estimateNote;
+  renderPackingPlan();
+  update();
+}
+function estimate() {
+  const country = $('destination').value, bands = RATES[country];
+  if (!country) return {error:'Choose a destination to see a postage estimate.'};
+  if (!bands) return {error:'No saved rate is available for this destination. Use live prices or enter a verified price.'};
+  const parcels = quoteParcels(), rates = [];
+  for (const [index, parcel] of parcels.entries()) {
+    const label = 'box ' + (index + 1);
+    if (!hasWeight(parcel) || !hasSize(parcel)) return {error:'Enter the weight and dimensions for ' + label + '.'};
+    const grams = Math.ceil(parcel.weight * 1000 - 1e-7);
+    const band = bands.find(row => grams > row[0] && grams <= row[1]);
+    if (!band) return {error:'No saved rate covers the weight of ' + label + '. Check Click & Drop.'};
+    const sides = [...parcel.dimensions].sort((a, b) => b - a);
+    const fits = band[3] === 'Tracked Heavier'
+      ? sides[0] <= 61 && sides[1] <= 46 && sides[2] <= 46 && grams <= 20000
+      : sides[0] <= 60 && sides.reduce((sum, n) => sum + n, 0) < 90 && grams <= 2000;
+    if (!fits) return {error:'The saved rate does not cover the dimensions and weight of ' + label + '. Check Click & Drop.'};
+    rates.push(band);
+  }
+  return {price:rates.reduce((total, band) => total + band[2], 0),
+    service:[...new Set(rates.map(band => band[3]))].join(' / '),
+    parcelServices:rates.map(band => band[3]), band:rates.length === 1 ? 'Up to ' + kilo(rates[0][1] / 1000) + ' kg' : '',
+    source:'Saved reference rates · 3 Nov 2026'};
+}
+function updateFormats(parcels) {
+  const country = destinationCode();
+  if (parcels.length > 1) {
+    autoFormatSignature = null;
+    $('multiFormats').textContent = parcels.map((parcel, i) => {
+      const suggestion = packingGuide.suggestFormat(parcel.dimensions, parcel.weight, country);
+      return parcelHeading(parcel, i) + ' — ' + (formatLabels[suggestion.format] || suggestion.message);
+    }).join('\n');
+    $('deliveryWeights').textContent = parcels.map((parcel, i) =>
+      parcelHeading(parcel, i) + ' — ' + parcelWeight(parcel)).join('\n');
+    return;
+  }
+  const {dimensions, weight} = parcels[0];
+  const signature = JSON.stringify([dimensions, weight, country]);
+  if (signature === autoFormatSignature) return;
+  autoFormatSignature = signature;
+  const suggestion = packingGuide.suggestFormat(dimensions, weight, country);
+  $('packageFormat').value = suggestion.format;
+  $('formatHint').textContent = suggestion.message;
+}
+
+function update() {
+  const parcels = quoteParcels(), multiple = parcels.length > 1;
+  updateFormats(parcels);
+  const weights = packingGuide.goodsWeight(quantityFields.map(num));
+  $('goodsWeight').textContent = weights ? kilo(weights[0]) + ' – ' + kilo(weights[1]) + ' kg' : 'Enter whole numbers';
+  const sourceMode = document.querySelector('input[name="wscPostageSource"]:checked').value;
+  const manual = sourceMode === 'manual', live = sourceMode === 'live';
+  $('manualFields').hidden = !manual;
+  $('liveFields').hidden = !live;
+  $('otherCountryWrap').hidden = $('destination').value !== '__other__';
+  const currency = $('quoteCurrency').value, fx = num('quoteFx'), fxNeeded = currency !== 'GBP';
+  $('quoteFxWrap').hidden = !fxNeeded;
+  const quote = manual
+    ? {price:num('manualPrice'), service:$('manualService').value.trim() || 'Service not entered', source:'Price entered by user'}
+    : live ? currentLiveQuote() : estimate();
+  const country = countryName(), postcode = $('postcode').value.trim(), address = $('destinationAddress').value.trim();
+  const packing = num('packingCost') ?? 0, markup = num('markup') ?? 0;
+  let error = quote.error || '';
+  if (!country) error = 'Enter a destination.';
+  else if (!parcels.every(hasWeight)) error = 'Enter the packed weight for each box.';
+  else if (!parcels.every(hasSize)) error = 'Enter the dimensions for each box.';
+  else if (manual && !clean(quote.price)) error = 'Enter the total postage price.';
+  else if (!clean(packing) || !clean(markup)) error = 'Enter a valid packaging cost and percentage.';
+  const eligible = !error && clean(quote.price);
+  const increase = eligible ? (quote.price + packing) * markup / 100 : null;
+  const total = eligible ? quote.price + packing + increase : null;
+  const fxError = eligible && fxNeeded && !(clean(fx) && fx > 0);
+  const charge = !eligible ? '—' : fxNeeded && !fxError ? money(total * fx, currency) + ' (' + money(total) + ')' : money(total);
+  const weight = parcels.every(hasWeight) ? parcels.reduce((sum, parcel) => sum + parcel.weight, 0) : null;
+
+  $('summaryAddress').textContent = address || 'Not entered';
+  $('summaryDest').textContent = (country || 'Destination not entered') + (postcode ? ' · ' + postcode : '');
+  $('summaryBox').textContent = $('boxName').textContent;
+  $('summaryDimensions').textContent = parcels.map((parcel, i) => (multiple ? parcelHeading(parcel, i) + ' — ' : '') +
+    (hasSize(parcel) ? parcel.dimensions.join(' × ') + ' cm' : '—')).join('\n');
+  $('summaryWeight').textContent = weight === null ? '—' : kilo(weight) + ' kg' + (multiple ? ' total' : '');
+  $('summaryPacking').textContent = clean(packing) ? money(packing) : '—';
+  $('summaryMarkupLabel').textContent = 'Uplift' + (clean(markup) ? ' (' + markup + '%)' : '');
+  $('summaryMarkup').textContent = eligible ? money(increase) : '—';
+  $('postageDisplay').textContent = eligible ? money(quote.price) : '—';
+  $('serviceDisplay').textContent = eligible ? quote.service + (quote.band ? ' · ' + quote.band : '') : 'No estimate available';
+  $('chargeDisplay').textContent = charge;
+  const priceNote = manual ? 'Price entered manually. ' : live ?
+    'Live Click & Drop cost' + (quote.vatCost === null ? ' (VAT field unavailable). ' : ' · VAT field ' + money(quote.vatCost) + '. ') :
+    'Saved reference rates dated 3 November 2026. ';
+  const notice = $('quoteNotice');
+  notice.textContent = error || priceNote + (plannedParcels.length ? 'Check the packing estimates against the actual parcels. ' : '') +
+    (fxError ? 'Enter a current exchange rate to convert the suggested charge.' : 'Confirm the price, service and contents with Click & Drop.');
+  notice.classList.toggle('good', eligible && !fxError);
+  $('copyQuote').disabled = !eligible || fxError;
+  $('printQuote').disabled = $('copyQuote').disabled;
+  currentQuote = eligible && !fxError ? {
+    country, postcode, address, parcels, weight, estimated:plannedParcels.length > 0, box:$('boxName').textContent,
+    guide:$('guideType').selectedOptions[0]?.textContent || '', guideChoice:$('guideChoice').selectedOptions[0]?.textContent || '',
+    bottles:$('bottles').value, blueKits:$('blueKits').value, blackKits:$('blackKits').value, goodsWeight:$('goodsWeight').textContent,
+    packageFormats:live ? liveQueries(parcels).map(query => formatLabels[query.packageFormat]) : [],
+    postage:quote.price, apiCost:live ? quote.apiCost : null, vatCost:live ? quote.vatCost : null,
+    vatTreatment:live ? quote.vatTreatment : 'Not applicable', service:quote.service, parcelServices:quote.parcelServices || [],
+    source:quote.source, packing, markup, increase, total, charge, currency, fxRate:fxNeeded ? fx : null,
+    customerCharge:currency === 'GBP' ? money(total) : money(total * fx, currency)
+  } : null;
+}
+
 function convert(){const amt=num('convertAmount'),rate=num('convertRate'),uplift=num('convertUplift'),from=$('convertFrom').value,to=$('convertTo').value,same=from===to;$('convertRate').disabled=same;if(same)$('convertRate').placeholder='Not needed';else $('convertRate').placeholder='Enter current rate';if(!clean(amt)||!clean(uplift)||(!same&&(!clean(rate)||rate<=0))){$('conversionResult').textContent='Enter an amount and '+(same?'percentage.':'exchange rate.');return;}const result=amt*(same?1:rate)*(1+uplift/100);$('conversionResult').textContent=money(amt,from)+' → '+money(result,to)+(uplift?' including '+uplift+'%':'');}
 function fullAddress(q){return [q.address,q.postcode,q.country].filter(Boolean).join('\n');}
+function parcelRows(q, internal) {
+ const prefix = q.estimated ? 'Estimated packed weight' : 'Packed weight';
+ if(q.parcels.length === 1){
+   const rows = [[prefix,kilo(q.weight)+' kg'],['Dimensions',q.parcels[0].dimensions.join(' × ')+' cm']];
+   if(internal) rows.push(['Royal Mail package format',q.packageFormats[0]||'Not applicable']);
+   return rows;
+ }
+ const rows = [[prefix+' (total)',kilo(q.weight)+' kg']];
+ for(const [i,parcel] of q.parcels.entries()){
+   const details = [parcel.dimensions.join(' × ')+' cm',kilo(parcel.weight)+' kg'];
+   if(internal) details.push(q.packageFormats[i],q.parcelServices[i]);
+   rows.push([parcelHeading(parcel,i),details.filter(Boolean).join(' · ')]);
+ }
+ return rows;
+}
 function inHouseRows(q){return [
  ['Quote date',new Date().toLocaleDateString('en-GB')],['Destination address',fullAddress(q)],
  ['Bottles',q.bottles],['Blue kits',q.blueKits],['Large black kits',q.blackKits],['Estimated goods weight',q.goodsWeight],
  ['Packing guide',q.guide],['Guide quantity',q.guideChoice||'Not applicable'],['Packaging',q.box],
- ['Dimensions',q.dims.join(' × ')+' cm'],['Packed weight',kilo(q.weight)+' kg'],['Royal Mail package format',q.packageFormat],
+ ...parcelRows(q,true),
  ['Service',q.service],['Postage used in quote',money(q.postage)],['Royal Mail cost field',q.apiCost===null?'Not applicable':money(q.apiCost)],
  ['Royal Mail VAT field',q.vatCost===null?'Not supplied / not applicable':money(q.vatCost)],['VAT treatment',q.vatTreatment],
  ['Packaging cost',money(q.packing)],['Uplift ('+q.markup+'%)',money(q.increase)],['Quote currency',q.currency],
  ['Exchange rate',q.fxRate===null?'Not applicable':'£1 = '+q.fxRate+' '+q.currency],['Suggested charge',q.charge],['Source',q.source]
  ];}
-function customerRows(q){return [['Destination address',fullAddress(q)],['Packed weight',kilo(q.weight)+' kg'],['Dimensions',q.dims.join(' × ')+' cm'],['Price',q.customerCharge]];}
+function customerRows(q){return [['Destination address',fullAddress(q)],...parcelRows(q,false),['Price',q.customerCharge]];}
 function quoteText(){if(!currentQuote)return '';return 'WSC — ESTIMATE ONLY\n'+inHouseRows(currentQuote).map(row=>row[0]+': '+row[1]).join('\n')+'\nConfirm current price, service and carrier acceptance in Click & Drop.';}
 function makePrint(kind){const customer=kind==='customer',table=$('printTable');$('printCustomerGreeting').hidden=!customer;if(customer)$('printGreeting').textContent=new Date().getHours()<12?'Good Morning,':'Good Afternoon,';$('printHeading').textContent=customer?'Customer Postage Quote':'WSC — In-house Postage Quote';$('printIntro').hidden=customer;$('printFooter').hidden=customer;table.replaceChildren();for(const [key,text] of (customer?customerRows(currentQuote):inHouseRows(currentQuote))){const row=document.createElement('tr'),label=document.createElement('td'),value=document.createElement('td');label.textContent=key;value.textContent=String(text);row.append(label,value);table.append(row);}}
 let quoteStep=1;
@@ -9467,13 +9762,23 @@ $('stepBack').addEventListener('click',()=>setQuoteStep(quoteStep-1));$('stepNex
 $('autoBox').addEventListener('click',()=>suggestPackaging(true));
 $('destinationAddress').addEventListener('input',()=>{$('addressMessage').hidden=true;});
 $('printInternal').addEventListener('click',()=>printSelectedQuote('internal'));$('printCustomer').addEventListener('click',()=>printSelectedQuote('customer'));$('printCancel').addEventListener('click',()=>closePdfDialog());
-['bottles','blueKits','blackKits','length','width','height','destination','postcode','destinationAddress','packedWeight','otherCountry','otherCountryCode','packageFormat','liveService','liveVatTreatment','manualPrice','manualService','packingCost','markup','quoteCurrency','quoteFx'].forEach(id=>{$(id).addEventListener('input',update);$(id).addEventListener('change',update);});
+[...quantityFields,'postcode','destinationAddress','otherCountry','packageFormat','liveVatTreatment',
+ 'manualPrice','manualService','packingCost','markup','quoteCurrency','quoteFx'].forEach(id=>{
+  $(id).addEventListener('input',update);$(id).addEventListener('change',update);
+});
+['destination','otherCountryCode'].forEach(id=>{
+ $(id).addEventListener('change',()=>{if(plannedParcels.length && !packingEdited) suggestPackaging(true);else update();});
+});
 ['convertAmount','convertFrom','convertTo','convertRate','convertUplift'].forEach(id=>{$(id).addEventListener('input',convert);$(id).addEventListener('change',convert);});
 document.querySelectorAll('input[name="wscPostageSource"]').forEach(el=>el.addEventListener('change',update));
-$('guideType').addEventListener('change',()=>{populateGuide();$('suggestionMessage').textContent='Packaging selected manually. Check the items fit and confirm the packed dimensions and weight.';});
-$('guideChoice').addEventListener('change',()=>{applyGuide();$('suggestionMessage').textContent='Packaging selected manually. Check the items fit and confirm the packed dimensions and weight.';});
-['length','width','height'].forEach(id=>$(id).addEventListener('input',()=>{$('suggestionMessage').textContent='Dimensions entered manually. Check the items fit and confirm the packed weight.';}));
-$('packageFormat').addEventListener('change',()=>{$('formatHint').textContent=$('packageFormat').value?'Selected manually. Check the service size, weight and destination limits with Royal Mail.':'Choose a format or update the parcel details to get a suggestion.';});
+$('guideType').addEventListener('change',()=>{populateGuide();applyGuide('Packaging selected manually. Check the packed size and weight.');});
+$('guideChoice').addEventListener('change',()=>applyGuide('Packaging selected manually. Check the packed size and weight.'));
+[...sizeFields,'packedWeight'].forEach(id=>$(id).addEventListener('input',()=>{
+ packingEdited=true;
+ if(plannedParcels.length) $('suggestionMessage').textContent='Parcel details edited. Check the packed size and weight.';
+ update();
+}));
+$('packageFormat').addEventListener('change',()=>{$('formatHint').textContent=$('packageFormat').value?'Selected manually. Check the service limits with Royal Mail.':'Choose a format or update the parcel details to get a suggestion.';});
 $('fetchLive').addEventListener('click',fetchLivePrices);$('liveService').addEventListener('change',()=>{$('liveVatTreatment').value='';update();});
 $('copyQuote').addEventListener('click',async()=>{update();if(!currentQuote){$('actionMessage').textContent='Get a current price before copying.';return;}try{await navigator.clipboard.writeText(quoteText());$('actionMessage').textContent='Quote copied.';}catch(error){$('actionMessage').textContent='Copy was unavailable. Use Print / save PDF instead.';}});$('printQuote').addEventListener('click',()=>{update();if(!currentQuote){$('actionMessage').textContent='Get a current price before printing.';return;}const dialog=$('pdfDialog');if(typeof dialog.showModal==='function')dialog.showModal();else dialog.setAttribute('open','');});
 window.addEventListener('afterprint',()=>document.body.classList.remove('wsc-postage-printing'));
@@ -9493,9 +9798,10 @@ window.wscOpenPostageQuotes=async()=>{
     RATES=result.postageQuoteRates;delete result.postageQuoteRates;
     wscPermissions=result;wscPermissionEmail=email;wscPaintPermissions(result);
     if(lastUser!==email){
-      liveServices=[];liveSignature='';liveExpiresAt=0;stopLiveExpiryTimer();liveRequestSerial++;$('liveService').replaceChildren(new Option('Get live prices first',''));$('liveService').disabled=true;$('liveStatus').textContent='Enter parcel details, choose a format and get live prices.';
-      document.getElementById('wscPostageForm').reset();lastUser=email;autoSuggestionSignature=null;autoFormatSignature=null;mixedGuides=[];setMixedGuideVisible(false);$('suggestionMessage').textContent='';
-      $('destination').replaceChildren();populateDestinations();populateGuide();convert();
+      clearLivePrices('Enter parcel details and get live prices.');
+      document.getElementById('wscPostageForm').reset();
+      lastUser=email;autoSuggestionSignature=null;autoFormatSignature=null;
+      populateDestinations();populateGuide();applyGuide();convert();
     } else {update();convert();}
     document.getElementById('wscHomeHeader').hidden=true;
     document.getElementById('wscHomeNavigation').hidden=true;
@@ -9638,7 +9944,7 @@ window.wscOpenPostageQuotes=async()=>{
    const postage=document.getElementById('wscPostageScreen');if(postage)postage.hidden=true;
    const invoices=document.getElementById('wscShopifyInvoiceScreen');if(invoices)invoices.hidden=true;
    const f=frame();if(!f)throw new Error('Batch Orders is unavailable.');
-   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=20261112-layout');batchUser=user;}
+   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=20261112-parcels');batchUser=user;}
    screen().hidden=false;window.scrollTo(0,0);document.getElementById('wscBatchOrderHeading').focus({preventScroll:true});
    if(permissionTimer!==null)clearInterval(permissionTimer);permissionTimer=setInterval(()=>{if(!document.hidden&&isActive())void wscRefreshPermissions();},60000);
   }catch(error){window.showWSCMessage('Batch Orders',String(error?.message||error));}
