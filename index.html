@@ -9605,6 +9605,16 @@ window.wscOpenPostageQuotes=async()=>{
   staffEmail:email,
   noteActivity(){return typeof window.wscBatchIdleActivity==='function'?window.wscBatchIdleActivity():isActive();},
   close(){window.wscCloseBatchOrders();},
+  async quotePostage(query){
+   const user=email();if(!user)throw new Error('Sign in to WSC and open Batch Orders.');
+   if(wscPermissions?.functions?.POSTAGE_QUOTES!==true)throw new Error('Postage Quotes access is disabled for your account.');
+   const country=String(query?.country||'').trim().toUpperCase(),postcode=String(query?.postcode||'').trim(),weightGrams=Number(query?.weightGrams),packageFormat=String(query?.packageFormat||'');
+   if(!/^[A-Z]{3}$/.test(country)||postcode.length>30||!Number.isSafeInteger(weightGrams)||weightGrams<=0||weightGrams>1000000||!['Letter','LargeLetter','SmallParcel','MediumParcel','LargeParcel'].includes(packageFormat))throw new Error('Check the delivery address and packed parcel details.');
+   const result=await wscAdminRequest('getWSCPermissions',{postageQuoteRequest:{country,postcode,weightGrams,packageFormat}});
+   if(email()!==user||wscPermissions?.functions?.POSTAGE_QUOTES!==true)throw new Error('WSC was locked or access changed.');
+   if(!result.quote||!Array.isArray(result.quote.services))throw new Error('Royal Mail did not return a service list.');
+   return result.quote;
+  },
   async searchCustomers(term){
    const user=email();if(!user)throw new Error('Sign in to WSC and open Batch Orders.');
    if(typeof term!=='string'||term.trim().length<2||term.trim().length>100)throw new Error('Enter a customer name.');
