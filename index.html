@@ -46,6 +46,20 @@
 .wsc-module-detail { padding:8px 12px 12px; border:1px solid #d6dce5; border-top:0; border-radius:0 0 12px 12px; background:white; color:#172b4d; }
 .wsc-module-detail[hidden], .wsc-module-arrow[hidden] { display:none !important; }
 .wsc-module-count { font-size:12px; padding:0 0 10px; text-align:center; }
+.wsc-manager-entry { width:100%; margin:12px 0; background:#294766; color:white; border-radius:12px; }
+.wsc-manager-action { margin:12px 0; background:#476984; }
+.wsc-manager-action[hidden], .wsc-manager-entry[hidden] { display:none !important; }
+.wsc-module-header > .wsc-favourite-toggle {
+  flex:0 0 48px; width:48px; padding:0; border-left:1px solid currentColor;
+  font-size:25px; line-height:1; text-align:center;
+}
+.wsc-module-header > .wsc-favourite-toggle[aria-pressed="true"] {
+  color:#ffdb55 !important; text-shadow:0 1px 2px #443500;
+}
+.wsc-attention > .wsc-favourite-toggle[aria-pressed="true"] { -webkit-text-stroke:1px #443500; }
+.wsc-module-header > .wsc-favourite-toggle:focus-visible { outline:2px solid currentColor; outline-offset:-4px; }
+#wscFavourites { margin-top:20px; }
+#wscFavouritesHeading { font-size:18px; margin:0 0 8px; }
 .wsc-home-report-card { position:relative; padding:12px; margin:8px 0; border:1px solid #c7ced6; border-radius:8px; color:#172b4d; }
 .wsc-home-report-card.wsc-home-own { background:#fff2a8; border-color:#d9b536; }
 .wsc-home-report-card.wsc-home-other { background:#e8ebee; border-color:#abb3bc; }
@@ -506,7 +520,7 @@ input[type="reset"]:disabled,
        alt="About Warehouse Stock Control">
   </a> 
 
-  <div id="wscHomeHeader">
+  <div id="wscHomeHeader" data-wsc-home-view="home">
   <h2 style="text-align:center;">
   Welcome to<br>Warehouse Stock Control<br>ITS Europe
   </h2>
@@ -527,52 +541,73 @@ input[type="reset"]:disabled,
 
 
   </div>
-  <nav id="wscHomeNavigation" aria-label="Home navigation">
-  <button id="wscDatesHomeButton" data-wsc-area="DATES" type="button" onclick="wscOpenDates()" style="width:100%; margin:30px 0 30px; background:#54799A; color:white;">📅 Check Dates</button>
-    <button id="wscStockManagerButton" type="button" onclick="wscSetStockManagerView(true, true)" style="width:100%;margin:15px 0;background:#294766;color:white;border-radius:12px;">📦 Stock Manager</button>
+  <nav id="wscHomeNavigation" data-wsc-home-view="home" aria-label="Home navigation">
+    <button id="wscStockManagerButton" class="wsc-manager-entry" type="button" onclick="wscOpenManager('stock')">📦 Stock Manager</button>
     <p id="wscStockManagerSummary" role="status" aria-live="polite" hidden style="text-align:center;font-size:12px;margin:0 0 10px;"></p>
-  <button id="wscHomeReportsButton" type="button" onclick="showReportsScreen()" style="width:100%; margin:12px 0 8px; background:#54799A; color:white;">📄 Reports</button>
-  <button id="wscPostButton" type="button" onclick="wscSetPostView(true, true)" style="display:none;width:100%;margin:15px 0;background:#294766;color:white;border-radius:12px;">📮 Post Manager</button>
+    <button id="wscPostButton" class="wsc-manager-entry" type="button" onclick="wscOpenManager('post')" hidden>📮 Post Manager</button>
+    <button id="wscOfficeManagerButton" class="wsc-manager-entry" type="button" onclick="wscOpenManager('office')" hidden>🗂 Office Manager</button>
+    <section id="wscFavourites" aria-labelledby="wscFavouritesHeading" hidden>
+      <h2 id="wscFavouritesHeading">Favourites</h2>
+      <div id="wscFavouriteList"></div>
+    </section>
   </nav>
-  <section id="wscPostMenuScreen" aria-labelledby="wscPostMenuHeading" hidden>
-    <button type="button" onclick="wscSetPostView(false, true)" style="width:100%;">🏠 Home</button>
+  <section id="wscPostMenuScreen" data-wsc-home-view="post" aria-labelledby="wscPostMenuHeading" hidden>
+    <button type="button" onclick="wscCloseManager('post')" style="width:100%;">🏠 Home</button>
     <h2 id="wscPostMenuHeading" tabindex="-1" style="text-align:center;">📮 Post Manager</h2>
-    <button id="wscPostageQuotesButton" data-wsc-area="POSTAGE_QUOTES" type="button" onclick="wscOpenPostageQuotes()" style="display:none;width:100%;margin:15px 0;background:#54799A;color:white;">📮 Postage Quotes</button>
-    <button id="wscShopifyInvoiceButton" data-wsc-area="SHOPIFY_INVOICES" type="button" onclick="wscOpenShopifyInvoices()" style="display:none;width:100%;margin:15px 0;background:#54799A;color:white;">🧾 Shopify Invoices</button>
-    <button id="wscBatchOrderButton" data-wsc-area="BATCH_ORDERS" type="button" onclick="wscOpenBatchOrders()" style="display:none;width:100%;margin:15px 0;background:#54799A;color:white;">📋 Batch Orders</button>
+    <div class="wsc-module-header wsc-manager-action" hidden>
+      <button id="wscPostageQuotesButton" class="wsc-module-main" data-wsc-favourite="postage" data-wsc-area="POSTAGE_QUOTES" type="button" onclick="wscOpenPostageQuotes()">📮 Postage Quotes</button>
+    </div>
+    <div class="wsc-module-header wsc-manager-action" hidden>
+      <button id="wscShopifyInvoiceButton" class="wsc-module-main" data-wsc-favourite="shopify" data-wsc-area="SHOPIFY_INVOICES" type="button" onclick="wscOpenShopifyInvoices()">🧾 Shopify Invoices</button>
+    </div>
   </section>
-  <section id="wscStockManagerScreen" aria-labelledby="wscStockManagerHeading" hidden>
-    <button type="button" onclick="wscSetStockManagerView(false, true)" style="width:100%;">🏠 Home</button>
+  <section id="wscOfficeManagerScreen" data-wsc-home-view="office" aria-labelledby="wscOfficeManagerHeading" hidden>
+    <button type="button" onclick="wscCloseManager('office')" style="width:100%;">🏠 Home</button>
+    <h2 id="wscOfficeManagerHeading" tabindex="-1" style="text-align:center;">🗂 Office Manager</h2>
+    <div class="wsc-module-header wsc-manager-action" hidden>
+      <button id="wscBatchOrderButton" class="wsc-module-main" data-wsc-favourite="batch" data-wsc-area="BATCH_ORDERS" type="button" onclick="wscOpenBatchOrders()">📋 Batch Orders</button>
+    </div>
+  </section>
+  <section id="wscStockManagerScreen" data-wsc-home-view="stock" aria-labelledby="wscStockManagerHeading" hidden>
+    <button type="button" onclick="wscCloseManager('stock')" style="width:100%;">🏠 Home</button>
     <h2 id="wscStockManagerHeading" tabindex="-1" style="text-align:center;">📦 Stock Manager</h2>
-  <button id="wscWeeklyBOMButton" data-wsc-area="WEEKLY_BOM" type="button" onclick="wscStartWeeklyBOM(this)" style="display:none;width:100%;margin:15px 0;background:#54799A;color:white;">🧩 Weekly BOM</button>
+    <div class="wsc-module-header wsc-manager-action" hidden>
+      <button id="wscDatesHomeButton" class="wsc-module-main" data-wsc-favourite="dates" data-wsc-area="DATES" type="button" onclick="wscOpenDates()">📅 Check Dates</button>
+    </div>
+    <div class="wsc-module-header wsc-manager-action">
+      <button id="wscHomeReportsButton" class="wsc-module-main" data-wsc-favourite="reports" type="button" onclick="showReportsScreen()">📄 Reports</button>
+    </div>
+    <div class="wsc-module-header wsc-manager-action" hidden>
+      <button id="wscWeeklyBOMButton" class="wsc-module-main" data-wsc-favourite="bom" data-wsc-area="WEEKLY_BOM" type="button" onclick="wscStartWeeklyBOM(this)">🧩 Weekly BOM</button>
+    </div>
 
   <div class="wsc-module" data-module="ST"><div class="wsc-module-header">
-    <button class="wsc-module-main" data-wsc-area="ST" onclick="wscModuleMainClick('ST')">📦 ST – Stock Take</button>
+    <button class="wsc-module-main" data-wsc-favourite="st" data-wsc-area="ST" type="button" onclick="wscModuleMainClick('ST')">📦 ST – Stock Take</button>
     <button class="wsc-module-arrow" type="button" aria-label="Expand open Stock Takes" onclick="wscToggleModule('ST')" hidden>⌄</button>
   </div><div class="wsc-module-count" hidden></div><div class="wsc-module-detail" hidden><div id="homeStockTakeSessions"></div></div></div>
   <div class="wsc-module" data-module="SC"><div class="wsc-module-header">
-    <button class="wsc-module-main" data-wsc-area="SC" onclick="wscModuleMainClick('SC')">📋 SC – Stock Count</button>
+    <button class="wsc-module-main" data-wsc-favourite="sc" data-wsc-area="SC" type="button" onclick="wscModuleMainClick('SC')">📋 SC – Stock Count</button>
     <button class="wsc-module-arrow" type="button" aria-label="Expand open Stock Counts" onclick="wscToggleModule('SC')" hidden>⌄</button>
   </div><div class="wsc-module-count" hidden></div><div class="wsc-module-detail" hidden><div id="homeStockCountSessions"></div></div></div>
   <div class="wsc-module" data-module="DL"><div class="wsc-module-header">
-    <button class="wsc-module-main" data-wsc-area="DL" type="button" onclick="wscModuleMainClick('DL')">🚚 DL – Delivery</button>
+    <button class="wsc-module-main" data-wsc-favourite="dl" data-wsc-area="DL" type="button" onclick="wscModuleMainClick('DL')">🚚 DL – Delivery</button>
     <button class="wsc-module-arrow" type="button" aria-label="Expand open Deliveries" onclick="wscToggleModule('DL')" hidden>⌄</button>
   </div><div class="wsc-module-count" hidden></div><div class="wsc-module-detail" hidden><div id="openDeliverySessions"></div></div></div>
   <div class="wsc-module" data-module="TR"><div class="wsc-module-header">
-    <button class="wsc-module-main" data-wsc-area="TR" type="button" onclick="wscModuleMainClick('TR')">🎪 TR – Trade Show</button>
+    <button class="wsc-module-main" data-wsc-favourite="tr" data-wsc-area="TR" type="button" onclick="wscModuleMainClick('TR')">🎪 TR – Trade Show</button>
     <button class="wsc-module-arrow" type="button" aria-label="Expand open Trade Shows" onclick="wscToggleModule('TR')" hidden>⌄</button>
   </div><div class="wsc-module-count" hidden></div><div class="wsc-module-detail" hidden><div id="homeTradeShowSessions"></div></div></div>
   <div class="wsc-module" data-module="QB" id="wscQbModule" hidden><div class="wsc-module-header wsc-attention">
-    <button class="wsc-module-main" type="button" onclick="wscToggleModule('QB')">📋 Outstanding QB Commitments</button>
+    <button class="wsc-module-main" data-wsc-favourite="qb" type="button" onclick="wscOpenOutstandingQB()">📋 Outstanding QB Commitments</button>
     <button class="wsc-module-arrow" type="button" onclick="wscToggleModule('QB')">⌄</button>
   </div><div class="wsc-module-count"></div><div class="wsc-module-detail" hidden id="wscOutstandingQBList"></div></div>
   </section>
-  <section id="wscBatchOrderScreen" hidden aria-labelledby="wscBatchOrderHeading">
+  <section id="wscBatchOrderScreen" data-wsc-home-view="batch" hidden aria-labelledby="wscBatchOrderHeading">
     <button type="button" onclick="wscCloseBatchOrders()" style="width:100%;">🏠 Home</button>
     <h2 id="wscBatchOrderHeading" tabindex="-1" style="text-align:center;">📋 Batch Orders</h2>
     <iframe id="wscBatchOrderFrame" title="Batch order review" style="display:block;width:100%;height:calc(100dvh - 145px);min-height:480px;border:0;background:#f3f6fa;"></iframe>
   </section>
-  <section id="wscPostageScreen" hidden aria-labelledby="wscPostageHeading">
+  <section id="wscPostageScreen" data-wsc-home-view="postage" hidden aria-labelledby="wscPostageHeading">
     <button type="button" onclick="wscClosePostageQuotes()" style="width:100%;">🏠 Home</button>
     <h2 id="wscPostageHeading" tabindex="-1" style="text-align:center;">📮 Postage Quotes</h2>
     <p class="pqp-notice">Choose Live Click &amp; Drop, enter the parcel details and request prices. Live prices need an eligible online-postage account; check VAT, dimensions and contents before quoting.</p>
@@ -630,7 +665,7 @@ input[type="reset"]:disabled,
     <dialog id="wscPQPdfDialog" aria-labelledby="wscPQPdfTitle"><h3 id="wscPQPdfTitle">Choose a quote</h3><p>Select the details to include in your PDF.</p><div class="pdf-options"><button class="primary" id="wscPQPrintInternal" type="button">In-house quote — all details</button><button class="primary" id="wscPQPrintCustomer" type="button">Customer quote — address, parcel and price</button><button class="secondary" id="wscPQPrintCancel" type="button">Cancel</button></div></dialog>
     <p class="pqp-footer">No orders or labels are created. Confirm the parcel and contents with Royal Mail.</p>
   </section>
-  <section id="wscShopifyInvoiceScreen" hidden aria-labelledby="wscShopifyInvoiceHeading">
+  <section id="wscShopifyInvoiceScreen" data-wsc-home-view="shopify" hidden aria-labelledby="wscShopifyInvoiceHeading">
     <button type="button" onclick="wscCloseShopifyInvoices()" style="width:100%">🏠 Home</button>
     <h2 id="wscShopifyInvoiceHeading" tabindex="-1" style="text-align:center">🧾 Shopify Invoices</h2>
     <div class="wsc-invoice-card">
@@ -5231,47 +5266,129 @@ async function hideITSSplash() {
 }
   
 
-// Stock Manager is a view inside Welcome, so existing module and sign-in
-// navigation continues to hide the entire Home area as before.
-function wscSetStockManagerView(open, moveFocus) {
-  const header=document.getElementById('wscHomeHeader');
-  const navigation=document.getElementById('wscHomeNavigation');
-  const manager=document.getElementById('wscStockManagerScreen');
-  if(!header||!navigation||!manager)return;
-  const postMenu=document.getElementById('wscPostMenuScreen');if(postMenu)postMenu.hidden=true;
-  const invoice=document.getElementById('wscShopifyInvoiceScreen');
-  if(invoice && !invoice.hidden && typeof window.wscClearShopifyInvoices==='function')window.wscClearShopifyInvoices();
-  if(invoice)invoice.hidden=true;
-  const postage=document.getElementById('wscPostageScreen');if(postage)postage.hidden=true;
-  if(typeof window.wscStopPostagePermissionChecks==='function')window.wscStopPostagePermissionChecks();
-  if(typeof window.wscHideBatchOrders==='function')window.wscHideBatchOrders();
-  header.hidden=!!open;navigation.hidden=!!open;manager.hidden=!open;
-  if(moveFocus) {
+const wscManagerMenus = {
+  stock: {button:'wscStockManagerButton', heading:'wscStockManagerHeading'},
+  post: {button:'wscPostButton', heading:'wscPostMenuHeading'},
+  office: {button:'wscOfficeManagerButton', heading:'wscOfficeManagerHeading'}
+};
+
+function wscShowHomeView(view = 'home', focusId) {
+  if (view !== 'shopify' && !document.getElementById('wscShopifyInvoiceScreen').hidden) {
+    window.wscClearShopifyInvoices?.();
+  }
+  if (view !== 'postage') window.wscStopPostagePermissionChecks?.();
+  if (view !== 'batch') window.wscHideBatchOrders?.();
+  document.querySelectorAll('[data-wsc-home-view]').forEach(screen => {
+    screen.hidden = screen.dataset.wscHomeView !== view;
+  });
+  if (focusId) {
     window.scrollTo(0,0);
-    const target=document.getElementById(open?'wscStockManagerHeading':'wscStockManagerButton');
-    if(target)target.focus({preventScroll:true});
+    const target = document.getElementById(focusId);
+    (target.hidden ? document.getElementById('wscStockManagerButton') : target).focus({preventScroll:true});
   }
 }
-// Post groups the existing functions without changing their staff permissions.
-function wscSetPostView(open, moveFocus) {
-  const header=document.getElementById('wscHomeHeader');
-  const navigation=document.getElementById('wscHomeNavigation');
-  const manager=document.getElementById('wscStockManagerScreen');
-  const postMenu=document.getElementById('wscPostMenuScreen');
-  if(!header||!navigation||!manager||!postMenu)return;
-  if(open && !(wscPermissions?.functions?.POSTAGE_QUOTES===true || wscPermissions?.functions?.SHOPIFY_INVOICES===true || wscPermissions?.functions?.BATCH_ORDERS===true))return;
-  const invoice=document.getElementById('wscShopifyInvoiceScreen');
-  if(invoice && !invoice.hidden && typeof window.wscClearShopifyInvoices==='function')window.wscClearShopifyInvoices();
-  if(invoice)invoice.hidden=true;
-  const postage=document.getElementById('wscPostageScreen');if(postage)postage.hidden=true;
-  if(typeof window.wscStopPostagePermissionChecks==='function')window.wscStopPostagePermissionChecks();
-  if(typeof window.wscHideBatchOrders==='function')window.wscHideBatchOrders();
-  header.hidden=!!open;navigation.hidden=!!open;manager.hidden=true;postMenu.hidden=!open;
-  if(moveFocus) {
-    window.scrollTo(0,0);
-    const target=document.getElementById(open?'wscPostMenuHeading':'wscPostButton');
-    if(target)target.focus({preventScroll:true});
+
+function wscOpenManager(manager) {
+  const menu = wscManagerMenus[manager];
+  if (!document.getElementById(menu.button).hidden) wscShowHomeView(manager, menu.heading);
+}
+
+function wscCloseManager(manager) {
+  wscShowHomeView('home', wscManagerMenus[manager].button);
+}
+
+function wscFavouriteStorageKey() {
+  const email = String(window.getCurrentStaffEmail?.() || '').trim().toLowerCase();
+  return email && email === wscPermissionEmail && wscPermissions ? 'wscFavourites:' + email : '';
+}
+
+function wscReadFavourites(storageKey) {
+  if (!storageKey) return [];
+  try {
+    const saved = JSON.parse(localStorage.getItem(storageKey));
+    return Array.isArray(saved) ? [...new Set(saved.filter(key => typeof key === 'string'))] : [];
+  } catch {
+    return [];
   }
+}
+
+function wscFavouriteAvailable(source) {
+  if (source.dataset.wscFavourite === 'qb') return !document.getElementById('wscQbModule').hidden;
+  const area = source.dataset.wscArea;
+  return !area || wscPermissions?.functions?.[area] === true;
+}
+
+function wscSetFavouriteStar(star, selected) {
+  star.setAttribute('aria-pressed', String(selected));
+  star.title = selected ? 'Remove from Favourites' : 'Add to Favourites';
+  star.textContent = selected ? '★' : '☆';
+}
+
+function wscCreateFavouriteStar(source) {
+  const star = document.createElement('button');
+  star.type = 'button';
+  star.className = 'wsc-favourite-toggle';
+  star.setAttribute('aria-label', source.textContent.trim() + ' favourite');
+  star.addEventListener('click', () => {
+    const storageKey = wscFavouriteStorageKey();
+    if (!storageKey || !wscFavouriteAvailable(source)) return;
+    const key = source.dataset.wscFavourite;
+    const saved = new Set(wscReadFavourites(storageKey));
+    if (saved.has(key)) saved.delete(key);
+    else saved.add(key);
+    try {
+      localStorage.setItem(storageKey, JSON.stringify([...saved]));
+    } catch {
+      window.showWSCMessage('Favourites', 'This browser could not save your favourite.');
+      return;
+    }
+    wscPaintFavourites();
+  });
+  return star;
+}
+
+function wscPaintFavourites() {
+  const storageKey = wscFavouriteStorageKey();
+  const saved = wscReadFavourites(storageKey);
+  const available = new Map();
+  document.querySelectorAll('button[data-wsc-favourite]').forEach(source => {
+    const key = source.dataset.wscFavourite;
+    if (storageKey && wscFavouriteAvailable(source)) available.set(key, source);
+    const row = source.parentElement;
+    let star = row.querySelector('.wsc-favourite-toggle');
+    if (!star) {
+      star = wscCreateFavouriteStar(source);
+      row.append(star);
+    }
+    star.disabled = !available.has(key);
+    wscSetFavouriteStar(star, saved.includes(key));
+  });
+
+  const list = document.getElementById('wscFavouriteList');
+  const pinned = saved.filter(key => available.has(key));
+  document.getElementById('wscFavourites').hidden = pinned.length === 0;
+  const current = [...list.children].map(row => row.firstElementChild.dataset.wscHomeFavourite);
+  if (current.length === pinned.length && current.every((key, index) => key === pinned[index])) return;
+
+  const hadFocus = list.contains(document.activeElement);
+  list.replaceChildren(...pinned.map(key => {
+    const source = available.get(key);
+    const row = document.createElement('div');
+    row.className = 'wsc-module-header wsc-manager-action';
+    const shortcut = document.createElement('button');
+    shortcut.type = 'button';
+    shortcut.className = 'wsc-module-main';
+    shortcut.dataset.wscHomeFavourite = key;
+    shortcut.textContent = source.textContent.trim();
+    shortcut.addEventListener('click', () => {
+      if (wscFavouriteStorageKey() && wscFavouriteAvailable(source)) source.click();
+    });
+    const star = wscCreateFavouriteStar(source);
+    wscSetFavouriteStar(star, true);
+    row.append(shortcut, star);
+    return row;
+  }));
+  if (hadFocus) (list.querySelector('button') || document.getElementById('wscStockManagerButton')).focus();
 }
 // Preserve the Home overview and keep stock functions inside Stock Manager.
 // Open stock takes remain available through Stock Manager rather than Home.
@@ -5311,6 +5428,16 @@ function wscToggleModule(area) {
   detail.hidden = !detail.hidden;
   const arrow = module.querySelector('.wsc-module-arrow');
   if (arrow) arrow.textContent = detail.hidden ? '⌄' : '⌃';
+}
+function wscOpenOutstandingQB() {
+  const manager = document.getElementById('wscStockManagerScreen');
+  if (!manager.hidden) {
+    wscToggleModule('QB');
+    return;
+  }
+  wscOpenManager('stock');
+  if (document.getElementById('wscOutstandingQBList').hidden) wscToggleModule('QB');
+  document.querySelector('[data-wsc-favourite="qb"]').focus({preventScroll:true});
 }
 function wscHomeReportIsMine(report) {
   // Older deployed backends returned only the signed-in user's sessions, so
@@ -5472,11 +5599,11 @@ async function wscLoadOutstandingQB() {
     actions.append(review,commit);
     item.append(actions); list.appendChild(item);
   });
-  } finally {wscUpdateStockManagerSummary();}
+  } finally {wscUpdateStockManagerSummary(); wscPaintFavourites();}
 }
 
  async function showWelcomeScreen() {
-  wscSetStockManagerView(false);
+  wscShowHomeView();
   const datesScreen=document.getElementById('wscDatesScreen'); if(datesScreen) datesScreen.style.display='none';
   const datesAmend=document.getElementById('wscDatesAmendScreen');if(datesAmend)datesAmend.style.display='none';
   void wscRefreshPermissions();
@@ -7724,19 +7851,26 @@ async function wscConfirmStockQBReviewResolved(number) {
 function wscPaintPermissions(permissions) {
   const cog = document.getElementById("wscAdminCog");
   const areas = permissions?.functions || {};
+  const canUsePost = areas.POSTAGE_QUOTES === true || areas.SHOPIFY_INVOICES === true;
+  const canUseOffice = areas.BATCH_ORDERS === true;
+  document.getElementById('wscPostButton').hidden = !canUsePost;
+  document.getElementById('wscOfficeManagerButton').hidden = !canUseOffice;
   const invoice=document.getElementById('wscShopifyInvoiceScreen');
   if(invoice && !invoice.hidden && areas.SHOPIFY_INVOICES!==true && typeof window.wscCloseShopifyInvoices==='function') window.wscCloseShopifyInvoices();
   const postage=document.getElementById('wscPostageScreen');
   if(postage && !postage.hidden && areas.POSTAGE_QUOTES!==true && typeof window.wscClosePostageQuotes==='function') window.wscClosePostageQuotes();
   document.querySelectorAll("[data-wsc-area]").forEach(button => {
-    button.style.display = areas[button.dataset.wscArea] === true ? "" : "none";
+    const allowed = areas[button.dataset.wscArea] === true;
+    const row = button.closest('.wsc-manager-action');
+    if (row) row.hidden = !allowed;
+    else button.style.display = allowed ? '' : 'none';
   });
-  const postButton=document.getElementById('wscPostButton');
-  const canUsePost=areas.POSTAGE_QUOTES===true || areas.SHOPIFY_INVOICES===true || areas.BATCH_ORDERS===true;
-  if(areas.BATCH_ORDERS!==true && typeof window.wscClearBatchOrders==='function'){const active=document.getElementById('wscBatchOrderScreen');if(active&&!active.hidden&&typeof window.wscCloseBatchOrders==='function')window.wscCloseBatchOrders();window.wscClearBatchOrders();}
-  if(postButton)postButton.style.display=canUsePost?'':'none';
-  const postMenu=document.getElementById('wscPostMenuScreen');
-  if(postMenu && !postMenu.hidden && !canUsePost)wscSetPostView(false,false);
+  if (!canUseOffice) {
+    if (!document.getElementById('wscBatchOrderScreen').hidden) window.wscCloseBatchOrders?.();
+    window.wscClearBatchOrders?.();
+  }
+  if (!canUsePost && !document.getElementById('wscPostMenuScreen').hidden) wscCloseManager('post');
+  if (!canUseOffice && !document.getElementById('wscOfficeManagerScreen').hidden) wscCloseManager('office');
   if (cog) cog.style.display = permissions?.admin === true ? "block" : "none";
   if (!permissions) wscLiveQBUI.statuses.clear();
   document.querySelectorAll('button[data-live-q-b-report],button[id^="qb-"],button[data-tr-q-b-card]').forEach(button=>{
@@ -7750,6 +7884,7 @@ function wscPaintPermissions(permissions) {
   const trButton = document.getElementById("tradeShowCommitQBButton");
   if(trButton?.dataset.reportNumber)wscPaintLiveQBButton(trButton,trButton.dataset.reportNumber);
   wscUpdateStockManagerSummary();
+  wscPaintFavourites();
 }
 
 async function wscRefreshPermissions() {
@@ -8584,7 +8719,7 @@ async function getQuickBooksCommitStatusForST(reportNumber) {
 }
   
 // WSC deployment version. Update version.txt LAST, after any backend deployments.
-const WSC_VERSION = "1.0.5";
+const WSC_VERSION = "1.0.6";
 
 function isNewerWSCVersion(remote, current) {
   const r = remote.split(".").map(Number);
@@ -9791,7 +9926,7 @@ $('copyQuote').addEventListener('click',async()=>{update();if(!currentQuote){$('
 window.addEventListener('afterprint',()=>document.body.classList.remove('wsc-postage-printing'));
 let permissionTimer=null, opening=false, lastUser='';
 window.wscStopPostagePermissionChecks=()=>{if(permissionTimer!==null){clearInterval(permissionTimer);permissionTimer=null;}};
-window.wscClosePostageQuotes=()=>{closePdfDialog(false);window.wscStopPostagePermissionChecks();document.getElementById('wscPostageScreen').hidden=true;wscSetStockManagerView(false,false);window.scrollTo(0,0);const button=document.getElementById('wscPostButton');if(button && button.style.display!=='none')button.focus({preventScroll:true});};
+window.wscClosePostageQuotes=()=>{closePdfDialog(false);wscCloseManager('post');};
 window.wscOpenPostageQuotes=async()=>{
   if(opening)return;
   const email=String(window.getCurrentStaffEmail?.()||'').trim().toLowerCase();
@@ -9810,12 +9945,9 @@ window.wscOpenPostageQuotes=async()=>{
       lastUser=email;autoSuggestionSignature=null;autoFormatSignature=null;
       populateDestinations();populateGuide();applyGuide();convert();
     } else {update();convert();}
-    document.getElementById('wscHomeHeader').hidden=true;
-    document.getElementById('wscHomeNavigation').hidden=true;
-    document.getElementById('wscStockManagerScreen').hidden=true;
-    document.getElementById('wscPostMenuScreen').hidden=true;
-    const screen=document.getElementById('wscPostageScreen');screen.hidden=false;setQuoteStep(1,false);$('addressMessage').hidden=true;
-    window.scrollTo(0,0);document.getElementById('wscPostageHeading').focus({preventScroll:true});
+    const screen=document.getElementById('wscPostageScreen');
+    wscShowHomeView('postage', 'wscPostageHeading');
+    setQuoteStep(1,false);$('addressMessage').hidden=true;
     window.wscStopPostagePermissionChecks();
     permissionTimer=setInterval(()=>{if(!document.hidden&&!screen.hidden)void wscRefreshPermissions();},60000);
   } catch(error) {window.showWSCMessage('Postage Quotes',String(error?.message||error));}
@@ -9836,7 +9968,7 @@ window.wscOpenPostageQuotes=async()=>{
   const currentKey=()=>selected?[selected.id,selected.updatedAt,selected.issueDate,id('SupplyDate').value].join('|'):'';
   function current(seq,staff){return serial===seq && !screen().hidden && String(window.getCurrentStaffEmail?.()||'').toLowerCase()===staff;}
   window.wscClearShopifyInvoices=()=>{stopTimer();clear();};
-  window.wscCloseShopifyInvoices=()=>{window.wscClearShopifyInvoices();screen().hidden=true;wscSetStockManagerView(false,false);window.scrollTo(0,0);const button=document.getElementById('wscPostButton');if(button && button.style.display!=='none')button.focus({preventScroll:true});};
+  window.wscCloseShopifyInvoices=()=>wscCloseManager('post');
   window.wscOpenShopifyInvoices=async()=>{
     if(busy)return;const staff=String(window.getCurrentStaffEmail?.()||'').toLowerCase();if(!staff){window.showWSCMessage('Shopify Invoices','Please sign in first.');return;}
     setBusy(true,'Opening Shopify Invoices…');
@@ -9844,9 +9976,7 @@ window.wscOpenPostageQuotes=async()=>{
       const permissions=await wscAdminRequest('getWSCPermissions');
       if(staff!==String(window.getCurrentStaffEmail?.()||'').toLowerCase() || permissions.functions?.SHOPIFY_INVOICES!==true)throw new Error('Shopify Invoices access is unavailable for this account.');
       wscPermissions=permissions;wscPermissionEmail=staff;wscPaintPermissions(permissions);clear();
-      document.getElementById('wscHomeHeader').hidden=true;document.getElementById('wscHomeNavigation').hidden=true;document.getElementById('wscStockManagerScreen').hidden=true;document.getElementById('wscPostMenuScreen').hidden=true;
-      const postage=document.getElementById('wscPostageScreen');if(postage)postage.hidden=true;if(typeof window.wscStopPostagePermissionChecks==='function')window.wscStopPostagePermissionChecks();
-      screen().hidden=false;window.scrollTo(0,0);document.getElementById('wscShopifyInvoiceHeading').focus({preventScroll:true});
+      wscShowHomeView('shopify', 'wscShopifyInvoiceHeading');
       stopTimer();timer=setInterval(()=>{if(!document.hidden&&!screen().hidden)void wscRefreshPermissions();},60000);
     }catch(error){window.showWSCMessage('Shopify Invoices',String(error.message||error));}finally{setBusy(false);}
   };
@@ -9939,20 +10069,16 @@ window.wscOpenPostageQuotes=async()=>{
  });
  window.wscHideBatchOrders=()=>{const s=screen();if(s)s.hidden=true;if(permissionTimer!==null){clearInterval(permissionTimer);permissionTimer=null;}};
  window.wscClearBatchOrders=()=>{window.wscHideBatchOrders();const f=frame();if(f)f.removeAttribute('src');batchUser='';};
- window.wscCloseBatchOrders=()=>{window.wscHideBatchOrders();wscSetPostView(false,true);};
+ window.wscCloseBatchOrders=()=>wscCloseManager('office');
  window.wscOpenBatchOrders=async()=>{
   if(opening)return;opening=true;
   try{
    await wscRefreshPermissions();
    if(wscPermissions?.functions?.BATCH_ORDERS!==true)throw new Error('Batch Orders access is disabled for this account.');
    const user=String(window.getCurrentStaffEmail?.()||'').trim().toLowerCase();if(!user)throw new Error('Please sign in to WSC first.');
-   document.getElementById('wscHomeHeader').hidden=true;document.getElementById('wscHomeNavigation').hidden=true;
-   document.getElementById('wscStockManagerScreen').hidden=true;document.getElementById('wscPostMenuScreen').hidden=true;
-   const postage=document.getElementById('wscPostageScreen');if(postage)postage.hidden=true;
-   const invoices=document.getElementById('wscShopifyInvoiceScreen');if(invoices)invoices.hidden=true;
    const f=frame();if(!f)throw new Error('Batch Orders is unavailable.');
    if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=1.0.5');batchUser=user;}
-   screen().hidden=false;window.scrollTo(0,0);document.getElementById('wscBatchOrderHeading').focus({preventScroll:true});
+   wscShowHomeView('batch', 'wscBatchOrderHeading');
    if(permissionTimer!==null)clearInterval(permissionTimer);permissionTimer=setInterval(()=>{if(!document.hidden&&isActive())void wscRefreshPermissions();},60000);
   }catch(error){window.showWSCMessage('Batch Orders',String(error?.message||error));}
   finally{opening=false;}
