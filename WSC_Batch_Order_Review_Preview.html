@@ -29,6 +29,7 @@
 .qb-customer-panel{background:#edf4fa;border:1px solid #c8d9e6;border-radius:8px;padding:12px 14px;margin-top:10px}.qb-customer-panel p{margin:0 0 6px}.qb-customer-panel select{width:100%;padding:10px;border:1px solid #bac8d7;border-radius:6px;margin:6px 0;background:white}.qb-customer-panel button{margin-top:8px}.qb-customer-panel #qbCustomerAddress{font-size:.88rem}.sr-qb{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 .customer-choices{list-style:none;margin:-5px 0 0;padding:0;max-height:240px;overflow:auto;background:#fff;border:1px solid #a9becf;border-radius:0 0 7px 7px;box-shadow:0 4px 10px rgba(33,49,70,.12)}
 .customer-choices li{padding:10px 12px;cursor:pointer;border-bottom:1px solid #e6edf2}.customer-choices li:last-child{border-bottom:0}.customer-choices li:hover,.customer-choices li.active{background:#e6f1fa;color:#183a5a}
+.qb-customer-panel #qbCustomerAddress strong{display:block;margin-top:10px}
 </style>
 </head>
 <body><main>
@@ -620,9 +621,12 @@ function paintCustomerLookup(){
    const total=Number.isSafeInteger(customerState.totalMatches)?customerState.totalMatches:customerState.matches.length;
    status.textContent=total>customerState.matches.length?'Showing '+customerState.matches.length+' of '+total+' customers. Type more to narrow the list.':'Choose the correct customer from the list.';return;
   }
-  const c=customerState.selected;status.textContent='QuickBooks customer: '+c.displayName;retry.textContent='Refresh address from QuickBooks';retry.hidden=false;
-  box.append(make('strong','Delivery address'));const lines=addressLines(c.shippingAddress);
-  if(lines.length)for(const line of lines)box.append(make('div',line));else box.append(make('p','No delivery address is saved for this customer in QuickBooks.','muted'));
+  const c=customerState.selected;status.textContent='QuickBooks customer: '+c.displayName;retry.textContent='Refresh customer details';retry.hidden=false;
+  const addDetail=(label,value)=>{if(value)box.append(make('div',label+': '+String(value)));};
+  addDetail('QuickBooks customer ID',c.id);addDetail('Company',c.companyName);addDetail('Contact',c.contactName);addDetail('Email',c.email);addDetail('Telephone',c.phone);addDetail('Mobile',c.mobile);
+  function addAddress(label,address,missing){box.append(make('strong',label));const lines=addressLines(address);if(lines.length)for(const line of lines)box.append(make('div',line));else box.append(make('p',missing,'muted'));}
+  addAddress('Delivery address',c.shippingAddress,'No delivery address is saved for this customer in QuickBooks.');
+  addAddress('Billing address',c.billingAddress,'No billing address is saved for this customer in QuickBooks.');
   return;
  }
  status.textContent='Start typing a customer name to search the saved list.';
@@ -664,7 +668,7 @@ function resolveCustomer(chosen,expectedId=''){
  }).catch(error=>{if(serial===customerLookupSerial&&$('customer').value.trim()===chosen.displayName){customerState.status='error';customerState.error=customerLookupError(error);customerState.selected=null;paintCustomerLookup();invalidate();update();}});
 }
 function chooseQBCustomer(index){const chosen=customerState.matches[index];if(chosen)resolveCustomer(chosen);}
-function customerSnapshot(){const c=customerState.selected;return c?{id:c.id,displayName:c.displayName,shippingAddress:c.shippingAddress||null,billingAddress:c.billingAddress||null}:null;}
+function customerSnapshot(){const c=customerState.selected;return c?{id:c.id,displayName:c.displayName,companyName:c.companyName||'',contactName:c.contactName||'',email:c.email||'',phone:c.phone||'',mobile:c.mobile||'',shippingAddress:c.shippingAddress||null,billingAddress:c.billingAddress||null}:null;}
 function customerGuard(){
  if(isExample()||!customerBridge())return '';
  if(!customerStaff())return 'Sign in to WSC to check the QuickBooks customer.';
