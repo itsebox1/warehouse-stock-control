@@ -1613,6 +1613,8 @@ function validateTradeShowFields() {
 </div>
   
 <script>
+// WSC deployment version. Update version.txt after the live files are verified.
+const WSC_VERSION = "1.0.10";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -8796,9 +8798,6 @@ async function getQuickBooksCommitStatusForST(reportNumber) {
   return await getQuickBooksCommitStatus(reportNumber);
 }
   
-// WSC deployment version. Update version.txt LAST, after any backend deployments.
-const WSC_VERSION = "1.0.9";
-
 function isNewerWSCVersion(remote, current) {
   const r = remote.split(".").map(Number);
   const c = current.split(".").map(Number);
@@ -10382,8 +10381,7 @@ window.wscOpenPostageQuotes=async()=>{
     if (email) window.showWSCMessage?.('Signed-in user',signedInName(email)+'\n'+email);
   });
   byId('wscBuildFab').addEventListener('click',()=>{
-    const version=typeof WSC_VERSION !== 'undefined' ? WSC_VERSION : 'Unavailable';
-    window.showWSCMessage?.('WSC build number','Frontend build: v'+version);
+    window.showWSCMessage?.('WSC build number','Frontend build: v'+WSC_VERSION);
   });
   const observer=new MutationObserver(refresh);
   ['welcomeScreen','wscHomeNavigation','loginScreen','pinLockScreen'].forEach(id=>{
