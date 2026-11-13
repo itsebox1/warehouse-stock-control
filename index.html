@@ -10066,7 +10066,7 @@ window.wscOpenPostageQuotes=async()=>{
 </script>
 <script>
 // Batch Orders is loaded on the same WSC origin. The bridge only exposes the
-// authorised, read-only customer lookup; QuickBooks tokens stay server-side.
+// authorised, read-only lookups; QuickBooks tokens stay server-side.
 (function(){
  let batchUser='',opening=false,permissionTimer=null;
  const screen=()=>document.getElementById('wscBatchOrderScreen');
@@ -10086,6 +10086,12 @@ window.wscOpenPostageQuotes=async()=>{
    if(email()!==user||wscPermissions?.functions?.POSTAGE_QUOTES!==true)throw new Error('WSC was locked or access changed.');
    if(!result.quote||!Array.isArray(result.quote.services))throw new Error('Royal Mail did not return a service list.');
    return result.quote;
+  },
+  async productCatalogue(){
+   const user=email();if(!user)throw new Error('Sign in to WSC and open Batch Orders.');
+   const products=await wscQuickGetCatalogue();
+   if(email()!==user)throw new Error('WSC was locked or the signed-in user changed.');
+   return products;
   },
   async searchCustomers(term){
    const user=email();if(!user)throw new Error('Sign in to WSC and open Batch Orders.');
@@ -10135,7 +10141,7 @@ window.wscOpenPostageQuotes=async()=>{
    if(!cachedPermission)await wscRefreshPermissions();
    if(wscPermissions?.functions?.BATCH_ORDERS!==true)throw new Error('Batch Orders access is disabled for this account.');
    const f=frame();if(!f)throw new Error('Batch Orders is unavailable.');
-   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=1.0.5');batchUser=user;}
+   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=1.0.6');batchUser=user;}
    wscShowHomeView('batch', 'wscBatchOrderHeading');
    tidyBatchNavigation();
    if(cachedPermission)void wscRefreshPermissions();

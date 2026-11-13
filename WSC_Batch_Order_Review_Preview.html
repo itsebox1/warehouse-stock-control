@@ -402,12 +402,79 @@ function reconcileItems(items,notes){
   }
   return result;
 }
-function recognise(documents){
+function pdfProductRows(pages, products, source, notes){
+  const catalogue = new Set(products.map(product => product.sku.trim().toUpperCase()));
+  const items = [];
+  const skuHeader = /^(?:sku|(?:item|product|stock|part)(?:\s+(?:sku|code|number|no\.?))?)$/i;
+  const qtyHeader = /^(?:(?:order(?:ed)?\s+)?(?:qty\.?|quantity)|(?:qty\.?|quantity)\s+ordered)$/i;
+  const skuCode = /^[A-Z0-9][A-Z0-9._/-]*$/i;
+  function add(sku, rawQuantity){
+    const quantity = /^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.0+)?$/.test(rawQuantity)
+      ? Number(rawQuantity.replace(/,/g,'')) : NaN;
+    sku = sku.toUpperCase();
+    if(!catalogue.has(sku)){
+      notes.push('Check the PDF product code '+sku+' manually; it was not found in the WSC catalogue.');
+      return;
+    }
+    items.push({sku,quantity:Number.isSafeInteger(quantity)&&quantity>0?String(quantity):'',price:'',band:'',source,priorOrderNote:''});
+  }
+  let columns = null;
+  for(const rows of pages){
+    for(const cells of rows){
+      const text = cells.map(cell => cell.text).join(' ');
+      if(/^(?:sub\s*total|grand\s*total|order\s*total|total(?:\s|$)|vat\s+total|terms\s+and\s+conditions)\b/i.test(text)){
+        columns = null;
+        continue;
+      }
+      const skuIndex = cells.findIndex(cell => skuHeader.test(cell.text));
+      const qtyIndex = cells.findIndex(cell => qtyHeader.test(cell.text));
+      if(skuIndex>=0 && qtyIndex>=0){
+        columns = {headers:cells,skuIndex,qtyIndex};
+        continue;
+      }
+      // DL Delivery invoices identify each row by Class, Item, Qty and two money columns.
+      const delivery = /\b(?:WATER|POOL\/SPA)\s+([A-Z0-9][A-Z0-9._/-]*)\s+([\d,]+)\s+[\d,]+\.\d{2}\s+[\d,]+\.\d{2}\b/i.exec(text);
+      if(delivery){
+        add(delivery[1],delivery[2]);
+        continue;
+      }
+      if(columns){
+        const {headers,skuIndex,qtyIndex} = columns;
+        const columnText = index => {
+          const header = headers[index];
+          const left = index ? (headers[index-1].end+header.x)/2 : -Infinity;
+          const right = index+1<headers.length ? (header.end+headers[index+1].x)/2 : Infinity;
+          return cells.filter(cell => (cell.x+cell.end)/2>=left && (cell.x+cell.end)/2<right)
+            .map(cell=>cell.text).join(' ');
+        };
+        const sku = columnText(skuIndex);
+        if(skuCode.test(sku) && (/\d/.test(sku) || catalogue.has(sku.toUpperCase()))){
+          add(sku,columnText(qtyIndex));
+          continue;
+        }
+      }
+      // Explicit product/quantity labels and simple SKU × quantity rows.
+      const labelled = /\b(?:sku|(?:product|item|stock|part)\s+(?:code|number|no\.?))\s*[:#=]?\s*([A-Z0-9][A-Z0-9._/-]*)\b.*?\b(?:qty\.?|quantity)\s*[:#=]?\s*([\d,.]+)(?=\s|$)/i.exec(text);
+      const simple = /^([A-Z0-9][A-Z0-9._/-]*)\s*[x×]\s*([\d,.]+)$/i.exec(text);
+      const countFirst = /^([\d,.]+)\s*[x×]\s*([A-Z0-9][A-Z0-9._/-]*)$/i.exec(text);
+      if(labelled || simple){
+        const [,sku,quantity] = labelled || simple;
+        add(sku,quantity);
+      }else if(countFirst){
+        add(countFirst[2],countFirst[1]);
+      }
+    }
+  }
+  if(!items.length)notes.push('No verified product lines were found in '+source+'. Check the PDF and enter the products manually.');
+  return items;
+}
+function recognise(documents, products = window.WSCCatalog.products){
   const customers=[],orders=[],items=[],notes=[];
-  for(const {label,text:rawText} of documents){
+  for(const {label,text:rawText,pages} of documents){
     const text=normaliseOrderText(rawText),explicitCustomers=customerValues(text);customers.push(...explicitCustomers);
     if(!explicitCustomers.length){const suggested=signatureCompany(text);if(suggested){customers.push(suggested);notes.push('Customer suggested from the email signature; please confirm the customer.');}}
     orders.push(...lineValues(text,/^(?:purchase\s+order(?:\s+(?:number|no\.?))?|p\.?\s*o\.?(?:\s+(?:number|no\.?))?)\s*[:#]\s*([A-Z0-9][A-Z0-9._\/-]*)\s*$/i));
+    if(pages){items.push(...pdfProductRows(pages,products,label,notes));continue;}
     const lines=text.split(/\r?\n/);let table=null;
     for(let index=0;index<lines.length;index++){
       const line=lines[index],cells=line.split(/\s*(?:\||\t)\s*/).map(x=>x.trim());
@@ -465,13 +532,45 @@ async function getPdfEngine(){
 }
 async function readPdf(file){
   const bytes=new Uint8Array(await readFile(file,'buffer')),engine=await getPdfEngine();
-  const pdf=await engine.getDocument({data:bytes,isEvalSupported:false,useSystemFonts:true,useWorkerFetch:false}).promise, pages=[];
-  for(let number=1;number<=pdf.numPages;number++){
-    const page=await pdf.getPage(number),content=await page.getTextContent(),lines=[];
-    for(const part of content.items){if(!part.str)continue;const y=part.transform[5];let line=lines.find(x=>Math.abs(x.y-y)<2);if(!line){line={y,parts:[]};lines.push(line);}line.parts.push({x:part.transform[4],text:part.str});}
-    lines.sort((a,b)=>b.y-a.y);pages.push(lines.map(line=>line.parts.sort((a,b)=>a.x-b.x).map(p=>p.text).join(' ')).join('\n'));
+  const pdf = await engine.getDocument({data:bytes,isEvalSupported:false,useSystemFonts:true,useWorkerFetch:false}).promise;
+  const pages = [];
+  try{
+    for(let number=1;number<=pdf.numPages;number++){
+      const page = await pdf.getPage(number);
+      const content = await page.getTextContent();
+      const lines = [];
+      for(const part of content.items){
+        if(!part.str?.trim())continue;
+        const [, , , height, x, y] = part.transform;
+        let line = lines.find(row => Math.abs(row.y-y)<2);
+        if(!line){line={y,parts:[]};lines.push(line);}
+        // PDF.js can group words across columns into a single text item.
+        const words = part.str.matchAll(/\S+(?: \S+)*/g);
+        const unit = part.width/part.str.length;
+        for(const word of words){
+          line.parts.push({x:x+word.index*unit,end:x+(word.index+word[0].length)*unit,text:word[0],leadingSpace:word.index>0,trailingSpace:/\s/.test(part.str[word.index+word[0].length]||''),gap:Math.max(2,Math.abs(height)*0.45)});
+        }
+      }
+      pages.push(lines.sort((a,b)=>b.y-a.y).map(line=>{
+        const cells = [];
+        for(const part of line.parts.sort((a,b)=>a.x-b.x)){
+          const last = cells[cells.length-1];
+          if(last && part.x-last.end<=part.gap){
+            last.text += (last.trailingSpace || part.leadingSpace || part.x-last.end>part.gap/4?' ':'')+part.text;
+            last.trailingSpace = part.trailingSpace;
+            last.end = Math.max(last.end,part.end);
+          }else{
+            cells.push({...part});
+          }
+        }
+        return cells;
+      }));
+    }
+  }finally{
+    await pdf.destroy();
   }
-  await pdf.destroy();return pages.join('\n');
+  return {pages,text:pages.flatMap(rows=>rows.map(cells=>cells.map(cell=>cell.text).join('  '))).join('\n')};
+
 }
 window.WSCOrderExtract={recognise,parseEmail,readFile,readPdf};
 })();
@@ -489,10 +588,11 @@ const amount=input=>{const value=input.value.trim();return value!==''&&Number.is
 function make(tag,text,cls){const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;return e;}
 function matchLabel(entry){
  const detail=[entry.name,entry.sheetName&&entry.sheetName!==entry.name?'Price sheet: '+entry.sheetName:'',entry.description].filter(Boolean).join(' — ').slice(0,180),regular=WSCPriceSheets.displayedPence(entry.price),bulk=WSCPriceSheets.displayedPence(entry.bulk);
- return entry.sku+(detail?' — '+detail:'')+(!entry.verified?' — not in WSC catalogue snapshot':'')+(entry.substitution?' — PRICE FROM '+entry.priceSku+' (confirmation needed)':'')+(priceChoice==='quickbooks'?' — QB price awaiting connection':' — Your price '+(regular===null?'unavailable':money(regular))+'; bulk '+(bulk===null?'unavailable':money(bulk))+(entry.row?' (sheet row '+entry.row+')':''));
+ return entry.sku+(detail?' — '+detail:'')+(!entry.verified?' — not in WSC catalogue':'')+(entry.substitution?' — PRICE FROM '+entry.priceSku+' (confirmation needed)':'')+(priceChoice==='quickbooks'?' — QB price awaiting connection':' — Your price '+(regular===null?'unavailable':money(regular))+'; bulk '+(bulk===null?'unavailable':money(bulk))+(entry.row?' (sheet row '+entry.row+')':''));
 }
 function matchSource(){return priceChoice==='sheet'&&priceBook?'sheet:'+priceBook.storedAt:priceChoice==='quickbooks'?'wsc-catalogue':'';}
-function productChoices(sku,allVariants=false){const query=allVariants?WSCPriceSheets.key(sku).split('-')[0]:sku;return WSCPriceSheets.productChoices(priceChoice==='sheet'?priceBook:null,query,window.WSCCatalog.products);}
+let reviewCatalogue = window.WSCCatalog.products;
+function productChoices(sku,allVariants=false){const query=allVariants?WSCPriceSheets.key(sku).split('-')[0]:sku;return WSCPriceSheets.productChoices(priceChoice==='sheet'?priceBook:null,query,reviewCatalogue);}
 function matchForRow(row,amend=false){
  const inputSku=WSCPriceSheets.key(row.querySelector('.sku input').value),bookId=matchSource(),signature=bookId+'|'+inputSku;
  if(!amend&&row.dataset.matchSignature===signature)return;
@@ -503,7 +603,7 @@ function matchForRow(row,amend=false){
  if(!bookId||!inputSku){if(amend){box.hidden=false;box.append(make('p',!inputSku?'Enter a product SKU first.':'Choose a customer price sheet or No price sheet first.','muted'));}return;}
  const standard=productChoices(inputSku),needFamily=amend||(restore&&oldValue&&oldValue!=='none'&&!standard.some(e=>e.id===oldValue));
  const matches=needFamily?productChoices(inputSku,true):standard;
- if(!matches.length){row.dataset.matchMode='missing';box.hidden=false;box.append(make('p','No matching SKU found in the WSC catalogue snapshot or the price sheet. Check the product code.','muted'));return;}
+ if(!matches.length){row.dataset.matchMode='missing';box.hidden=false;box.append(make('p','No matching SKU found in the WSC catalogue or the price sheet. Check the product code.','muted'));return;}
  const exact=matches.filter(e=>WSCPriceSheets.key(e.sku)===inputSku);
  const hadOtherChoice=restore&&oldValue&&exact.length===1&&oldValue!==exact[0].id;
  if(!amend&&exact.length===1&&exact[0].verified&&!hadOtherChoice){
@@ -1057,10 +1157,18 @@ async function readOrder(){
  const button=$('uploadNext');button.disabled=true;$('extractStatus').textContent='Reading order details…';const docs=[],notes=[];
  try{
   const email=$('emailFile').files?.[0],pdf=$('pdfFile').files?.[0],pasted=$('emailText').value.trim();if(pasted)docs.push({label:'Pasted email',text:pasted});
-  if(email){if(/\.msg$/i.test(email.name))notes.push('Outlook .msg files are not supported in this preview. Paste the email text or save it as .eml.');else try{const raw=String(await WSCOrderExtract.readFile(email,'text'));if(/\.eml$/i.test(email.name)){const parsed=WSCOrderExtract.parseEmail(raw);notes.push(...parsed.notes);if(parsed.text.trim())docs.push({label:email.name,text:parsed.text});else if(!parsed.pdfs.length)notes.push('No readable text was found in the saved email.');for(const attachment of parsed.pdfs){try{const embedded=new File([attachment.bytes],attachment.name,{type:'application/pdf'}),text=await WSCOrderExtract.readPdf(embedded);if(text.trim())docs.push({label:email.name+' / '+attachment.name,text});else notes.push('No text was found in an attached PDF. A scanned PDF needs OCR, which is not available in this preview.');}catch(_){notes.push('A PDF attached to the email could not be read in this preview. Select the PDF separately or enter its details manually.');}}}else if(raw.trim())docs.push({label:email.name,text:raw});}catch(_){notes.push('The saved email could not be read. Paste the email text instead.');}}
-  if(pdf)try{const text=await WSCOrderExtract.readPdf(pdf);if(text.trim())docs.push({label:pdf.name,text});else notes.push('No text was found in the PDF. A scanned PDF needs OCR, which is not available in this preview.');}catch(_){notes.push('The PDF could not be read in this preview. Enter its details manually.');}
+  if(email){if(/\.msg$/i.test(email.name))notes.push('Outlook .msg files are not supported in this preview. Paste the email text or save it as .eml.');else try{const raw=String(await WSCOrderExtract.readFile(email,'text'));if(/\.eml$/i.test(email.name)){const parsed=WSCOrderExtract.parseEmail(raw);notes.push(...parsed.notes);if(parsed.text.trim())docs.push({label:email.name,text:parsed.text});else if(!parsed.pdfs.length)notes.push('No readable text was found in the saved email.');for(const attachment of parsed.pdfs){try{const embedded=new File([attachment.bytes],attachment.name,{type:'application/pdf'}),document=await WSCOrderExtract.readPdf(embedded);if(document.text.trim())docs.push({label:email.name+' / '+attachment.name,...document});else notes.push('No text was found in an attached PDF. A scanned PDF needs OCR, which is not available in this preview.');}catch(_){notes.push('A PDF attached to the email could not be read in this preview. Select the PDF separately or enter its details manually.');}}}else if(raw.trim())docs.push({label:email.name,text:raw});}catch(_){notes.push('The saved email could not be read. Paste the email text instead.');}}
+  if(pdf)try{const document=await WSCOrderExtract.readPdf(pdf);if(document.text.trim())docs.push({label:pdf.name,...document});else notes.push('No text was found in the PDF. A scanned PDF needs OCR, which is not available in this preview.');}catch(_){notes.push('The PDF could not be read in this preview. Enter its details manually.');}
+  let products = window.WSCCatalog.products;
+  const bridge = customerBridge();
+  if(docs.some(doc=>doc.pages) && bridge?.productCatalogue){
+   $('extractStatus').textContent='Checking product codes against WSC…';
+   try{products=await bridge.productCatalogue();}
+   catch(_){notes.push('Live WSC product verification was unavailable. Products were checked against the saved WSC catalogue.');}
+  }
   if(sourceSignature()!==signature){$('uploadError').textContent='The selected files or text changed. Press Next to read the current order.';return;}
-  const found=WSCOrderExtract.recognise(docs);$('customer').value='';clearCustomerLookup();refreshCustomerPrice(true);purchaseOrder=found.po;items.replaceChildren();if(found.items.length)found.items.forEach(addItem);else addItem();
+  reviewCatalogue=products;
+  const found=WSCOrderExtract.recognise(docs,products);$('customer').value='';clearCustomerLookup();refreshCustomerPrice(true);purchaseOrder=found.po;items.replaceChildren();if(found.items.length)found.items.forEach(addItem);else addItem();
   confirmedSignature=null;examplePricing=false;manualFee=false;$('confirmedArea').hidden=true;$('bank').checked=false;$('postage').checked=false;$('bankAmount').value='';$('postPacking').value='0';$('postMarkup').value='10';clearPostLive();
   $('recognitionNotes').textContent=[...new Set([...notes,...found.notes.filter(note=>!/^Customer suggested from the email signature;/i.test(note))])].join(' ');$('detailError').textContent='';lastSourceSignature=signature;update();setStep(2);scheduleCustomerLookup();
  }catch(_){$('uploadError').textContent='The order could not be read. Try pasting the email text.';}finally{button.disabled=false;$('extractStatus').textContent='';}
