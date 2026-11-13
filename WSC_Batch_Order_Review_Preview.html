@@ -781,12 +781,28 @@ function matchLabel(entry){
 function matchSource(){return priceChoice==='sheet'&&priceBook?'sheet:'+priceBook.storedAt:'wsc-catalogue';}
 let reviewCatalogue = customerBridge()?[]:window.WSCCatalog.products;
 function productChoices(sku,allVariants=false){const query=allVariants?WSCPriceSheets.key(sku).split('-')[0]:sku;return WSCPriceSheets.productChoices(priceChoice==='sheet'?priceBook:null,query,reviewCatalogue);}
+function renderSubstitutePrice(container,row,entry,approval,manualPrice){
+ const confirm=make('label',''),checkbox=document.createElement('input');
+ checkbox.type='checkbox';checkbox.className='base-price-confirm';checkbox.checked=approval==='yes';
+ confirm.append(checkbox,document.createTextNode(' I confirm the price for '+entry.priceSku+' applies to '+entry.sku+'.'));
+ const field=make('div','','field'),label=make('label','Or enter a different unit price (£)'),input=document.createElement('input');
+ input.id='manual-price-'+Math.random().toString(36).slice(2);label.htmlFor=input.id;
+ input.type='text';input.inputMode='decimal';input.placeholder='0.00';input.value=manualPrice;
+ field.append(label,input);
+ function sync(){
+  field.hidden=checkbox.checked;
+  row.dataset.matchPriceApproval=checkbox.checked?'yes':'';
+  row.dataset.matchManualPrice=checkbox.checked?'':input.value.trim();
+ }
+ checkbox.addEventListener('change',sync);input.addEventListener('input',sync);
+ sync();container.append(confirm,field);
+}
 function matchForRow(row,amend=false){
  const inputSku=WSCPriceSheets.key(row.querySelector('.sku input').value),bookId=matchSource(),signature=bookId+'|'+inputSku;
  if(!amend&&row.dataset.matchSignature===signature)return;
- const oldBook=row.dataset.matchBook||'',oldInput=row.dataset.matchInput||'',oldValue=row.dataset.matchSelection||'',oldApproval=row.dataset.matchPriceApproval||'',oldMode=row.dataset.matchMode||'';
+ const oldBook=row.dataset.matchBook||'',oldInput=row.dataset.matchInput||'',oldValue=row.dataset.matchSelection||'',oldApproval=row.dataset.matchPriceApproval||'',oldMode=row.dataset.matchMode||'',oldManualPrice=row.dataset.matchManualPrice||'';
  const restore=oldBook===bookId&&oldInput===inputSku;
- row.dataset.matchSignature=signature;row.dataset.matchBook=bookId;row.dataset.matchInput=inputSku;row.dataset.matchSelection='';row.dataset.matchPriceApproval='';row.dataset.matchMode='';
+ row.dataset.matchSignature=signature;row.dataset.matchBook=bookId;row.dataset.matchInput=inputSku;row.dataset.matchSelection='';row.dataset.matchPriceApproval='';row.dataset.matchManualPrice='';row.dataset.matchMode='';
  const box=row.querySelector('.sku-match');box.replaceChildren();box.hidden=true;box.style.background='#fff8df';box.style.borderLeftColor='#d2a443';
  if(!inputSku){if(amend){box.hidden=false;box.append(make('p','Enter a product SKU first.','muted'));}return;}
  const standard=productChoices(inputSku),needFamily=amend||(restore&&oldValue&&oldValue!=='none'&&!standard.some(e=>e.id===oldValue));
@@ -799,10 +815,8 @@ function matchForRow(row,amend=false){
   box.hidden=false;box.style.background='#eff8f4';box.style.borderLeftColor='#3b8260';
   box.append(make('p','Matched: '+matchLabel(chosen),'muted'));
   if(chosen.substitution){
-   const label=document.createElement('label'),checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.className='base-price-confirm';
-   checkbox.checked=restore&&oldValue===chosen.id&&oldApproval==='yes';if(checkbox.checked)row.dataset.matchPriceApproval='yes';
-   checkbox.addEventListener('change',()=>{row.dataset.matchPriceApproval=checkbox.checked?'yes':'';});
-   label.append(checkbox,document.createTextNode(' I confirm the price for '+chosen.priceSku+' applies to '+chosen.sku+'.'));box.append(label);
+   const keep=restore&&oldValue===chosen.id;
+   renderSubstitutePrice(box,row,chosen,keep?oldApproval:'',keep?oldManualPrice:'');
   }
   return;
  }
@@ -812,8 +826,11 @@ function matchForRow(row,amend=false){
  if(restore&&[...select.options].some(o=>o.value===oldValue))select.value=oldValue;
  row.dataset.matchSelection=select.value;const approval=document.createElement('div');approval.className='base-price-approval';
  if(!select.value)row.dataset.matchMode='choose';
- function showApproval(keep){approval.replaceChildren();const chosen=matches.find(e=>e.id===select.value);row.dataset.matchPriceApproval='';if(!chosen?.substitution)return;
-  const label=document.createElement('label'),checkbox=document.createElement('input'),text=document.createTextNode(' I confirm the price for '+chosen.priceSku+' applies to '+chosen.sku+'.');checkbox.type='checkbox';checkbox.className='base-price-confirm';checkbox.checked=keep&&oldApproval==='yes';if(checkbox.checked)row.dataset.matchPriceApproval='yes';checkbox.addEventListener('change',()=>{row.dataset.matchPriceApproval=checkbox.checked?'yes':'';});label.append(checkbox,text);approval.append(label);
+ function showApproval(keep){
+  approval.replaceChildren();
+  row.dataset.matchPriceApproval='';row.dataset.matchManualPrice='';
+  const chosen=matches.find(e=>e.id===select.value);
+  if(chosen?.substitution)renderSubstitutePrice(approval,row,chosen,keep?oldApproval:'',keep?oldManualPrice:'');
  }
  select.addEventListener('change',()=>{
   row.dataset.matchMode='choose';row.dataset.matchSelection=select.value;showApproval(false);
@@ -827,7 +844,7 @@ function matchForRow(row,amend=false){
 function refreshAllMatches(){for(const row of items.children)matchForRow(row);}
 function addItem(values={}){
  const row=document.createElement('div');row.className='item';
- row.dataset.matchSelection=values.matchSelection||'';row.dataset.matchBook=values.matchBook||'';row.dataset.matchInput=values.matchInput||'';row.dataset.matchPriceApproval=values.matchPriceApproval||'';
+ row.dataset.matchSelection=values.matchSelection||'';row.dataset.matchBook=values.matchBook||'';row.dataset.matchInput=values.matchInput||'';row.dataset.matchPriceApproval=values.matchPriceApproval||'';row.dataset.matchManualPrice=values.matchManualPrice||'';
  for(const [name,title,placeholder,type] of [['sku','Item (SKU)','Product number','text'],['quantity','Quantity','0','number']]){
   const field=document.createElement('div');field.className='field '+name;const label=document.createElement('label');const id='item-'+Math.random().toString(36).slice(2);label.htmlFor=id;label.textContent=title;
   const input=document.createElement('input');input.id=id;input.className=name;input.type=type;input.placeholder=placeholder;input.value=values[name]??'';input.autocomplete='off';
@@ -845,7 +862,7 @@ function addItem(values={}){
  const remove=make('button','Remove','danger');remove.type='button';remove.setAttribute('aria-label','Remove product');remove.addEventListener('click',()=>{row.remove();if(!items.children.length)addItem();invalidate();update();});
  const amend=make('button','Amend','minor');amend.type='button';amend.className='minor amend-product';amend.setAttribute('aria-label','Amend product');amend.addEventListener('click',()=>matchForRow(row,true));actions.append(remove,amend);row.append(actions,match);items.append(row);matchForRow(row);
 }
-function getItems(){return [...items.children].map(row=>({sku:row.querySelector('.sku input').value.trim(),quantity:row.querySelector('.quantity input').value.trim(),priorOrderNote:row.dataset.priorOrderNote||'',priorOrderDecision:row.querySelector('.prior-review select')?.value||'',matchSelection:row.dataset.matchSelection||'',matchMode:row.dataset.matchMode||'',matchBook:row.dataset.matchBook||'',matchInput:row.dataset.matchInput||'',matchPriceApproval:row.dataset.matchPriceApproval||''}));}
+function getItems(){return [...items.children].map(row=>({sku:row.querySelector('.sku input').value.trim(),quantity:row.querySelector('.quantity input').value.trim(),priorOrderNote:row.dataset.priorOrderNote||'',priorOrderDecision:row.querySelector('.prior-review select')?.value||'',matchSelection:row.dataset.matchSelection||'',matchMode:row.dataset.matchMode||'',matchBook:row.dataset.matchBook||'',matchInput:row.dataset.matchInput||'',matchPriceApproval:row.dataset.matchPriceApproval||'',matchManualPrice:row.dataset.matchManualPrice||''}));}
 function includedItems(){return getItems().filter(row=>!row.priorOrderNote||row.priorOrderDecision==='include');}
 function detailsSignature(){return JSON.stringify([$('customer').value.trim(),getItems(),priceChoice,priceBook?.storedAt||'',priceBook?.bulkPriceTrigger,customerSnapshot()]);}
 // Customer names are loaded from the authenticated private WSC index once per
@@ -1032,7 +1049,19 @@ function matchedEntry(row){if(!matchSource()||row.matchBook!==matchSource()||!ro
 function productKey(row){const e=matchedEntry(row);return e?WSCPriceSheets.key(e.sku)+'|'+e.row:WSCPriceSheets.key(row.sku)+'|?';}
 function quantityForSku(row){const identity=productKey(row);let total=0;for(const r of includedItems()){if(productKey(r)!==identity)continue;const q=Number(r.quantity);if(!Number.isSafeInteger(q)||q<=0||!Number.isSafeInteger(total+q))return null;total+=q;}return total;}
 function usesBulk(row){const total=quantityForSku(row);return total!==null&&total>WSCPriceSheets.bulkPriceTrigger(priceBook);}
-function priceFor(row){if(priceChoice==='example')return 800;if(priceChoice!=='sheet')return null;const entry=matchedEntry(row);if(!entry||(entry.substitution&&row.matchPriceApproval!=='yes'))return null;return WSCPriceSheets.displayedPence(usesBulk(row)?entry.bulk:entry.price);}
+function manualPricePence(value){
+ if(!/^\d+(?:\.\d{1,2})?$/.test(value))return null;
+ const pence=Math.round(Number(value)*100);
+ return Number.isSafeInteger(pence)?pence:null;
+}
+function priceFor(row){
+ if(priceChoice==='example')return 800;
+ if(priceChoice!=='sheet')return null;
+ const entry=matchedEntry(row);
+ if(!entry)return null;
+ if(entry.substitution&&row.matchPriceApproval!=='yes')return manualPricePence(row.matchManualPrice);
+ return WSCPriceSheets.displayedPence(usesBulk(row)?entry.bulk:entry.price);
+}
 function lineTotal(row){const pence=priceFor(row),q=Number(row.quantity);if(pence===null||!Number.isSafeInteger(q)||q<=0)return null;const product=pence*q;return Number.isSafeInteger(product)?product:null;}
 function goodsTotal(){const rows=includedItems();if(!rows.length)return null;let sum=0;for(const row of rows){const line=lineTotal(row);if(line===null||!Number.isSafeInteger(sum+line))return null;sum+=line;}return sum;}
 // Postage is read-only. A price is never inferred from an unverified box.
@@ -1441,7 +1470,7 @@ function exampleInputSource(){
  return noFiles&&(newExample||editedExample);
 }
 function isExample(){return exampleInputSource()&&$('customer').value.trim()==='Example Customer'&&includedItems().every(row=>row.sku==='480011');}
-function validateDetails(){const rows=getItems();if(!$('customer').value.trim())return 'Enter the customer.';if(rows.some(row=>row.priorOrderNote&&!row.priorOrderDecision))return 'Choose whether to include or exclude each item marked as already ordered.';const included=includedItems();if(!included.length)return 'Include at least one product in the new order.';if(included.some(row=>!row.sku||!/^\d+$/.test(row.quantity)||Number(row.quantity)<=0||!Number.isSafeInteger(Number(row.quantity))))return 'Enter each included product SKU and a whole-number quantity greater than zero.';const unresolved=included.find(row=>row.matchMode==='choose'&&!row.matchSelection);if(unresolved)return 'Choose which product to use for SKU '+unresolved.sku+'.';const unapproved=included.find(row=>matchedEntry(row)?.substitution&&row.matchPriceApproval!=='yes');if(unapproved)return 'Confirm whether the base SKU price applies to '+matchedEntry(unapproved).sku+'.';return '';}
+function validateDetails(){const rows=getItems();if(!$('customer').value.trim())return 'Enter the customer.';if(rows.some(row=>row.priorOrderNote&&!row.priorOrderDecision))return 'Choose whether to include or exclude each item marked as already ordered.';const included=includedItems();if(!included.length)return 'Include at least one product in the new order.';if(included.some(row=>!row.sku||!/^\d+$/.test(row.quantity)||Number(row.quantity)<=0||!Number.isSafeInteger(Number(row.quantity))))return 'Enter each included product SKU and a whole-number quantity greater than zero.';const unresolved=included.find(row=>row.matchMode==='choose'&&!row.matchSelection);if(unresolved)return 'Choose which product to use for SKU '+unresolved.sku+'.';const unapproved=included.find(row=>matchedEntry(row)?.substitution&&row.matchPriceApproval!=='yes'&&manualPricePence(row.matchManualPrice)===null);if(unapproved)return 'Confirm the base SKU price or enter a valid unit price (including £0.00) for '+matchedEntry(unapproved).sku+'.';return '';}
 function confirmDetails(){
  const error=validateDetails()||customerGuard();$('detailError').textContent=error;if(error)return;
  if(!priceChoice&&isExample()){priceChoice='example';showPriceStatus();}
@@ -1449,10 +1478,10 @@ function confirmDetails(){
  confirmedSignature=detailsSignature();examplePricing=priceChoice==='example';$('confirmedArea').hidden=false;
  $('connectionMessage').textContent=examplePricing?'Example only: the £8.00 unit price below is made up for the preview. Customer pricing and QuickBooks are not connected.':priceChoice==='sheet'?'Prices below come from '+priceBook.filename+'. Quantities over '+WSCPriceSheets.bulkPriceTrigger(priceBook)+' of the same product use the bulk price. Unit prices are rounded to two decimal places before multiplying.':'QuickBooks standard product prices are awaiting connection.';
  const list=$('priceItems');list.replaceChildren();for(const row of includedItems()){
-  const p=priceFor(row),entry=matchedEntry(row),missingBulk=priceChoice==='sheet'&&entry&&usesBulk(row)&&p===null;
-  const line=lineTotal(row),price=p===null?(missingBulk?'bulk price not found — check the price sheet':priceChoice==='sheet'?'price not found or product not confirmed — check it':'price awaiting connection'):money(p)+' each'+(examplePricing?' (example)':priceChoice==='sheet'?(usesBulk(row)?' (bulk price)':' (your price)'):'')+' — '+(line===null?'line total unavailable':money(line));
+  const p=priceFor(row),entry=matchedEntry(row),manual=entry?.substitution&&row.matchPriceApproval!=='yes',missingBulk=priceChoice==='sheet'&&entry&&usesBulk(row)&&p===null;
+  const line=lineTotal(row),price=p===null?(missingBulk?'bulk price not found — check the price sheet':priceChoice==='sheet'?'price not found or product not confirmed — check it':'price awaiting connection'):money(p)+' each'+(manual?' (entered price)':examplePricing?' (example)':priceChoice==='sheet'?(usesBulk(row)?' (bulk price)':' (your price)'):'')+' — '+(line===null?'line total unavailable':money(line));
   const product=entry?entry.sku+(entry.name?' — '+entry.name:'')+(entry.sheetName&&entry.sheetName!==entry.name?' — price sheet: '+entry.sheetName:'')+(row.matchMode==='choose'&&entry.row?' (sheet row '+entry.row+')':''):row.sku;
-  list.append(make('p',product+' × '+row.quantity+' — '+price+(entry?.substitution?' — confirmed price from '+entry.priceSku:'')));
+  list.append(make('p',product+' × '+row.quantity+' — '+price+(entry?.substitution&&!manual?' — confirmed price from '+entry.priceSku:'')));
  }
  if(priceChoice==='sheet'&&goodsTotal()===null)list.append(make('p','A price is missing or ambiguous. The total and small-order fee cannot be calculated until every included SKU has one valid price.','message'));
  if(purchaseOrder)list.append(make('p','Purchase order found: '+purchaseOrder,'muted'));
