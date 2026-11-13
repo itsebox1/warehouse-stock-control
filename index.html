@@ -590,7 +590,7 @@ input[type="reset"]:disabled,
       <button id="wscBatchOrderButton" class="wsc-module-main" data-wsc-favourite="batch" data-wsc-area="BATCH_ORDERS" type="button" onclick="wscOpenBatchOrders()">📋 Batch Orders</button>
     </div>
     <div class="wsc-module-header wsc-manager-action" hidden>
-      <button id="wscBackOrdersButton" class="wsc-module-main" data-wsc-favourite="back-orders" data-wsc-area="BATCH_ORDERS" type="button" onclick="wscOpenBackOrders()">📦 Back Orders</button>
+      <button id="wscBackOrdersButton" class="wsc-module-main" data-wsc-favourite="back-orders" data-wsc-area="BACK_ORDERS" type="button" onclick="wscOpenBackOrders()">📦 Back Orders</button>
     </div>
   </section>
   <section id="wscStockManagerScreen" data-wsc-home-view="stock" aria-labelledby="wscStockManagerHeading" hidden>
@@ -1614,7 +1614,7 @@ function validateTradeShowFields() {
   
 <script>
 // WSC deployment version. Update version.txt after the live files are verified.
-const WSC_VERSION = "1.0.10";
+const WSC_VERSION = "1.0.11";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -5393,7 +5393,7 @@ function wscReadFavourites(storageKey) {
 function wscFavouriteAvailable(source) {
   if (source.dataset.wscFavourite === 'qb') return !document.getElementById('wscQbModule').hidden;
   const area = source.dataset.wscArea;
-  return !area || wscPermissions?.functions?.[area] === true;
+  return !area || wscFunctionAllowed(wscPermissions?.functions, area);
 }
 
 function wscSetFavouriteStar(star, selected) {
@@ -7459,11 +7459,15 @@ if (["ST","SC"].includes(selectedReportType)) {
 }
 
 
-// Administrator controls: UI is advisory; Apps Script enforces all permissions.
+// Administrator controls reflect permissions checked by the server.
 window.WSC_ADMIN_URL = "https://warehouse-stock-reports.tmerry.workers.dev";
 let wscAdminData = null;
 let wscPermissions = null;
-const wscLabels = {BATCH_ORDERS:"📋 Batch Orders and Back Orders",SHOPIFY_INVOICES:"🧾 Shopify Invoices",POSTAGE_QUOTES:"📮 Postage Quotes",WEEKLY_BOM:"🧩 Weekly BOM",BOM:"🧩 BOM – Bill of Materials",ST:"📦 ST – Stock Take",SC:"📋 SC – Stock Count",TR:"🎪 TR – Trade Show",DL:"🚚 DL – Delivery",DATES:"📅 Check Dates"};
+const wscLabels = {BATCH_ORDERS:"📋 Batch Orders",BACK_ORDERS:"📦 Back Orders",SHOPIFY_INVOICES:"🧾 Shopify Invoices",POSTAGE_QUOTES:"📮 Postage Quotes",WEEKLY_BOM:"🧩 Weekly BOM",BOM:"🧩 BOM – Bill of Materials",ST:"📦 ST – Stock Take",SC:"📋 SC – Stock Count",TR:"🎪 TR – Trade Show",DL:"🚚 DL – Delivery",DATES:"📅 Check Dates"};
+function wscFunctionAllowed(areas, area) {
+  // Older Apps Script deployments return only the original shared permission.
+  return (areas?.[area] ?? (area === 'BACK_ORDERS' && areas?.BATCH_ORDERS)) === true;
+}
 async function wscAdminRequest(action, extra={}) {
   const idToken = await window.getCurrentStaffToken();
   const response = await fetch(window.WSC_ADMIN_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,idToken,...extra})});
@@ -7930,7 +7934,9 @@ function wscPaintPermissions(permissions) {
   const cog = document.getElementById("wscAdminCog");
   const areas = permissions?.functions || {};
   const canUsePost = areas.POSTAGE_QUOTES === true || areas.SHOPIFY_INVOICES === true;
-  const canUseOffice = areas.BATCH_ORDERS === true;
+  const canUseBatchOrders = wscFunctionAllowed(areas, 'BATCH_ORDERS');
+  const canUseBackOrders = wscFunctionAllowed(areas, 'BACK_ORDERS');
+  const canUseOffice = canUseBatchOrders || canUseBackOrders;
   document.getElementById('wscPostButton').hidden = !canUsePost;
   document.getElementById('wscOfficeManagerButton').hidden = !canUseOffice;
   const invoice=document.getElementById('wscShopifyInvoiceScreen');
@@ -7938,16 +7944,16 @@ function wscPaintPermissions(permissions) {
   const postage=document.getElementById('wscPostageScreen');
   if(postage && !postage.hidden && areas.POSTAGE_QUOTES!==true && typeof window.wscClosePostageQuotes==='function') window.wscClosePostageQuotes();
   document.querySelectorAll("[data-wsc-area]").forEach(button => {
-    const allowed = areas[button.dataset.wscArea] === true;
+    const allowed = wscFunctionAllowed(areas, button.dataset.wscArea);
     const row = button.closest('.wsc-manager-action');
     if (row) row.hidden = !allowed;
     else button.style.display = allowed ? '' : 'none';
   });
-  if (!canUseOffice) {
+  if (!canUseBatchOrders) {
     if (!document.getElementById('wscBatchOrderScreen').hidden) window.wscCloseBatchOrders?.();
     window.wscClearBatchOrders?.();
-    if (!document.getElementById('wscBackOrdersScreen').hidden) wscCloseManager('office');
   }
+  if (!canUseBackOrders && !document.getElementById('wscBackOrdersScreen').hidden) wscCloseManager('office');
   if (!canUsePost && !document.getElementById('wscPostMenuScreen').hidden) wscCloseManager('post');
   if (!canUseOffice && !document.getElementById('wscOfficeManagerScreen').hidden) wscCloseManager('office');
   if (cog) cog.style.display = permissions?.admin === true ? "block" : "none";
@@ -8063,7 +8069,12 @@ function wscSwitchRow(label,enabled,onChange,disabled=false){
 function wscRenderAdminStaff(){
   const box=document.getElementById("wscStaffToggles"),email=document.getElementById("wscStaffSelect").value;
   box.replaceChildren();const member=wscAdminData?.staff.find(s=>s.email===email);if(!member)return;
-  ["ST","SC","TR","DL","DATES","WEEKLY_BOM","POSTAGE_QUOTES","SHOPIFY_INVOICES","BATCH_ORDERS"].forEach(area=>box.appendChild(wscSwitchRow(wscLabels[area],member.functions[area],input=>wscSaveSwitch(input,"STAFF",area,email))));
+  for (const area of ["ST","SC","TR","DL","DATES","WEEKLY_BOM","POSTAGE_QUOTES","SHOPIFY_INVOICES","BATCH_ORDERS","BACK_ORDERS"]) {
+    const pending = area === 'BACK_ORDERS' && typeof member.functions.BACK_ORDERS !== 'boolean';
+    const row = wscSwitchRow(wscLabels[area], wscFunctionAllowed(member.functions, area), input => wscSaveSwitch(input, 'STAFF', area, email), pending);
+    if (pending) row.firstElementChild.textContent += ' (requires the Apps Script update)';
+    box.append(row);
+  }
 }
 function wscRenderAdminQB(){
   const box=document.getElementById("wscQBToggles");box.replaceChildren();
@@ -10218,7 +10229,7 @@ window.wscOpenPostageQuotes=async()=>{
 
 </script>
 <script>
-/* Back Orders uses the same staff access and lookups as Batch Orders. */
+/* Back Orders uses its own staff permission and the shared customer search. */
 (() => {
   const screen = document.getElementById('wscBackOrdersScreen');
   const frame = document.getElementById('wscBackOrdersFrame');
@@ -10231,7 +10242,7 @@ window.wscOpenPostageQuotes=async()=>{
 
   function canUse(email) {
     return Boolean(email && window.wscHasUnlockedSession?.() &&
-      email === wscPermissionEmail && wscPermissions?.functions?.BATCH_ORDERS === true);
+      email === wscPermissionEmail && wscFunctionAllowed(wscPermissions?.functions, 'BACK_ORDERS'));
   }
 
   function isActive() {
@@ -10251,7 +10262,8 @@ window.wscOpenPostageQuotes=async()=>{
 
   function customerLookup(term) {
     return withStaff(async () => {
-      const result = await wscAdminRequest('getWSCPermissions', {batchCustomerRequest: {term}});
+      const field = typeof wscPermissions?.functions?.BACK_ORDERS === 'boolean' ? 'backOrderCustomerRequest' : 'batchCustomerRequest';
+      const result = await wscAdminRequest('getWSCPermissions', {[field]: {term}});
       if (!result.batchCustomerLookup) throw new Error('The WSC customer lookup is unavailable.');
       return result.batchCustomerLookup;
     });
