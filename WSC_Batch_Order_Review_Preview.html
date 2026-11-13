@@ -86,8 +86,15 @@
     <p id="priceError" class="message" role="alert"></p>
     <div id="priceMapper" hidden>
      <p><strong id="priceFileName"></strong></p>
-     <p class="muted">Select the SKU, “Your price” and Bulk columns. The bulk price applies when the total quantity of the same SKU in this order is more than 500. Use GBP prices; VAT is not calculated in this preview.</p>
-     <div class="grid"><div class="field"><label for="priceTab">Worksheet</label><select id="priceTab"></select></div><div class="field"><label for="priceHeaderRow">Heading row</label><input id="priceHeaderRow" type="number" min="1" max="15000" step="1" inputmode="numeric"></div><div class="field"><label for="skuColumn">SKU column</label><select id="skuColumn"></select></div><div class="field"><label for="priceColumn">Your price column</label><select id="priceColumn"></select></div><div class="field"><label for="bulkColumn">Bulk price column</label><select id="bulkColumn"></select><small>If a bulk price is unavailable, quantities over 500 will be flagged for checking.</small></div></div>
+     <p class="muted">Select the SKU, “Your price” and Bulk columns. Use GBP prices. VAT is not calculated in this preview.</p>
+     <div class="grid">
+      <div class="field"><label for="priceTab">Worksheet</label><select id="priceTab"></select></div>
+      <div class="field"><label for="priceHeaderRow">Heading row</label><input id="priceHeaderRow" type="number" min="1" max="15000" step="1" inputmode="numeric"></div>
+      <div class="field"><label for="skuColumn">SKU column</label><select id="skuColumn"></select></div>
+      <div class="field"><label for="priceColumn">Your price column</label><select id="priceColumn"></select></div>
+      <div class="field"><label for="bulkColumn">Bulk price column</label><select id="bulkColumn"></select><small>Missing bulk prices are flagged when the trigger is exceeded.</small></div>
+      <div class="field"><label for="bulkPriceTrigger">Bulk Price Trigger</label><input id="bulkPriceTrigger" type="number" min="0" step="1" inputmode="numeric" aria-describedby="bulkPriceTriggerHint"><small id="bulkPriceTriggerHint">Bulk pricing applies when the total quantity of the same SKU in this order is above this number.</small></div>
+     </div>
      <p class="muted">Prices are rounded to two decimal places before the quantity is applied, as displayed in your sample sheet.</p>
      <p id="priceSample" class="muted" aria-live="polite"></p><button id="usePriceSheet" class="primary" type="button">Use price sheet for this customer</button>
     </div>
@@ -154,6 +161,9 @@ https://github.com/nodeca/pako/blob/main/LICENSE
 (function (root) {
 'use strict';
 const MAX_FILE=5*1024*1024, MAX_XML=25*1024*1024, MAX_ROWS=15000, MAX_COLS=100;
+const defaultBulkPriceTrigger=500;
+function isBulkPriceTrigger(value){return Number.isSafeInteger(value)&&value>=0;}
+function bulkPriceTrigger(book){return isBulkPriceTrigger(book?.bulkPriceTrigger)?book.bulkPriceTrigger:defaultBulkPriceTrigger;}
 const key=s=>String(s||'').trim().toLocaleUpperCase('en-GB').replace(/\s+/g,' ');
 const norm=s=>String(s||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'');
 const isSku=s=>/^(sku|productcode|productsku|itemsku|itemcode|stockcode|productnumber|itemnumber|partnumber|partno|productno|itemno)$/.test(norm(s));
@@ -246,9 +256,10 @@ function productChoices(book,entered,catalog){
  for(const price of relevantPrices){if(!known.has(key(price.sku)))add({sku:price.sku,name:price.name},price,false);}
  return out;
 }
-function buildBook(table,headerIndex,skuColumn,priceColumn,filename,bulkColumn=-1){
+function buildBook(table,headerIndex,skuColumn,priceColumn,filename,bulkColumn=-1,trigger=defaultBulkPriceTrigger){
  if(!table||skuColumn<0||priceColumn<0||skuColumn===priceColumn)throw Error('Choose different columns for the SKU and customer price.');
  if(bulkColumn>=0&&(bulkColumn===priceColumn||bulkColumn===skuColumn))throw Error('Choose a separate column for the bulk price.');
+ if(!isBulkPriceTrigger(trigger))throw Error('Enter a whole number of 0 or more for the bulk price trigger.');
  if(!Number.isInteger(headerIndex)||headerIndex<0||headerIndex>=table.rows.length)throw Error('Choose a valid heading row.');
  const header=table.rows[headerIndex]||[];if(!header.length)throw Error('Choose a row containing your column headings.');
  const nameColumn=header.findIndex(h=>/^(productname|itemname|name|productservice)$/.test(norm(h))),descColumn=header.findIndex(h=>/^(description|productdescription|itemdescription)$/.test(norm(h)));
@@ -261,13 +272,13 @@ function buildBook(table,headerIndex,skuColumn,priceColumn,filename,bulkColumn=-
   if(price===null){invalid.push(sku);continue;}entries[k]=entry;valid++;
  }
  if(!allEntries.some(e=>e.price!==null))throw Error('No valid GBP prices were found in those columns.');
- return {schema:3,filename,tab:table.name,headerRow:headerIndex+1,skuHeading:String(header[skuColumn]||''),priceHeading:String(header[priceColumn]||''),bulkHeading:bulkColumn>=0?String(header[bulkColumn]||''):'',entries,allEntries,duplicates:[...duplicates],duplicateDetails,invalid,valid,storedAt:new Date().toISOString()};
+ return {schema:3,filename,tab:table.name,headerRow:headerIndex+1,skuHeading:String(header[skuColumn]||''),priceHeading:String(header[priceColumn]||''),bulkHeading:bulkColumn>=0?String(header[bulkColumn]||''):'',bulkPriceTrigger:trigger,entries,allEntries,duplicates:[...duplicates],duplicateDetails,invalid,valid,storedAt:new Date().toISOString()};
 }
 function storageKey(customer){return 'wsc-preview-price-sheet-v1:'+key(customer);}
 let session={};
 function get(customer){if(!key(customer))return null;const k=storageKey(customer);try{const v=localStorage.getItem(k);if(v)return JSON.parse(v);}catch(_){}return session[k]||null;}
 function save(customer,book){const k=storageKey(customer);session[k]=book;try{localStorage.setItem(k,JSON.stringify(book));return true;}catch(_){return false;}}
-root.WSCPriceSheets={key,isSku,isPrice,isYourPrice,isBulkPrice,parseCsv,read,readXlsx,initialHeader,amount,displayedPence,candidates,productChoices,buildBook,get,save};
+root.WSCPriceSheets={key,isSku,isPrice,isYourPrice,isBulkPrice,parseCsv,read,readXlsx,initialHeader,amount,displayedPence,candidates,productChoices,buildBook,bulkPriceTrigger,get,save};
 })(window);
 
 </script>
@@ -652,7 +663,7 @@ function addItem(values={}){
 }
 function getItems(){return [...items.children].map(row=>({sku:row.querySelector('.sku input').value.trim(),quantity:row.querySelector('.quantity input').value.trim(),priorOrderNote:row.dataset.priorOrderNote||'',priorOrderDecision:row.querySelector('.prior-review select')?.value||'',matchSelection:row.dataset.matchSelection||'',matchMode:row.dataset.matchMode||'',matchBook:row.dataset.matchBook||'',matchInput:row.dataset.matchInput||'',matchPriceApproval:row.dataset.matchPriceApproval||''}));}
 function includedItems(){return getItems().filter(row=>!row.priorOrderNote||row.priorOrderDecision==='include');}
-function detailsSignature(){return JSON.stringify([$('customer').value.trim(),getItems(),priceChoice,priceBook?.storedAt||'',customerSnapshot()]);}
+function detailsSignature(){return JSON.stringify([$('customer').value.trim(),getItems(),priceChoice,priceBook?.storedAt||'',priceBook?.bulkPriceTrigger,customerSnapshot()]);}
 // Customer names are loaded from the authenticated private WSC index once per
 // signed-in user. A chosen customer is then verified in QuickBooks, read only.
 let customerIndexEntries=null,customerIndexOwner='',customerIndexPromise=null,customerIndexGeneration=0;
@@ -801,7 +812,7 @@ function customerGuard(){
 function showPriceStatus(){
  const customer=$('customer').value.trim();
  if(!customer)$('priceSourceStatus').textContent='Enter a customer to check for a saved price sheet.';
- else if(priceChoice==='sheet'&&priceBook)$('priceSourceStatus').textContent='Saved price sheet for '+customer+': '+priceBook.filename+' ('+priceBook.tab+', '+priceBook.priceHeading+'). Imported '+new Date(priceBook.storedAt).toLocaleDateString('en-GB')+'.'+(priceBook.sessionOnly?' Available only until this preview is closed.':'')+' Re-upload if prices change.';
+ else if(priceChoice==='sheet'&&priceBook)$('priceSourceStatus').textContent='Saved price sheet for '+customer+': '+priceBook.filename+' ('+priceBook.tab+', '+priceBook.priceHeading+'). Bulk price trigger: '+WSCPriceSheets.bulkPriceTrigger(priceBook)+'. Imported '+new Date(priceBook.storedAt).toLocaleDateString('en-GB')+'.'+(priceBook.sessionOnly?' Available only until this preview is closed.':'')+' Re-upload if prices change.';
  else if(priceChoice==='quickbooks')$('priceSourceStatus').textContent='No price sheet selected. QuickBooks standard product prices are not available in this preview.';
  else if(priceChoice==='example')$('priceSourceStatus').textContent='The example uses an invented price and is not connected to QuickBooks.';
  else $('priceSourceStatus').textContent='No price sheet saved for '+customer+' in this browser. Upload one or choose No price sheet.';
@@ -816,7 +827,7 @@ function refreshCustomerPrice(force=false){
 function matchedEntry(row){if(!matchSource()||row.matchBook!==matchSource()||!row.matchSelection||row.matchSelection==='none')return null;return productChoices(row.sku,true).find(e=>e.id===row.matchSelection)||productChoices(row.sku).find(e=>e.id===row.matchSelection)||null;}
 function productKey(row){const e=matchedEntry(row);return e?WSCPriceSheets.key(e.sku)+'|'+e.row:WSCPriceSheets.key(row.sku)+'|?';}
 function quantityForSku(row){const identity=productKey(row);let total=0;for(const r of includedItems()){if(productKey(r)!==identity)continue;const q=Number(r.quantity);if(!Number.isSafeInteger(q)||q<=0||!Number.isSafeInteger(total+q))return null;total+=q;}return total;}
-function usesBulk(row){const total=quantityForSku(row);return total!==null&&total>500;}
+function usesBulk(row){const total=quantityForSku(row);return total!==null&&total>WSCPriceSheets.bulkPriceTrigger(priceBook);}
 function priceFor(row){if(priceChoice==='example')return 800;if(priceChoice!=='sheet')return null;const entry=matchedEntry(row);if(!entry||(entry.substitution&&row.matchPriceApproval!=='yes'))return null;return WSCPriceSheets.displayedPence(usesBulk(row)?entry.bulk:entry.price);}
 function lineTotal(row){const pence=priceFor(row),q=Number(row.quantity);if(pence===null||!Number.isSafeInteger(q)||q<=0)return null;const product=pence*q;return Number.isSafeInteger(product)?product:null;}
 function goodsTotal(){const rows=includedItems();if(!rows.length)return null;let sum=0;for(const row of rows){const line=lineTotal(row);if(line===null||!Number.isSafeInteger(sum+line))return null;sum+=line;}return sum;}
@@ -1184,7 +1195,7 @@ function confirmDetails(){
  if(!priceChoice&&isExample()){priceChoice='example';showPriceStatus();}
  if(!priceChoice){$('detailError').textContent='Upload a customer price sheet or choose No price sheet.';return;}
  confirmedSignature=detailsSignature();examplePricing=priceChoice==='example';$('confirmedArea').hidden=false;
- $('connectionMessage').textContent=examplePricing?'Example only: the £8.00 unit price below is made up for the preview. Customer pricing and QuickBooks are not connected.':priceChoice==='sheet'?'Prices below come from '+priceBook.filename+'. Quantities over 500 of the same product use the bulk price. Unit prices are rounded to two decimal places before multiplying.':'QuickBooks standard product prices are awaiting connection.';
+ $('connectionMessage').textContent=examplePricing?'Example only: the £8.00 unit price below is made up for the preview. Customer pricing and QuickBooks are not connected.':priceChoice==='sheet'?'Prices below come from '+priceBook.filename+'. Quantities over '+WSCPriceSheets.bulkPriceTrigger(priceBook)+' of the same product use the bulk price. Unit prices are rounded to two decimal places before multiplying.':'QuickBooks standard product prices are awaiting connection.';
  const list=$('priceItems');list.replaceChildren();for(const row of includedItems()){
   const p=priceFor(row),entry=matchedEntry(row),missingBulk=priceChoice==='sheet'&&entry&&usesBulk(row)&&p===null;
   const line=lineTotal(row),price=p===null?(missingBulk?'bulk price not found — check the price sheet':priceChoice==='sheet'?'price not found or product not confirmed — check it':'price awaiting connection'):money(p)+' each'+(examplePricing?' (example)':priceChoice==='sheet'?(usesBulk(row)?' (bulk price)':' (your price)'):'')+' — '+(line===null?'line total unavailable':money(line));
@@ -1281,6 +1292,7 @@ async function loadPriceFile(){
  try{
   const tables=await WSCPriceSheets.read(file);if(token!==priceLoadId||customer!==WSCPriceSheets.key($('customer').value))return;
   priceTables=tables;priceFilename=file.name;priceUploadCustomer=customer;$('priceFileName').textContent='Selected: '+file.name;
+  $('bulkPriceTrigger').value=String(WSCPriceSheets.bulkPriceTrigger(WSCPriceSheets.get(customer)));
   const tabs=$('priceTab');tabs.replaceChildren();tables.forEach((t,i)=>option(tabs,i,t.name));
   const found=tables.findIndex(t=>{const row=t.rows[WSCPriceSheets.initialHeader(t)]||[];return row.some(WSCPriceSheets.isSku);});tabs.value=String(found<0?0:found);choosePriceTab();$('priceMapper').hidden=false;showPriceStatus();
  }catch(error){if(token===priceLoadId){$('priceError').textContent=error.message||'Could not read that price sheet.';showPriceStatus();}}
@@ -1290,7 +1302,7 @@ function usePriceSheet(){
  if(priceUploadCustomer!==WSCPriceSheets.key($('customer').value)){ $('priceError').textContent='The customer changed. Upload the correct price sheet for this customer.';return;}
  if($('skuColumn').value===''||$('priceColumn').value===''){ $('priceError').textContent='Choose the SKU column and the customer price column.';return;}
  try{
-  const book=WSCPriceSheets.buildBook(currentPriceTable(),Number($('priceHeaderRow').value)-1,Number($('skuColumn').value),Number($('priceColumn').value),priceFilename,$('bulkColumn').value===''?-1:Number($('bulkColumn').value));
+  const book=WSCPriceSheets.buildBook(currentPriceTable(),Number($('priceHeaderRow').value)-1,Number($('skuColumn').value),Number($('priceColumn').value),priceFilename,$('bulkColumn').value===''?-1:Number($('bulkColumn').value),$('bulkPriceTrigger').valueAsNumber);
   book.customer=$('customer').value.trim();const persistent=WSCPriceSheets.save(book.customer,book);book.sessionOnly=!persistent;priceBook=book;priceChoice='sheet';$('priceMapper').hidden=true;
   $('priceError').textContent=duplicateMessage(book);refreshAllMatches();showPriceStatus();invalidate();update();const query=items.querySelector('.sku-match-select');if(query){$('priceError').textContent='Please choose the correct product above. '+$('priceError').textContent;query.scrollIntoView({block:'center',behavior:'smooth'});}
  }catch(error){$('priceError').textContent=error.message||'Could not use this price sheet.';}
