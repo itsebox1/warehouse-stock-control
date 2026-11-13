@@ -624,9 +624,8 @@ input[type="reset"]:disabled,
     <button class="wsc-module-arrow" type="button" onclick="wscToggleModule('QB')">⌄</button>
   </div><div class="wsc-module-count"></div><div class="wsc-module-detail" hidden id="wscOutstandingQBList"></div></div>
   </section>
-  <section id="wscBatchOrderScreen" data-wsc-home-view="batch" hidden aria-labelledby="wscBatchOrderHeading">
-    <button type="button" onclick="wscCloseBatchOrders()" style="width:100%;">🏠 Home</button>
-    <h2 id="wscBatchOrderHeading" tabindex="-1" style="text-align:center;">📋 Batch Orders</h2>
+  <section id="wscBatchOrderScreen" data-wsc-home-view="batch" hidden aria-label="Batch Orders">
+    <button id="wscBatchOrderHome" type="button" onclick="wscCloseBatchOrders()" style="width:100%;">🏠 Home</button>
     <iframe id="wscBatchOrderFrame" title="Batch order review" style="display:block;width:100%;height:calc(100dvh - 145px);min-height:480px;border:0;background:#f3f6fa;"></iframe>
   </section>
   <section id="wscPostageScreen" data-wsc-home-view="postage" hidden aria-labelledby="wscPostageHeading">
@@ -10150,8 +10149,8 @@ window.wscOpenPostageQuotes=async()=>{
    if(!cachedPermission)await wscRefreshPermissions();
    if(wscPermissions?.functions?.BATCH_ORDERS!==true)throw new Error('Batch Orders access is disabled for this account.');
    const f=frame();if(!f)throw new Error('Batch Orders is unavailable.');
-   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=1.0.9');batchUser=user;}
-   wscShowHomeView('batch', 'wscBatchOrderHeading');
+   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=20261113-upload-help');batchUser=user;}
+   wscShowHomeView('batch', 'wscBatchOrderHome');
    tidyBatchNavigation();
    if(cachedPermission)void wscRefreshPermissions();
    if(permissionTimer!==null)clearInterval(permissionTimer);permissionTimer=setInterval(()=>{if(!document.hidden&&isActive())void wscRefreshPermissions();},60000);
