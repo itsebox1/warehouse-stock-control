@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="./wsc-buttons.css?v=1.0.5">
 <script src="./wsc-buttons.js?v=1.0.5" defer></script>
 <script src="./wsc-packing.js?v=20261112-parcels"></script>
+<script src="./wsc-batch-ocr.js?v=1.0.9"></script>
 <style>
 :root{font-family:Arial,Helvetica,sans-serif;color:#213146;background:#f3f6fa;font-size:16px;line-height:1.45}*{box-sizing:border-box}body{margin:0;padding:22px 16px 56px}main{max-width:1020px;margin:auto}h1,h2,h3,p{margin-top:0}h1{text-align:center;font-size:1.65rem;margin:24px 0 8px}h2{font-size:1.18rem;margin-bottom:4px}h3{font-size:1rem;margin:0 0 8px}label{font-weight:600;font-size:.9rem}small,.muted{color:#546779;font-size:.84rem}.hint{margin:2px 0 10px}button,input,textarea{font:inherit}button{cursor:pointer;border:0;border-radius:7px;padding:12px 16px;font-weight:600}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #70b7fa;outline-offset:2px}button:disabled{opacity:.5;cursor:not-allowed}.home,.primary{background:#294b70;color:white}.home{width:100%;text-align:center}.soft{background:#e8eef5;color:#294b70;border:1px solid #bfcddb}.minor{background:#f6f8fb;color:#294b70;border:1px solid #c4d2df}.danger{background:#fff5f2;color:#923b2a;border:1px solid #e3c6bb}.example{background:#fff;color:#294b70;border:1px solid #9bb1c7}.notice{background:#fff8df;border-left:4px solid #d2a443;padding:12px 14px;margin:22px 0 15px;border-radius:4px;color:#594619;font-size:.9rem}.card{background:white;border:1px solid #d4dde6;border-radius:10px;margin:14px 0;padding:20px}.header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}.number{display:inline-block;background:#e5edf5;color:#2d5377;border-radius:7px;padding:4px 7px;font-size:.82rem;margin-right:8px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.field{display:flex;flex-direction:column;gap:5px;min-width:0}.field input,.field textarea,.field select,.item input{border:1px solid #bccad6;border-radius:6px;padding:10px;width:100%;min-width:0;background:#fff;color:#213146}.field input[type=file]{padding:8px;font-size:.88rem}.field textarea{min-height:78px;resize:vertical}.section-title{display:flex;align-items:center;margin-bottom:11px}.type-row{display:flex;gap:10px;flex-wrap:wrap}.choice,.charge{border:1px solid #c8d4df;border-radius:8px;padding:12px;background:#f9fbfd}.choice{display:flex;align-items:center;gap:9px;min-width:150px}.choice input,.charge input[type=checkbox]{width:20px;height:20px;accent-color:#2c628f}.charge{margin:10px 0}.charge-title{display:flex;align-items:center;gap:10px}.charge p{margin:4px 0 0 30px}.charge .field{margin:12px 0 0 30px;max-width:240px}.item{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;align-items:end;margin-bottom:10px}.item .sku,.item .description{grid-column:span 2}.item label{font-size:.78rem}.item input{padding:9px}.item button{padding:10px 12px}.totals{background:#edf3f9;border-radius:7px;padding:12px 14px;margin-top:14px}.total-row{display:flex;justify-content:space-between;gap:12px;margin:4px 0}.total-row.strong{font-weight:bold;border-top:1px solid #c8d4df;padding-top:10px;margin-top:8px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:20px 0}.actions button{min-height:52px}.message{color:#9a3825;font-weight:600;min-height:1.4em}.message:empty{display:none}.status{display:inline-block;background:#e6f0fa;color:#285378;border-radius:50px;padding:4px 10px;font-size:.82rem;font-weight:600}.order{border:1px solid #d2dde7;border-radius:8px;padding:14px;margin:10px 0}.order-title{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}.order p{margin:3px 0}.order-buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.footer{text-align:center;font-size:.78rem;color:#697989;margin-top:24px}[hidden]{display:none!important}@media(max-width:650px){body{padding:14px 12px 45px}.card{padding:15px}.grid{grid-template-columns:1fr}.item{grid-template-columns:1fr 1fr}.item .sku{grid-column:1 / -1}.item button{grid-column:1 / -1}.actions{grid-template-columns:1fr}h1{font-size:1.4rem}}
 
@@ -56,13 +57,22 @@
 <button class="home" type="button" id="homeButton">🏠 Home</button>
 <h1>🧾 Customer Order Invoices</h1>
 <p class="muted" style="text-align:center">Review each order and prepare a batch</p>
-<div class="notice" id="previewNotice"><strong>Preview only.</strong> This tries to read a saved text email or a text-based PDF on your device. Check all suggested details. Uploaded customer prices can be reviewed locally. VAT, Google Drive price search and QuickBooks are not connected.</div>
+<div class="notice" id="previewNotice"><strong>Preview only.</strong> Review the details from a saved email or PDF. Sign in to WSC to scan image-only PDFs or order photos with Google Vision.</div>
 <div class="header"><span id="batchCount" class="status">0 orders in batch</span><button class="example" type="button" id="exampleButton">Try an example order</button></div>
 
 <form id="orderForm" novalidate>
  <p id="stepIndicator" class="muted">Step 1 of 2 — Select an order</p>
  <section id="uploadStep" class="card" aria-labelledby="uploadTitle"><div class="section-title"><span class="number">01</span><h2 id="uploadTitle">Select an email and/or PDF</h2></div>
-  <div class="grid"><div class="field"><label for="emailFile">Saved email</label><input id="emailFile" type="file" accept=".eml,.msg,.txt"><small>In this preview, .eml and .txt emails can be read, including readable PDF attachments in .eml files. For .msg, paste the email text instead.</small></div><div class="field"><label for="pdfFile">PDF attachment</label><input id="pdfFile" type="file" accept="application/pdf,.pdf"><small>Text-based PDFs can be read. Scanned image PDFs need OCR, which is not connected in this preview.</small></div></div>
+  <div class="grid">
+   <div class="field"><label for="emailFile">Saved email</label><input id="emailFile" type="file" accept=".eml,.msg,.txt"><small>Use an .eml or .txt file. For .msg, paste the email text instead.</small></div>
+   <div class="field">
+    <label for="pdfFile">PDF attachment</label><input id="pdfFile" type="file" accept="application/pdf,.pdf">
+    <button id="orderCameraButton" class="minor" type="button" hidden>📷 Scan order with camera</button>
+    <input id="orderPhoto" type="file" accept="image/*" capture="environment" hidden>
+    <small id="orderPhotoName" role="status" hidden></small>
+    <small>Google Vision reads scanned PDF pages and order photos in signed-in WSC.</small>
+   </div>
+  </div>
   <div class="field" style="margin-top:12px"><label for="emailText">Or paste email text</label><textarea id="emailText" placeholder="Paste text here (optional)"></textarea></div>
   <p id="sourceInfo" class="muted" role="status"></p><p id="uploadError" class="message" role="alert"></p>
   <button id="uploadNext" class="primary" type="button" style="width:100%;margin-top:10px">Next →</button><p id="extractStatus" class="muted" role="status" aria-live="polite"></p>
@@ -547,7 +557,7 @@ function pdfProductRows(pages, catalogue, source, notes){
 function recognise(documents, products = window.WSCCatalog.products){
   const customers={label:[],signature:[],sender:[],'pdf-header':[]},orders=[],items=[],notes=[];
   const catalogue = new Map(products.map(product => [skuKey(product.sku),product.sku]));
-  for(const {label,text:rawText,pages,sender} of documents){
+  for(const {label,text:rawText,pages,sender,ocrText=[]} of documents){
     const text=normaliseOrderText(rawText);
     if(pages){
       const evidence=pdfCustomerEvidence(pages);
@@ -560,8 +570,21 @@ function recognise(documents, products = window.WSCCatalog.products){
       if(signature)customers.signature.push(signature);
       if(from)customers.sender.push(from);
     }
+    for(const rawPage of ocrText){
+      const scannedText=normaliseOrderText(rawPage);
+      customers.label.push(...customerValues(scannedText));
+      customers['pdf-header'].push(...scannedText.split(/\r?\n/).slice(0,18).map(customerName).filter(Boolean));
+      const rows=window.WSCBatchOCR.productRows(scannedText,products);
+      items.push(...rows.map(row=>({...row,price:'',band:'',source:label,priorOrderNote:''})));
+    }
     orders.push(...lineValues(text,/^(?:purchase\s+order(?:\s+(?:number|no\.?))?|p\.?\s*o\.?(?:\s+(?:number|no\.?))?)\s*[:#]\s*([A-Z0-9][A-Z0-9._\/-]*)\s*$/i));
-    if(pages){items.push(...pdfProductRows(pages,catalogue,label,notes));continue;}
+    if(pages){
+      const productNotes=[];
+      items.push(...pdfProductRows(pages,catalogue,label,productNotes));
+      if(!ocrText.length)notes.push(...productNotes);
+      else notes.push(...productNotes.filter(note=>!note.startsWith('No verified product lines')));
+      continue;
+    }
     const lines=text.split(/\r?\n/);let table=null;
     for(let index=0;index<lines.length;index++){
       const line=lines[index],cells=line.split(/\s*(?:\||\t)\s*/).map(x=>x.trim());
@@ -623,14 +646,68 @@ async function getPdfEngine(){
   })().catch(error=>{pdfEnginePromise=null;throw error;});}
   return pdfEnginePromise;
 }
-async function readPdf(file){
+function makeScanCanvas(width,height){
+  const canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.ceil(width));
+  canvas.height=Math.max(1,Math.ceil(height));
+  return canvas;
+}
+function scanImageData(canvas){
+  return canvas.toDataURL('image/jpeg',0.86).split(',')[1];
+}
+function flattenPages(pages){
+  return pages.flatMap(rows=>rows.map(cells=>cells.map(cell=>cell.text).join('  '))).join('\n');
+}
+async function readPhoto(file,scan){
+  const bitmap=await createImageBitmap(file);
+  const scale=Math.min(1,2400/Math.max(bitmap.width,bitmap.height));
+  const canvas=makeScanCanvas(bitmap.width*scale,bitmap.height*scale);
+  try{
+    const context=canvas.getContext('2d',{alpha:false});
+    context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);
+    context.drawImage(bitmap,0,0,canvas.width,canvas.height);
+    const result=window.WSCBatchOCR.readPage(await scan(scanImageData(canvas)));
+    const pages=result.positioned?[result.rows]:[],ocrText=result.positioned?[]:[result.text].filter(Boolean);
+    return {pages,ocrText,text:flattenPages(pages)||result.text,scanned:!!result.text};
+  }finally{
+    bitmap.close?.();canvas.width=canvas.height=0;
+  }
+}
+async function readPdf(file,scan,onPage=()=>{}){
   const bytes=new Uint8Array(await readFile(file,'buffer')),engine=await getPdfEngine();
   const pdf = await engine.getDocument({data:bytes,isEvalSupported:false,useSystemFonts:true,useWorkerFetch:false}).promise;
-  const pages = [];
+  const pages = [],ocrText=[],scanIssues=[];
+  let scanned=false;
   try{
     for(let number=1;number<=pdf.numPages;number++){
       const page = await pdf.getPage(number);
       const content = await page.getTextContent();
+      const selectableText=content.items.map(part=>part.str||'').join('').replace(/[^\p{L}\p{N}]/gu,'');
+      if(selectableText.length<3){
+        if(!scan){scanIssues.push(`Page ${number} needs Google Vision. Open Batch Orders inside signed-in WSC.`);pages.push([]);continue;}
+        onPage(number,pdf.numPages);
+        const size=page.getViewport({scale:1});
+        const scale=Math.min(3.5,2400/Math.max(size.width,size.height));
+        const viewport=page.getViewport({scale});
+        const canvas=makeScanCanvas(viewport.width,viewport.height);
+        try{
+          await page.render({canvas,canvasContext:canvas.getContext('2d',{alpha:false}),viewport,background:'#fff'}).promise;
+          const result=window.WSCBatchOCR.readPage(await scan(scanImageData(canvas)));
+          if(result.positioned){
+            pages.push(result.rows.map(row=>row.map(cell=>({...cell,x:cell.x/scale,end:cell.end/scale}))));
+          }else{
+            pages.push([]);
+            if(result.text)ocrText.push(result.text);
+          }
+          if(result.text)scanned=true;
+          else scanIssues.push(`Google Vision found no text on page ${number}.`);
+        }catch(_){
+          pages.push([]);scanIssues.push(`Google Vision could not read page ${number}. Try again or enter its details in Step 2.`);
+        }finally{
+          canvas.width=canvas.height=0;page.cleanup();
+        }
+        continue;
+      }
       const lines = [];
       for(const part of content.items){
         if(!part.str?.trim())continue;
@@ -662,10 +739,10 @@ async function readPdf(file){
   }finally{
     await pdf.destroy();
   }
-  return {pages,text:pages.flatMap(rows=>rows.map(cells=>cells.map(cell=>cell.text).join('  '))).join('\n')};
+  return {pages,text:[flattenPages(pages),...ocrText].filter(Boolean).join('\n'),ocrText,scanIssues,scanned};
 
 }
-window.WSCOrderExtract={recognise,parseEmail,readFile,readPdf};
+window.WSCOrderExtract={recognise,parseEmail,readFile,readPdf,readPhoto};
 })();
 
 (function(){
@@ -1268,18 +1345,57 @@ function update(){
  $('sumTotal').textContent=goods!==null&&bank!==null&&post!==null&&fee!==null?money(goods+bank+post+fee):'—';$('batchCount').textContent=orders.length+' '+(orders.length===1?'order':'orders')+' in batch';
 }
 function invalidate(){if(confirmedSignature!==null&&detailsSignature()!==confirmedSignature){clearPostForChangedOrder();confirmedSignature=null;examplePricing=false;manualFee=false;$('confirmedArea').hidden=true;$('detailError').textContent='The order details changed. Please confirm them again.';}}
-function reset(){form.reset();clearPostForChangedOrder();postServiceTouched=false;items.replaceChildren();addItem();clearCustomerLookup();editing=null;exampleSource=false;savedSources=[];lastSourceSignature=null;confirmedSignature=null;examplePricing=false;manualFee=false;purchaseOrder='';priceCustomer='';priceChoice='';priceBook=null;priceTables=[];priceUploadCustomer='';priceLoadId++;clearPostLive();$('priceMapper').hidden=true;$('priceError').textContent='';$('sourceInfo').textContent='';$('uploadError').textContent='';$('extractStatus').textContent='';$('recognitionNotes').textContent='';$('detailError').textContent='';$('error').textContent='';$('confirmedArea').hidden=true;showPriceStatus();setStep(1);update();}
-function inputSources(){return [...savedSources,...($('emailFile').files?.[0]?[$('emailFile').files[0].name]:[]),...($('pdfFile').files?.[0]?[$('pdfFile').files[0].name]:[]),...($('emailText').value.trim()?['Pasted email text']:[]),...(exampleSource?['Example order']:[])];}
-function sourceSignature(){const fileInfo=id=>{const file=$(id).files?.[0];return file?[file.name,file.size,file.lastModified]:null;};return JSON.stringify([fileInfo('emailFile'),fileInfo('pdfFile'),$('emailText').value,savedSources]);}
+function reset(){form.reset();showSelectedOrderPhoto();clearPostForChangedOrder();postServiceTouched=false;items.replaceChildren();addItem();clearCustomerLookup();editing=null;exampleSource=false;savedSources=[];lastSourceSignature=null;confirmedSignature=null;examplePricing=false;manualFee=false;purchaseOrder='';priceCustomer='';priceChoice='';priceBook=null;priceTables=[];priceUploadCustomer='';priceLoadId++;clearPostLive();$('priceMapper').hidden=true;$('priceError').textContent='';$('sourceInfo').textContent='';$('uploadError').textContent='';$('extractStatus').textContent='';$('recognitionNotes').textContent='';$('detailError').textContent='';$('error').textContent='';$('confirmedArea').hidden=true;showPriceStatus();setStep(1);update();}
+function inputSources(){return [...savedSources,...['emailFile','pdfFile','orderPhoto'].flatMap(id=>{const file=$(id).files?.[0];return file?[file.name]:[];}),...($('emailText').value.trim()?['Pasted email text']:[]),...(exampleSource?['Example order']:[])];}
+function sourceSignature(){const fileInfo=id=>{const file=$(id).files?.[0];return file?[file.name,file.size,file.lastModified]:null;};return JSON.stringify([fileInfo('emailFile'),fileInfo('pdfFile'),fileInfo('orderPhoto'),$('emailText').value,savedSources]);}
+function showSelectedOrderPhoto(){
+ const name=$('orderPhotoName'),photo=$('orderPhoto').files?.[0];
+ name.hidden=!photo;name.textContent=photo?'Selected photo: '+photo.name:'';
+}
 async function readOrder(){
- if(!inputSources().length){$('uploadError').textContent='Select an email or PDF, paste email text, or try the example order.';return;}
+ if(!inputSources().length){$('uploadError').textContent='Select an email, PDF or order photo, or paste the email text.';return;}
  $('uploadError').textContent='';const signature=sourceSignature();if(signature===lastSourceSignature){setStep(2);return;}
- const button=$('uploadNext');button.disabled=true;$('extractStatus').textContent='Reading order details…';const docs=[],notes=[];
+ const button=$('uploadNext'),status=$('extractStatus'),bridge=customerBridge();
+ const scan=bridge?.scanOrderPage?image=>bridge.scanOrderPage(image):null;
+ const docs=[],notes=[];
+ let scanFailed=false,scanned=false;
+ button.disabled=true;status.textContent='Reading order details…';
+ async function addPdf(file,label){
+  try{
+   const result=await WSCOrderExtract.readPdf(file,scan,(page,total)=>{status.textContent=`Scanning page ${page} of ${total} with Google Vision…`;});
+   if(result.scanIssues?.length){scanFailed=true;notes.push(...result.scanIssues.map(issue=>label+' — '+issue));}
+   if(result.text.trim())docs.push({label,...result});
+   else if(!result.scanIssues?.length)notes.push('No readable text was found in '+label+'.');
+   if(result.scanned)scanned=true;
+  }catch(_){notes.push('Could not open '+label+'. Check the file or enter its details in Step 2.');}
+ }
  try{
-  const email=$('emailFile').files?.[0],pdf=$('pdfFile').files?.[0],pasted=$('emailText').value.trim();if(pasted)docs.push({label:'Pasted email',text:pasted});
-  if(email){if(/\.msg$/i.test(email.name))notes.push('Outlook .msg files are not supported in this preview. Paste the email text or save it as .eml.');else try{const raw=String(await WSCOrderExtract.readFile(email,'text'));if(/\.eml$/i.test(email.name)){const parsed=WSCOrderExtract.parseEmail(raw);notes.push(...parsed.notes);if(parsed.text.trim()||parsed.sender)docs.push({label:email.name,text:parsed.text,sender:parsed.sender});if(!parsed.text.trim()&&!parsed.pdfs.length)notes.push('No readable text was found in the saved email.');for(const attachment of parsed.pdfs){try{const embedded=new File([attachment.bytes],attachment.name,{type:'application/pdf'}),document=await WSCOrderExtract.readPdf(embedded);if(document.text.trim())docs.push({label:email.name+' / '+attachment.name,...document});else notes.push('No text was found in an attached PDF. A scanned PDF needs OCR, which is not available in this preview.');}catch(_){notes.push('A PDF attached to the email could not be read in this preview. Select the PDF separately or enter its details manually.');}}}else if(raw.trim())docs.push({label:email.name,text:raw});}catch(_){notes.push('The saved email could not be read. Paste the email text instead.');}}
-  if(pdf)try{const document=await WSCOrderExtract.readPdf(pdf);if(document.text.trim())docs.push({label:pdf.name,...document});else notes.push('No text was found in the PDF. A scanned PDF needs OCR, which is not available in this preview.');}catch(_){notes.push('The PDF could not be read in this preview. Enter its details manually.');}
-  const bridge = customerBridge();
+  const email=$('emailFile').files?.[0],pdf=$('pdfFile').files?.[0],photo=$('orderPhoto').files?.[0],pasted=$('emailText').value.trim();
+  if(pasted)docs.push({label:'Pasted email',text:pasted});
+  if(email){
+   if(/\.msg$/i.test(email.name))notes.push('Paste the Outlook email text or save it as .eml.');
+   else try{
+    const raw=String(await WSCOrderExtract.readFile(email,'text'));
+    if(/\.eml$/i.test(email.name)){
+     const parsed=WSCOrderExtract.parseEmail(raw);notes.push(...parsed.notes);
+     if(parsed.text.trim()||parsed.sender)docs.push({label:email.name,text:parsed.text,sender:parsed.sender});
+     if(!parsed.text.trim()&&!parsed.pdfs.length)notes.push('No readable text was found in the saved email.');
+     for(const attachment of parsed.pdfs){
+      await addPdf(new File([attachment.bytes],attachment.name,{type:'application/pdf'}),email.name+' / '+attachment.name);
+     }
+    }else if(raw.trim())docs.push({label:email.name,text:raw});
+   }catch(_){notes.push('The saved email could not be read. Paste the email text instead.');}
+  }
+  if(pdf)await addPdf(pdf,pdf.name);
+  if(photo&&scan){
+   status.textContent='Reading the order photo with Google Vision…';
+   try{
+    const result=await WSCOrderExtract.readPhoto(photo,scan);
+    if(result.text.trim()){docs.push({label:photo.name,...result});scanned=true;}
+    else {scanFailed=true;notes.push('Google Vision found no text in the order photo. Retake it or enter the details in Step 2.');}
+   }catch(_){scanFailed=true;notes.push('Google Vision could not read the order photo. Retake it or enter the details in Step 2.');}
+  }else if(photo){scanFailed=true;notes.push('Open Batch Orders inside signed-in WSC to read the order photo.');}
+  if(scanned)notes.push('Check the customer, SKUs and quantities against the scan before confirming.');
   let products = window.WSCCatalog.products;
   if(bridge){
    $('extractStatus').textContent='Checking product codes against WSC…';
@@ -1292,11 +1408,11 @@ async function readOrder(){
   $('customer').value=found.customer;clearCustomerLookup();refreshCustomerPrice(true);
   purchaseOrder=found.po;items.replaceChildren();if(found.items.length)found.items.forEach(addItem);else addItem();
   confirmedSignature=null;examplePricing=false;manualFee=false;$('confirmedArea').hidden=true;$('bank').checked=false;$('postage').checked=false;$('bankAmount').value='';$('postPacking').value='0';$('postMarkup').value='10';clearPostLive();
-  $('recognitionNotes').textContent=[...new Set([...notes,...found.notes])].join(' ');$('detailError').textContent='';lastSourceSignature=signature;update();setStep(2);scheduleCustomerLookup(false,'',found.customerCandidates);
+  $('recognitionNotes').textContent=[...new Set([...notes,...found.notes])].join(' ');$('detailError').textContent='';lastSourceSignature=scanFailed?null:signature;update();setStep(2);scheduleCustomerLookup(false,'',found.customerCandidates);
  }catch(_){$('uploadError').textContent='The order could not be read. Try pasting the email text.';}finally{button.disabled=false;$('extractStatus').textContent='';}
 }
 function exampleInputSource(){
- const noFiles=!$('emailFile').files?.[0]&&!$('pdfFile').files?.[0],newExample=exampleSource&&$('emailText').value===exampleText,editedExample=editing!==null&&orders[editing]?.example&&$('emailText').value==='';
+ const noFiles=!$('emailFile').files?.[0]&&!$('pdfFile').files?.[0]&&!$('orderPhoto').files?.[0],newExample=exampleSource&&$('emailText').value===exampleText,editedExample=editing!==null&&orders[editing]?.example&&$('emailText').value==='';
  return noFiles&&(newExample||editedExample);
 }
 function isExample(){return exampleInputSource()&&$('customer').value.trim()==='Example Customer'&&includedItems().every(row=>row.sku==='480011');}
@@ -1419,6 +1535,10 @@ function usePriceSheet(){
  }catch(error){$('priceError').textContent=error.message||'Could not use this price sheet.';}
 }
 $('uploadNext').addEventListener('click',readOrder);$('reviewBack').addEventListener('click',()=>setStep(1));$('confirmDetails').addEventListener('click',confirmDetails);
+$('orderCameraButton').hidden=!customerBridge()?.scanOrderPage;
+$('orderCameraButton').addEventListener('click',()=>$('orderPhoto').click());
+$('orderPhoto').addEventListener('change',()=>{if($('orderPhoto').files?.[0])$('pdfFile').value='';showSelectedOrderPhoto();});
+$('pdfFile').addEventListener('change',()=>{if($('pdfFile').files?.[0])$('orderPhoto').value='';showSelectedOrderPhoto();});
 $('uploadPrice').addEventListener('click',()=>{if(!$('customer').value.trim()){$('priceError').textContent='Enter the customer before uploading a price sheet.';return;}$('priceError').textContent='';$('priceFile').click();});
 $('qbCustomerRetry').addEventListener('click',()=>{const picked=customerState.picked,preferredId=customerState.selected?.id||'';if(picked)resolveCustomer(picked,preferredId);else {resetCustomerIndex();scheduleCustomerLookup(true);}invalidate();update();});
 $('qbCustomerRefresh').addEventListener('click',()=>{resetCustomerIndex();scheduleCustomerLookup(true);invalidate();update();});

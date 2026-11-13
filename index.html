@@ -9290,10 +9290,10 @@ function wscOpenDates() {
   wscDatesCurrentSku=''; wscDatesMessage('');
   wscQuickPrepare(document.getElementById("wscDatesSku"));
 }
-async function wscDatesRequest(action,extra={}) {
+async function wscDatesRequest(action,extra={},signal) {
   const idToken = await window.getCurrentStaffToken();
   const response = await fetch('https://warehouse-stock-reports.tmerry.workers.dev',{
-    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,idToken,...extra})
+    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,idToken,...extra}),signal
   });
   const result = await response.json();
   if (!response.ok || result.success !== true) throw new Error(result.error || 'Dates request failed.');
@@ -10094,6 +10094,14 @@ window.wscOpenPostageQuotes=async()=>{
    if(!products.length)throw new Error('The WSC product catalogue is empty.');
    return products;
   },
+  async scanOrderPage(imageBase64){
+   const user=email();if(!user)throw new Error('Sign in to WSC and open Batch Orders.');
+   if(typeof imageBase64!=='string'||imageBase64.length<100||imageBase64.length>5500000||!/^[A-Za-z0-9+/]+={0,2}$/.test(imageBase64))throw new Error('The page image could not be prepared for Google Vision.');
+   const result=await wscDatesRequest('scanBottleCap',{imageBase64,documentLayout:true},AbortSignal.timeout?.(45000));
+   if(email()!==user)throw new Error('WSC was locked or the signed-in user changed.');
+   if(typeof result.text!=='string')throw new Error('Google Vision returned an invalid result.');
+   return {text:result.text,words:result.words};
+  },
   async searchCustomers(term){
    const user=email();if(!user)throw new Error('Sign in to WSC and open Batch Orders.');
    if(typeof term!=='string'||term.trim().length<2||term.trim().length>100)throw new Error('Enter a customer name.');
@@ -10142,7 +10150,7 @@ window.wscOpenPostageQuotes=async()=>{
    if(!cachedPermission)await wscRefreshPermissions();
    if(wscPermissions?.functions?.BATCH_ORDERS!==true)throw new Error('Batch Orders access is disabled for this account.');
    const f=frame();if(!f)throw new Error('Batch Orders is unavailable.');
-   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=1.0.8');batchUser=user;}
+   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=1.0.9');batchUser=user;}
    wscShowHomeView('batch', 'wscBatchOrderHeading');
    tidyBatchNavigation();
    if(cachedPermission)void wscRefreshPermissions();
