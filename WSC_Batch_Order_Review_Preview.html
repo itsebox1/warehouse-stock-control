@@ -56,7 +56,6 @@
 .upload-label label{margin:0}
 .upload-label .upload-info{display:inline-grid;place-items:center;width:30px;height:30px;padding:0;border:1px solid #c5cdd5;border-radius:50%;background:#fff;color:#485967;font-size:.95rem}
 .upload-help{color:#59636c}
-    <small id="emailUploadHelp" class="upload-help" hidden>Use an .eml or .txt file. For .msg, paste the email text instead. To scan an email, photograph it on your PC screen and select Next to read it with Google Vision.</small>
 </style>
 </head>
 <body><main>
@@ -78,6 +77,7 @@
     <input id="emailFile" type="file" accept=".eml,.msg,.txt">
     <button id="emailCameraButton" class="minor" type="button" hidden>Scan email with Camera</button>
     <small id="emailPhotoName" role="status" hidden></small>
+    <small id="emailUploadHelp" class="upload-help" hidden>Use an .eml or .txt file. For .msg, paste the email text instead. To scan an email, photograph it on your PC screen and select Next to read it with Google Vision.</small>
    </div>
    <div class="field">
     <div class="upload-label">
