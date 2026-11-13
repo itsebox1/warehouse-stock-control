@@ -589,6 +589,9 @@ input[type="reset"]:disabled,
     <div class="wsc-module-header wsc-manager-action" hidden>
       <button id="wscBatchOrderButton" class="wsc-module-main" data-wsc-favourite="batch" data-wsc-area="BATCH_ORDERS" type="button" onclick="wscOpenBatchOrders()">📋 Batch Orders</button>
     </div>
+    <div class="wsc-module-header wsc-manager-action" hidden>
+      <button id="wscBackOrdersButton" class="wsc-module-main" data-wsc-favourite="back-orders" data-wsc-area="BATCH_ORDERS" type="button" onclick="wscOpenBackOrders()">📦 Back Orders</button>
+    </div>
   </section>
   <section id="wscStockManagerScreen" data-wsc-home-view="stock" aria-labelledby="wscStockManagerHeading" hidden>
     <button type="button" onclick="wscCloseManager('stock')" style="width:100%;">🏠 Home</button>
@@ -627,6 +630,9 @@ input[type="reset"]:disabled,
   <section id="wscBatchOrderScreen" data-wsc-home-view="batch" hidden aria-label="Batch Orders">
     <button id="wscBatchOrderHome" type="button" onclick="wscCloseBatchOrders()" style="width:100%;">🏠 Home</button>
     <iframe id="wscBatchOrderFrame" title="Batch order review" style="display:block;width:100%;height:calc(100dvh - 145px);min-height:480px;border:0;background:#f3f6fa;"></iframe>
+  </section>
+  <section id="wscBackOrdersScreen" data-wsc-home-view="back-orders" hidden aria-label="Back Orders" tabindex="-1">
+    <iframe id="wscBackOrdersFrame" title="Back Orders and reports" referrerpolicy="no-referrer" style="display:block;width:100%;height:calc(100dvh - 103px);min-height:480px;border:0;background:#f3f6fa;"></iframe>
   </section>
   <section id="wscPostageScreen" data-wsc-home-view="postage" hidden aria-labelledby="wscPostageHeading">
     <button type="button" onclick="wscClosePostageQuotes()" style="width:100%;">🏠 Home</button>
@@ -5345,6 +5351,9 @@ function wscShowHomeView(view = 'home', focusId) {
   }
   if (view !== 'postage') window.wscStopPostagePermissionChecks?.();
   if (view !== 'batch') window.wscHideBatchOrders?.();
+  if (view !== 'back-orders' && !document.getElementById('wscBackOrdersScreen').hidden) {
+    window.wscClearBackOrders?.();
+  }
   document.querySelectorAll('[data-wsc-home-view]').forEach(screen => {
     screen.hidden = screen.dataset.wscHomeView !== view;
   });
@@ -7452,7 +7461,7 @@ if (["ST","SC"].includes(selectedReportType)) {
 window.WSC_ADMIN_URL = "https://warehouse-stock-reports.tmerry.workers.dev";
 let wscAdminData = null;
 let wscPermissions = null;
-const wscLabels = {BATCH_ORDERS:"📋 Batch Orders",SHOPIFY_INVOICES:"🧾 Shopify Invoices",POSTAGE_QUOTES:"📮 Postage Quotes",WEEKLY_BOM:"🧩 Weekly BOM",BOM:"🧩 BOM – Bill of Materials",ST:"📦 ST – Stock Take",SC:"📋 SC – Stock Count",TR:"🎪 TR – Trade Show",DL:"🚚 DL – Delivery",DATES:"📅 Check Dates"};
+const wscLabels = {BATCH_ORDERS:"📋 Batch Orders and Back Orders",SHOPIFY_INVOICES:"🧾 Shopify Invoices",POSTAGE_QUOTES:"📮 Postage Quotes",WEEKLY_BOM:"🧩 Weekly BOM",BOM:"🧩 BOM – Bill of Materials",ST:"📦 ST – Stock Take",SC:"📋 SC – Stock Count",TR:"🎪 TR – Trade Show",DL:"🚚 DL – Delivery",DATES:"📅 Check Dates"};
 async function wscAdminRequest(action, extra={}) {
   const idToken = await window.getCurrentStaffToken();
   const response = await fetch(window.WSC_ADMIN_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,idToken,...extra})});
@@ -7935,6 +7944,7 @@ function wscPaintPermissions(permissions) {
   if (!canUseOffice) {
     if (!document.getElementById('wscBatchOrderScreen').hidden) window.wscCloseBatchOrders?.();
     window.wscClearBatchOrders?.();
+    if (!document.getElementById('wscBackOrdersScreen').hidden) wscCloseManager('office');
   }
   if (!canUsePost && !document.getElementById('wscPostMenuScreen').hidden) wscCloseManager('post');
   if (!canUseOffice && !document.getElementById('wscOfficeManagerScreen').hidden) wscCloseManager('office');
@@ -8119,6 +8129,7 @@ function isPinSessionValid() {
     Date.now() - unlockedAt >= 0 &&
     Date.now() - unlockedAt < PIN_VALIDITY_MS;
 }  
+window.wscHasUnlockedSession = () => Boolean(auth.currentUser && !wscIdleDialog && isPinSessionValid());
   
   onAuthStateChanged(auth, (user) => {
   if (!user || (wscPermissionEmail && wscPermissionEmail !== String(user.email || "").toLowerCase())) {
@@ -8282,7 +8293,7 @@ function wscIdleVisible(id) {
   return !!el && el.getClientRects().length>0 && getComputedStyle(el).visibility!=='hidden';
 }
 function wscIdleSafeToRefresh() {
-  return wscIdleVisible('welcomeScreen') && !wscIdleVisible('wscPostageScreen') && !wscIdleVisible('wscShopifyInvoiceScreen') && !wscIdleVisible('wscBatchOrderScreen') && wscPendingRequests===0 &&
+  return wscIdleVisible('welcomeScreen') && !wscIdleVisible('wscPostageScreen') && !wscIdleVisible('wscShopifyInvoiceScreen') && !wscIdleVisible('wscBatchOrderScreen') && !wscIdleVisible('wscBackOrdersScreen') && wscPendingRequests===0 &&
     !document.querySelector('dialog[open]:not(#wscIdleDialog)') &&
     !(typeof wscLiveQBUI!=='undefined' && wscLiveQBUI.busy) &&
     !document.querySelector('input:focus,textarea:focus,select:focus');
@@ -8786,7 +8797,7 @@ async function getQuickBooksCommitStatusForST(reportNumber) {
 }
   
 // WSC deployment version. Update version.txt LAST, after any backend deployments.
-const WSC_VERSION = "1.0.8";
+const WSC_VERSION = "1.0.9";
 
 function isNewerWSCVersion(remote, current) {
   const r = remote.split(".").map(Number);
@@ -10206,6 +10217,127 @@ window.wscOpenPostageQuotes=async()=>{
  };
 })();
 
+</script>
+<script>
+/* Back Orders uses the same staff access and lookups as Batch Orders. */
+(() => {
+  const screen = document.getElementById('wscBackOrdersScreen');
+  const frame = document.getElementById('wscBackOrdersFrame');
+  const staffEmail = () => String(window.getCurrentStaffEmail?.() || '').trim().toLowerCase();
+  const indexCommand = 'WSC_BATCH_CUSTOMER_INDEX_V1';
+  const pickCommand = 'WSC_BATCH_CUSTOMER_PICK_V1:';
+  let generation = 0;
+  let opening = false;
+  let permissionTimer;
+
+  function canUse(email) {
+    return Boolean(email && window.wscHasUnlockedSession?.() &&
+      email === wscPermissionEmail && wscPermissions?.functions?.BATCH_ORDERS === true);
+  }
+
+  function isActive() {
+    return !screen.hidden && canUse(staffEmail());
+  }
+
+  async function withStaff(request) {
+    if (!isActive()) throw new Error('Unlock WSC and open Back Orders.');
+    const email = staffEmail();
+    const current = generation;
+    const result = await request();
+    if (!isActive() || current !== generation || email !== staffEmail()) {
+      throw new Error('WSC was locked or access changed. Reopen Back Orders to see the current records.');
+    }
+    return result;
+  }
+
+  function customerLookup(term) {
+    return withStaff(async () => {
+      const result = await wscAdminRequest('getWSCPermissions', {batchCustomerRequest: {term}});
+      if (!result.batchCustomerLookup) throw new Error('The WSC customer lookup is unavailable.');
+      return result.batchCustomerLookup;
+    });
+  }
+
+  function fingerprint(name, company) {
+    let hash = 2166136261;
+    const text = name + '\u0000' + company;
+    for (let index = 0; index < text.length; index++) {
+      hash = Math.imul(hash ^ text.charCodeAt(index), 16777619);
+    }
+    return (hash >>> 0).toString(16).padStart(8, '0');
+  }
+
+  window.wscBackOrdersBridge = Object.freeze({
+    isActive,
+    noteActivity() { return isActive() && window.wscBatchIdleActivity?.() === true; },
+    close() { if (isActive()) wscShowHomeView('office', 'wscBackOrdersButton'); },
+    request(path, method, payload) {
+      return withStaff(async () => (await wscAdminRequest('wscBackOrders', {path, method, payload})).result);
+    },
+    productIndex() {
+      return withStaff(async () => {
+        const products = await wscQuickGetCatalogue();
+        return {entries: products.map(({sku, name}) => [sku, name])};
+      });
+    },
+    customers: Object.freeze({
+      async loadIndex() {
+        const result = await customerLookup(indexCommand);
+        if (result.kind !== 'index' || !Array.isArray(result.entries)) throw new Error('The WSC customer list is unavailable.');
+        return result.entries.filter(([row, name]) => Number.isSafeInteger(row) && typeof name === 'string' && name)
+          .map(([row, name, company]) => ({row, name, company: String(company || '')}));
+      },
+      async searchLive(term) {
+        if (typeof term !== 'string' || term.length < 2 || term.length > 100 || /^WSC_BATCH_CUSTOMER_/i.test(term)) {
+          throw new Error('Enter a customer name.');
+        }
+        const result = await customerLookup(term);
+        if (!Array.isArray(result.matches)) throw new Error('The QuickBooks search is unavailable.');
+        const entries = result.matches.filter(customer => /^\d+$/.test(String(customer?.id || '')) && customer.displayName)
+          .map(customer => ({customer, name: customer.displayName, company: customer.companyName || ''}));
+        return {entries, total: result.totalMatches ?? entries.length};
+      },
+      async select(entry) {
+        if (!isActive()) throw new Error('Unlock WSC and open Back Orders.');
+        if (entry.customer) return {customer: entry.customer};
+        const result = await customerLookup(pickCommand + entry.row + ':' + fingerprint(entry.name, entry.company));
+        const {customer} = result;
+        if (result.kind !== 'resolved' || !/^\d+$/.test(String(customer?.id || '')) || !customer.displayName) {
+          throw new Error('QuickBooks could not verify this customer.');
+        }
+        return {customer};
+      }
+    })
+  });
+
+  window.wscClearBackOrders = () => {
+    generation++;
+    clearInterval(permissionTimer);
+    frame.removeAttribute('src');
+  };
+
+  window.wscOpenBackOrders = async () => {
+    if (opening || isActive()) return;
+    opening = true;
+    try {
+      const email = staffEmail();
+      if (!email || !window.wscHasUnlockedSession?.()) throw new Error('Sign in and unlock WSC first.');
+      const cached = canUse(email);
+      if (!cached) await wscRefreshPermissions();
+      if (email !== staffEmail() || !canUse(email)) throw new Error('Back Orders access is unavailable for this account.');
+      wscShowHomeView('back-orders', 'wscBackOrdersScreen');
+      frame.src = './WSC_Back_Orders.html?v=' + WSC_VERSION;
+      if (cached) void wscRefreshPermissions();
+      permissionTimer = setInterval(() => {
+        if (!document.hidden && isActive()) void wscRefreshPermissions();
+      }, 60000);
+    } catch (error) {
+      window.showWSCMessage('Back Orders', String(error?.message || error));
+    } finally {
+      opening = false;
+    }
+  };
+})();
 </script>
 <script>
 /* WSC footer controls: the build value is the actual frontend WSC_VERSION. */

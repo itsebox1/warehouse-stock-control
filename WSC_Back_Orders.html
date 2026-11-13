@@ -1,0 +1,1800 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>WSC Back Orders</title>
+  <meta name="description" content="Try Back Orders with the Batch Orders customer list and WSC product catalogue.">
+  <style>
+    html { color-scheme: light; background: #f3f6fa; }
+    body { margin: 0 auto; padding: clamp(8px, 2.5vw, 24px); max-width: 1068px; }
+  </style>
+</head>
+<body>
+<div id="wsc-back-orders-preview" data-wsc-live>
+  <div class="wscp-app">
+    <header class="wscp-header">
+      <strong>Warehouse Stock Control</strong>
+      <span>Office Manager</span>
+    </header>
+
+    <main class="wscp-main">
+      <nav class="wscp-nav" aria-label="Office Manager navigation">
+        <button type="button" id="wscp-office-link" class="wscp-link cursor-interaction">← Office Manager</button>
+        <button type="button" id="wscp-list-link" class="wscp-link cursor-interaction" hidden>← Back Orders</button>
+        <button type="button" id="wscp-reports-link" class="wscp-link cursor-interaction" hidden>← Reports</button>
+      </nav>
+
+      <section id="wscp-office" hidden>
+        <h1>Office Manager</h1>
+        <button type="button" id="wscp-open" class="wscp-primary cursor-interaction">Back Orders</button>
+      </section>
+
+      <section id="wscp-list" aria-labelledby="wscp-list-title">
+        <div class="wscp-heading">
+          <h1 id="wscp-list-title">Back Orders</h1>
+          <div class="wscp-heading-actions">
+            <button type="button" id="wscp-reports-open" class="wscp-secondary cursor-interaction" disabled>Reports</button>
+            <button type="button" id="wscp-add" class="wscp-primary cursor-interaction" disabled><span aria-hidden="true">＋</span> Add New</button>
+          </div>
+        </div>
+        <div class="wscp-panel">
+          <div class="wscp-filters">
+            <input type="search" id="wscp-filter" placeholder="Search company or order reference" aria-label="Search back orders" autocomplete="off">
+          </div>
+          <div id="wscp-notice" class="wscp-notice" role="status"></div>
+          <div id="wscp-list-count" class="wscp-list-count" aria-live="polite">Loading saved back orders…</div>
+          <div id="wscp-load-error" class="wscp-pad" hidden>
+            <div id="wscp-load-message" class="wscp-error" role="alert"></div>
+            <button type="button" id="wscp-retry" class="wscp-secondary cursor-interaction">Try again</button>
+          </div>
+          <table id="wscp-table" aria-label="Companies with back orders" hidden>
+            <thead>
+              <tr>
+                <th scope="col">Company</th>
+                <th scope="col" class="wscp-wide">Back order</th>
+                <th scope="col" class="wscp-wide">Customer ref.</th>
+                <th scope="col" class="wscp-wide wscp-order-date">Order date</th>
+                <th scope="col" class="wscp-number">Qty outstanding</th>
+                <th scope="col" class="wscp-wide">Status</th>
+                <th scope="col" class="wscp-action">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="wscp-orders"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="wscp-reports" aria-labelledby="wscp-reports-title" hidden>
+        <div class="wscp-heading">
+          <h1 id="wscp-reports-title">Reports</h1>
+          <div class="wscp-heading-actions">
+            <button type="button" id="wscp-report-edit" class="wscp-secondary cursor-interaction" disabled>Edit</button>
+            <button type="button" id="wscp-report-remove" class="wscp-secondary cursor-interaction" disabled>Delete</button>
+            <button type="button" id="wscp-report-create" class="wscp-primary cursor-interaction"><span aria-hidden="true">＋</span> Create New</button>
+          </div>
+        </div>
+        <div id="wscp-report-menu" class="wscp-report-menu"></div>
+        <div id="wscp-report-notice" class="wscp-notice" role="status"></div>
+        <div id="wscp-report-load-error" class="wscp-error wscp-report-load-error" role="alert" hidden></div>
+      </section>
+
+      <section id="wscp-report-editor" aria-labelledby="wscp-report-editor-title" hidden>
+        <h1 id="wscp-report-editor-title">Create New Report</h1>
+        <form id="wscp-report-form">
+          <div class="wscp-panel wscp-pad">
+            <label class="wscp-field wscp-report-name">Report name <input id="wscp-report-name" maxlength="100" required></label>
+            <fieldset class="wscp-report-fields">
+              <legend>Report columns</legend>
+              <p class="wscp-report-help">Use + to add a field and − to remove it.</p>
+              <div id="wscp-report-fields" class="wscp-report-field-list" role="list"></div>
+              <div id="wscp-report-selected" class="wscp-report-help" aria-live="polite"></div>
+              <ol id="wscp-report-column-order" class="wscp-report-column-order" aria-label="Columns in report order" hidden></ol>
+            </fieldset>
+          </div>
+          <div id="wscp-report-save-error" class="wscp-error" role="alert" hidden></div>
+          <div class="wscp-footer">
+            <button type="button" id="wscp-report-cancel" class="wscp-secondary cursor-interaction">Cancel</button>
+            <button type="submit" id="wscp-report-save" class="wscp-primary cursor-interaction" disabled>Save and Generate</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="wscp-report" class="wscp-report" aria-labelledby="wscp-report-title" hidden>
+        <div class="wscp-heading">
+          <h1 id="wscp-report-title" tabindex="-1"></h1>
+          <button type="button" id="wscp-report-print" class="wscp-secondary wscp-print cursor-interaction">Print as PDF</button>
+        </div>
+        <div class="wscp-filters wscp-report-filters">
+          <label class="wscp-field">Search column <select id="wscp-report-search-column"></select></label>
+          <label class="wscp-field">Search report <input type="search" id="wscp-report-search" autocomplete="off"></label>
+        </div>
+        <div class="wscp-panel wscp-report-scroll" role="region" aria-label="Report table" tabindex="0">
+          <table id="wscp-report-table" aria-labelledby="wscp-report-title">
+            <thead><tr id="wscp-report-head"></tr></thead>
+            <tbody id="wscp-report-rows"></tbody>
+          </table>
+          <div id="wscp-report-empty" class="wscp-list-count" role="status" hidden></div>
+        </div>
+      </section>
+
+      <section id="wscp-editor" aria-labelledby="wscp-editor-title" hidden>
+        <h1 id="wscp-editor-title">New Back Order</h1>
+        <form id="wscp-form">
+          <div class="wscp-panel wscp-pad">
+            <h2>Order details</h2>
+            <div class="wscp-order-fields">
+              <div class="wscp-field wscp-picker">
+                <label for="wscp-customer">Customer / company</label>
+                <div class="wscp-customer-entry">
+                  <input type="text" id="wscp-customer" placeholder="Start typing a customer or company name" maxlength="100" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="wscp-customer-options" aria-describedby="wscp-customer-status">
+                  <ul id="wscp-customer-options" class="wscp-customer-choices" role="listbox" aria-label="Matching customers" hidden></ul>
+                </div>
+                <div id="wscp-customer-status" class="wscp-customer-status" role="status"></div>
+                <div id="wscp-customer-id" class="wscp-customer-id" hidden></div>
+                <div class="wscp-customer-actions">
+                  <button type="button" id="wscp-customer-refresh" class="wscp-secondary cursor-interaction">Refresh customer list</button>
+                  <button type="button" id="wscp-customer-search" class="wscp-secondary cursor-interaction" hidden>Search QuickBooks</button>
+                </div>
+              </div>
+              <label class="wscp-field">Order date <input type="date" id="wscp-date" required></label>
+              <label class="wscp-field">Customer order / PO ref. <input id="wscp-reference" maxlength="100" placeholder="e.g. PO-1042"></label>
+              <label class="wscp-field">Currency
+                <select id="wscp-currency" required>
+                  <option>GBP</option><option>EUR</option><option>USD</option>
+                </select>
+              </label>
+            </div>
+            <label class="wscp-field wscp-notes">Notes <textarea id="wscp-notes" rows="2" maxlength="2000"></textarea></label>
+            <div id="wscp-addresses" class="wscp-addresses" hidden>
+              <div><h3>Billing address</h3><address id="wscp-billing"></address></div>
+              <div><h3>Delivery address</h3><address id="wscp-shipping"></address></div>
+              <p id="wscp-contact"></p>
+            </div>
+          </div>
+
+          <div class="wscp-panel wscp-pad">
+            <h2>Products</h2>
+            <div class="wscp-product-search">
+              <div class="wscp-field wscp-picker">
+                <label for="wscp-product">Item</label>
+                <input type="search" id="wscp-product" placeholder="Search SKU or product name" maxlength="200" autocomplete="off" aria-controls="wscp-product-options" aria-describedby="wscp-product-status">
+                <div id="wscp-product-options" class="wscp-options" role="group" aria-label="Matching products" hidden></div>
+              </div>
+              <button type="button" id="wscp-find-product" class="wscp-secondary cursor-interaction">Find SKU</button>
+            </div>
+            <div id="wscp-product-status" class="wscp-product-status" aria-live="polite"></div>
+            <div id="wscp-lines" class="wscp-lines"></div>
+            <div id="wscp-totals" class="wscp-totals" hidden>
+              <label for="wscp-order-amount">Backorder Total Amount</label>
+              <output id="wscp-order-amount">—</output>
+            </div>
+          </div>
+
+          <div id="wscp-error" class="wscp-error" role="alert" hidden></div>
+          <div class="wscp-footer">
+            <button type="button" id="wscp-cancel" class="wscp-secondary cursor-interaction">Cancel</button>
+            <button type="button" id="wscp-save" class="wscp-primary cursor-interaction">Save and Close</button>
+          </div>
+        </form>
+      </section>
+
+      <dialog id="wscp-discard" aria-labelledby="wscp-discard-title">
+        <h2 id="wscp-discard-title">Discard unsaved changes?</h2>
+        <div class="wscp-footer">
+          <button type="button" id="wscp-keep" class="wscp-secondary cursor-interaction" autofocus>Keep editing</button>
+          <button type="button" id="wscp-leave" class="wscp-primary cursor-interaction">Discard changes</button>
+        </div>
+      </dialog>
+      <dialog id="wscp-complete" aria-labelledby="wscp-complete-title" aria-describedby="wscp-complete-detail">
+        <h2 id="wscp-complete-title">Complete back order?</h2>
+        <p id="wscp-complete-detail"></p>
+        <div id="wscp-complete-error" class="wscp-error" role="alert" hidden></div>
+        <div class="wscp-footer">
+          <button type="button" id="wscp-complete-cancel" class="wscp-secondary cursor-interaction" autofocus>Cancel</button>
+          <button type="button" id="wscp-complete-confirm" class="wscp-danger cursor-interaction">Complete</button>
+        </div>
+      </dialog>
+      <dialog id="wscp-report-picker" aria-labelledby="wscp-report-picker-title">
+        <h2 id="wscp-report-picker-title">Choose a report</h2>
+        <form id="wscp-report-picker-form">
+          <label class="wscp-field">Report <select id="wscp-report-choice" required autofocus></select></label>
+          <p id="wscp-report-picker-error" class="wscp-error" role="alert" hidden></p>
+          <div class="wscp-footer wscp-report-picker-actions">
+            <button type="button" id="wscp-report-picker-cancel" class="wscp-secondary cursor-interaction">Cancel</button>
+            <button type="submit" id="wscp-report-picker-confirm" class="wscp-primary cursor-interaction" disabled>Continue</button>
+          </div>
+        </form>
+      </dialog>
+      <dialog id="wscp-report-delete" aria-labelledby="wscp-report-delete-title" aria-describedby="wscp-report-delete-detail">
+        <h2 id="wscp-report-delete-title">Delete report?</h2>
+        <p id="wscp-report-delete-detail"></p>
+        <div id="wscp-report-delete-error" class="wscp-error" role="alert" hidden></div>
+        <div class="wscp-footer">
+          <button type="button" id="wscp-report-delete-cancel" class="wscp-secondary cursor-interaction" autofocus>Cancel</button>
+          <button type="button" id="wscp-report-delete-confirm" class="wscp-danger cursor-interaction">Delete</button>
+        </div>
+      </dialog>
+    </main>
+  </div>
+</div>
+
+<style>
+  #wsc-back-orders-preview {
+    color-scheme: light;
+    --wscp-page: #f3f6fa;
+    --wscp-surface: #fff;
+    --wscp-tint: #edf3f9;
+    --wscp-text: #213146;
+    --wscp-muted: #546779;
+    --wscp-line: #d4dde6;
+    --wscp-input-line: #bccad6;
+    --wscp-blue: #294b70;
+    --wscp-on-blue: #fff;
+    --wscp-ok: #215d4f;
+    --wscp-ok-bg: #eff8f4;
+    --wscp-warn: #923b2a;
+    --wscp-warn-bg: #fff5f2;
+    --wscp-delivery: #fff8df;
+    --wscp-delivery-border: #d2a443;
+    width: 100%;
+    color: var(--wscp-text);
+    font: 16px/1.45 Arial, Helvetica, sans-serif;
+  }
+  #wsc-back-orders-preview, #wsc-back-orders-preview * { box-sizing: border-box; }
+  #wsc-back-orders-preview [hidden] { display: none !important; }
+  #wsc-back-orders-preview .wscp-app { background: var(--wscp-page); border: 1px solid var(--wscp-line); border-radius: 13px; }
+  #wsc-back-orders-preview .wscp-header {
+    padding: 13px 96px 13px 20px; min-height: 55px; display: flex; align-items: center;
+    flex-wrap: wrap; gap: 5px 13px; color: #fff; background: var(--wscp-blue);
+    border-radius: 12px 12px 0 0;
+  }
+  #wsc-back-orders-preview .wscp-header strong { font-size: 16px; letter-spacing: .01em; }
+  #wsc-back-orders-preview .wscp-header span { font-size: 12px; color: #dbeafa; }
+  #wsc-back-orders-preview .wscp-main { padding: 17px 20px 22px; min-width: 0; }
+  #wsc-back-orders-preview h1, #wsc-back-orders-preview h2, #wsc-back-orders-preview h3 {
+    color: var(--wscp-text); line-height: 1.2;
+  }
+  #wsc-back-orders-preview h1 { font-size: 27px; margin: 0 0 15px; font-weight: 700; }
+  #wsc-back-orders-preview h2 { font-size: 17px; margin: 0 0 12px; font-weight: 700; }
+  #wsc-back-orders-preview h3 { font-size: 14px; margin: 0 0 4px; font-weight: 700; }
+  #wsc-back-orders-preview button, #wsc-back-orders-preview input, #wsc-back-orders-preview select, #wsc-back-orders-preview textarea { font: inherit; margin: 0; }
+  #wsc-back-orders-preview button { width: auto; min-height: 42px; padding: 8px 14px; font-weight: 700; border-radius: 7px; transition: transform 120ms ease; }
+  #wsc-back-orders-preview button:active { transform: translateY(1px); }
+  #wsc-back-orders-preview .wscp-primary { background: var(--wscp-blue); color: var(--wscp-on-blue); border: 1px solid var(--wscp-blue); }
+  #wsc-back-orders-preview .wscp-secondary { background: #e8eef5; color: var(--wscp-blue); border: 1px solid #bfcddb; }
+  #wsc-back-orders-preview :is(button, input, select, textarea):focus-visible { outline: 3px solid #70b7fa; outline-offset: 2px; }
+  #wsc-back-orders-preview .wscp-danger { background: var(--wscp-warn-bg); color: var(--wscp-warn); border: 1px solid var(--wscp-warn); }
+  #wsc-back-orders-preview button:disabled { opacity: .6; }
+  #wsc-back-orders-preview .wscp-link { background: transparent; color: var(--wscp-blue); border: 0; padding-inline: 0; min-height: 36px; }
+  #wsc-back-orders-preview .wscp-nav { min-height: 5px; margin: -6px 0 6px; }
+  #wsc-back-orders-preview :is(.wscp-heading, .wscp-heading-actions, .wscp-filters, .wscp-footer, .wscp-report-menu) {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 9px 14px;
+  }
+  #wsc-back-orders-preview .wscp-heading { justify-content: space-between; margin-bottom: 13px; }
+  #wsc-back-orders-preview .wscp-heading h1 { margin: 0; }
+  #wsc-back-orders-preview .wscp-panel { background: var(--wscp-surface); border: 1px solid var(--wscp-line); border-radius: 10px; }
+  #wsc-back-orders-preview .wscp-filters { padding: 11px 14px; background: var(--wscp-tint); border-radius: 9px 9px 0 0; }
+  #wsc-back-orders-preview .wscp-filters input[type="search"] { flex: 1 1 250px; width: auto; }
+  #wsc-back-orders-preview input, #wsc-back-orders-preview textarea, #wsc-back-orders-preview select {
+    width: 100%; min-width: 0; min-height: 42px; padding: 8px 10px; border: 1px solid var(--wscp-input-line);
+    border-radius: 6px; background: var(--wscp-surface); color: var(--wscp-text); font-size: 16px;
+  }
+  #wsc-back-orders-preview input::placeholder { color: var(--wscp-muted); opacity: 1; }
+  #wsc-back-orders-preview textarea { resize: vertical; min-height: 56px; }
+  #wsc-back-orders-preview .wscp-notice, #wsc-back-orders-preview .wscp-list-count { padding: 8px 14px; color: var(--wscp-muted); }
+  #wsc-back-orders-preview .wscp-notice { color: var(--wscp-ok); background: var(--wscp-ok-bg); }
+  #wsc-back-orders-preview .wscp-notice:empty, #wsc-back-orders-preview .wscp-product-status:empty { display: none; }
+  #wsc-back-orders-preview table { width: 100%; margin: 0; border-collapse: collapse; color: var(--wscp-text); }
+  #wsc-back-orders-preview th, #wsc-back-orders-preview td { border-bottom: 1px solid var(--wscp-line); padding: 8px 12px; text-align: left; vertical-align: middle; }
+  #wsc-back-orders-preview th { background: var(--wscp-tint); font-size: 12px; }
+  #wsc-back-orders-preview td { overflow-wrap: anywhere; }
+  #wsc-back-orders-preview tr:last-child td { border-bottom: 0; }
+  #wsc-back-orders-preview .wscp-company-link { padding: 4px 0; text-align: left; overflow-wrap: anywhere; }
+  #wsc-back-orders-preview .wscp-company-link:hover { text-decoration: underline; }
+  #wsc-back-orders-preview .wscp-delivery-match { background: var(--wscp-delivery); }
+  #wsc-back-orders-preview :is(.wscp-delivery-match > td:first-child, .wscp-line.wscp-delivery-match) { box-shadow: inset 4px 0 var(--wscp-delivery-border); }
+  #wsc-back-orders-preview .wscp-delivery-label { display: block; color: #594619; font-size: .8rem; font-weight: 700; }
+  #wsc-back-orders-preview .wscp-number { text-align: right; font-variant-numeric: tabular-nums; }
+  #wsc-back-orders-preview .wscp-report-load-error, #wsc-back-orders-preview #wscp-report-notice { margin-top: 12px; }
+  #wsc-back-orders-preview .wscp-report-picker-actions { margin-top: 12px; }
+  #wsc-back-orders-preview .wscp-report-name { max-width: 420px; }
+  #wsc-back-orders-preview .wscp-report-fields { min-width: 0; margin: 15px 0 0; padding: 0; border: 0; }
+  #wsc-back-orders-preview .wscp-report-fields legend { padding: 0; font-weight: 700; }
+  #wsc-back-orders-preview .wscp-report-help { margin: 4px 0 10px; color: var(--wscp-muted); overflow-wrap: anywhere; }
+  #wsc-back-orders-preview #wscp-report-selected { margin: 10px 0 0; }
+  #wsc-back-orders-preview .wscp-report-column-order {
+    display: flex; flex-wrap: wrap; gap: 8px; margin: 7px 0 0; padding: 0; list-style: none;
+  }
+  #wsc-back-orders-preview .wscp-report-column-order li {
+    display: flex; align-items: center; gap: 4px; max-width: 100%; padding: 3px 4px 3px 8px;
+    border: 1px solid var(--wscp-line); border-radius: 7px; background: var(--wscp-tint);
+  }
+  #wsc-back-orders-preview .wscp-report-column-order span { min-width: 0; overflow-wrap: anywhere; }
+  #wsc-back-orders-preview .wscp-report-column-order button { flex-shrink: 0; min-width: 36px; min-height: 36px; padding: 4px 7px; }
+  #wsc-back-orders-preview .wscp-report-field-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 8px; }
+  #wsc-back-orders-preview .wscp-report-field-option {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 8px;
+    min-width: 0; border: 1px solid var(--wscp-line); border-radius: 7px;
+  }
+  #wsc-back-orders-preview .wscp-report-field-option button { min-width: 42px; padding: 4px 8px; font-size: 19px; }
+  #wsc-back-orders-preview .wscp-report-filters { margin: 0 0 11px; align-items: end; border-radius: 9px; }
+  #wsc-back-orders-preview .wscp-report-filters label { flex: 1 1 190px; }
+  #wsc-back-orders-preview .wscp-report-scroll { overflow-x: auto; }
+  #wsc-back-orders-preview .wscp-report-scroll th { padding-block: 0; }
+  #wsc-back-orders-preview .wscp-report-scroll td { white-space: pre-line; }
+  #wsc-back-orders-preview .wscp-report-menu button, #wsc-back-orders-preview .wscp-report h1 { overflow-wrap: anywhere; }
+  #wsc-back-orders-preview .wscp-sort {
+    display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+    background: transparent; color: inherit; border: 0; padding: 0; cursor: pointer;
+  }
+  #wsc-back-orders-preview .wscp-sort span { color: var(--wscp-muted); }
+  #wsc-back-orders-preview .wscp-sort span::before { content: '↕'; }
+  #wsc-back-orders-preview th[aria-sort="ascending"] .wscp-sort span::before { content: '↑'; }
+  #wsc-back-orders-preview th[aria-sort="descending"] .wscp-sort span::before { content: '↓'; }
+  #wsc-back-orders-preview .wscp-action { text-align: right; }
+  #wsc-back-orders-preview .wscp-order-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+  #wsc-back-orders-preview .wscp-order-actions button { padding: 6px 11px; min-height: 36px; }
+  #wsc-back-orders-preview .wscp-nowrap { white-space: nowrap; }
+  #wsc-back-orders-preview .wscp-list-detail { display: none; margin-top: 3px; color: var(--wscp-muted); font-size: 12px; }
+  #wsc-back-orders-preview .wscp-state { display: inline-block; border-radius: 5px; padding: 2px 7px; background: var(--wscp-tint); color: var(--wscp-blue); font-size: 12px; white-space: nowrap; }
+  #wsc-back-orders-preview .wscp-state-done { background: var(--wscp-ok-bg); color: var(--wscp-ok); }
+  #wsc-back-orders-preview .wscp-pad { padding: 14px; margin-bottom: 12px; }
+  #wsc-back-orders-preview .wscp-order-fields { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, .65fr); gap: 11px; }
+  #wsc-back-orders-preview .wscp-field { display: grid; gap: 4px; align-content: start; min-width: 0; color: var(--wscp-text); font-weight: 700; }
+  #wsc-back-orders-preview .wscp-notes { margin-top: 10px; }
+  #wsc-back-orders-preview .wscp-addresses { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 14px; border-top: 1px solid var(--wscp-line); margin-top: 13px; padding-top: 11px; }
+  #wsc-back-orders-preview .wscp-addresses address { font-style: normal; white-space: pre-line; overflow-wrap: anywhere; }
+  #wsc-back-orders-preview .wscp-addresses p { margin: 0; color: var(--wscp-muted); grid-column: 1/-1; overflow-wrap: anywhere; }
+  #wsc-back-orders-preview .wscp-product-search { max-width: 550px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+  #wsc-back-orders-preview .wscp-product-status { color: var(--wscp-muted); padding-top: 7px; }
+  #wsc-back-orders-preview .wscp-customer-status { color: var(--wscp-muted); font-weight: 400; font-size: 13px; }
+  #wsc-back-orders-preview .wscp-customer-status:empty { display: none; }
+  #wsc-back-orders-preview .wscp-customer-id { color: var(--wscp-blue); font-size: 13px; }
+  #wsc-back-orders-preview .wscp-picker { position: relative; }
+  #wsc-back-orders-preview .wscp-customer-entry { position: relative; }
+  #wsc-back-orders-preview .wscp-customer-choices {
+    list-style: none; margin: -1px 0 0; padding: 0; max-height: 240px; overflow: auto;
+    background: var(--wscp-surface); color: var(--wscp-text); border: 1px solid var(--wscp-input-line);
+    border-radius: 0 0 7px 7px; box-shadow: 0 4px 10px #2131461f;
+  }
+  #wsc-back-orders-preview .wscp-customer-choices li {
+    padding: 10px 12px; font-weight: normal; border-bottom: 1px solid var(--wscp-line); overflow-wrap: anywhere; cursor: pointer;
+  }
+  #wsc-back-orders-preview .wscp-customer-choices li:last-child { border-bottom: 0; }
+  #wsc-back-orders-preview .wscp-customer-choices li:hover,
+  #wsc-back-orders-preview .wscp-customer-choices li[aria-selected="true"] { background: var(--wscp-tint); }
+  #wsc-back-orders-preview .wscp-customer-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  #wsc-back-orders-preview .wscp-options {
+    position: absolute; top: 100%; left: 0; right: 0; z-index: 3; margin-top: 3px; background: var(--wscp-surface);
+    border: 1px solid var(--wscp-input-line); border-radius: 7px; box-shadow: 0 4px 14px #0003;
+    max-height: min(50vh, 320px); overflow: auto;
+  }
+  #wsc-back-orders-preview .wscp-options button { display: block; width: 100%; text-align: left; border: 0; border-radius: 0; background: var(--wscp-surface); color: var(--wscp-text); overflow-wrap: anywhere; }
+  #wsc-back-orders-preview .wscp-options button + button { border-top: 1px solid var(--wscp-line); }
+  #wsc-back-orders-preview .wscp-options button:hover, #wsc-back-orders-preview .wscp-options button:focus-visible { background: var(--wscp-tint); }
+  #wsc-back-orders-preview .wscp-options button:first-child { border-radius: 6px 6px 0 0; }
+  #wsc-back-orders-preview .wscp-options button:last-child { border-radius: 0 0 6px 6px; }
+  #wsc-back-orders-preview .wscp-lines:empty { display: none; }
+  #wsc-back-orders-preview .wscp-lines { display: grid; gap: 8px; margin-top: 12px; }
+  #wsc-back-orders-preview .wscp-line {
+    display: grid; align-items: end; gap: 8px;
+    grid-template-columns: minmax(125px, 1.85fr) minmax(100px, .85fr) minmax(85px, .85fr) minmax(112px, 1fr) auto;
+    padding: 9px; border: 1px solid var(--wscp-line); border-radius: 7px;
+  }
+  #wsc-back-orders-preview .wscp-item { align-self: center; min-width: 0; overflow-wrap: anywhere; }
+  #wsc-back-orders-preview .wscp-item strong { display: block; }
+  #wsc-back-orders-preview .wscp-line label { font-size: 12px; }
+  #wsc-back-orders-preview .wscp-line output {
+    min-height: 42px; padding: 8px 10px; border: 1px solid var(--wscp-line); border-radius: 6px;
+    background: var(--wscp-tint); font-size: 16px; text-align: right; font-variant-numeric: tabular-nums; overflow-wrap: anywhere;
+  }
+  #wsc-back-orders-preview .wscp-remove { padding-inline: 9px; }
+  #wsc-back-orders-preview .wscp-totals { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: flex-end; gap: 4px 12px; margin-top: 11px; font-weight: 700; }
+  #wsc-back-orders-preview .wscp-totals output { min-width: 2ch; text-align: right; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  #wsc-back-orders-preview .wscp-footer { justify-content: flex-end; }
+  #wsc-back-orders-preview .wscp-error { color: var(--wscp-warn); background: var(--wscp-warn-bg); border-radius: 6px; margin-bottom: 9px; padding: 8px 11px; }
+  #wsc-back-orders-preview dialog { width: min(390px, calc(100% - 24px)); padding: 17px; color: var(--wscp-text); background: var(--wscp-surface); border: 1px solid var(--wscp-line); border-radius: 10px; }
+  #wsc-back-orders-preview dialog::backdrop { background: #10233888; }
+  #wsc-back-orders-preview #wscp-report-delete-detail { overflow-wrap: anywhere; }
+  @media (max-width: 875px) {
+    #wsc-back-orders-preview .wscp-order-date { display: none; }
+    #wsc-back-orders-preview .wscp-line { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    #wsc-back-orders-preview .wscp-item { grid-column: 1 / -1; }
+    #wsc-back-orders-preview .wscp-remove { grid-column: -2 / -1; justify-self: end; }
+  }
+  @media (max-width: 675px) {
+    #wsc-back-orders-preview .wscp-order-fields { grid-template-columns: 1fr 1fr; }
+    #wsc-back-orders-preview .wscp-wide { display: none; }
+    #wsc-back-orders-preview .wscp-list-detail { display: block; }
+  }
+  @media (max-width: 420px) {
+    #wsc-back-orders-preview .wscp-main { padding: 13px 10px 15px; }
+    #wsc-back-orders-preview .wscp-header { padding-left: 10px; padding-right: 82px; }
+    #wsc-back-orders-preview .wscp-header strong { font-size: 14px; }
+    #wsc-back-orders-preview h1 { font-size: 22px; }
+    #wsc-back-orders-preview th, #wsc-back-orders-preview td { padding: 7px 8px; }
+    #wsc-back-orders-preview .wscp-order-fields { grid-template-columns: minmax(0, 1fr); }
+    #wsc-back-orders-preview .wscp-line { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #wsc-back-orders-preview .wscp-pad { padding: 11px; }
+    #wsc-back-orders-preview .wscp-options button { min-height: 44px; }
+  }
+  @media (pointer: coarse) { #wsc-back-orders-preview button, #wsc-back-orders-preview .wscp-order-actions button, #wsc-back-orders-preview .wscp-report-column-order button { min-height: 44px; } }
+  @media (prefers-reduced-motion: reduce) { #wsc-back-orders-preview button { transition: none; } }
+  @media print {
+    @page { size: A4 landscape; margin: 12mm; }
+    html, body { background: #fff; }
+    body { max-width: none; padding: 0; }
+    #wsc-back-orders-preview { color-scheme: light; --wscp-page: #fff; font-size: 10pt; }
+    #wsc-back-orders-preview :is(.wscp-header, .wscp-nav, .wscp-print, .wscp-sort span, .wscp-report-filters) { display: none; }
+    #wsc-back-orders-preview :is(.wscp-app, .wscp-main, .wscp-report .wscp-panel) { border: 0; padding: 0; overflow: visible; }
+    #wsc-back-orders-preview .wscp-report-scroll table { min-width: 0; table-layout: fixed; }
+    #wsc-back-orders-preview .wscp-report-scroll th, #wsc-back-orders-preview .wscp-report-scroll td { padding-inline: 4pt; overflow-wrap: anywhere; }
+    #wsc-back-orders-preview .wscp-report thead { display: table-header-group; }
+    #wsc-back-orders-preview .wscp-report tr { break-inside: avoid; }
+    #wsc-back-orders-preview .wscp-sort { display: block; min-height: 0; padding: 4pt 0; white-space: normal; overflow-wrap: anywhere; }
+    #wsc-back-orders-preview .wscp-report h1 { font-size: 18pt; }
+  }
+</style>
+
+<script>
+window.wscCustomerPicker = (function () {
+  const limit = 25;
+  const key = value => String(value || '').normalize('NFKC').trim().toLowerCase().replace(/\s+/g, '');
+
+  function create({input, list, status, refresh, search, source, onEdit, onSelect, isAvailable, directoryOnly = false}) {
+    let index = null;
+    let indexRequest = null;
+    let liveResults = null;
+    let matches = [];
+    let active = -1;
+    let version = 0;
+    let timer;
+    let selecting = false;
+    let selected = false;
+    let dismissed = false;
+
+    function message(value) {
+      status.textContent = value;
+    }
+
+    function close() {
+      list.hidden = true;
+      input.setAttribute('aria-expanded', 'false');
+      input.removeAttribute('aria-activedescendant');
+      active = -1;
+    }
+
+    function cancel() {
+      version++;
+      clearTimeout(timer);
+      selecting = false;
+      liveResults = null;
+      dismissed = false;
+      search.disabled = false;
+      close();
+    }
+
+    function reset({hasCustomer = false, clearIndex = false} = {}) {
+      cancel();
+      selected = hasCustomer;
+      matches = [];
+      list.replaceChildren();
+      if (clearIndex) {
+        index = null;
+        indexRequest = null;
+      }
+      search.hidden = true;
+      message(hasCustomer ? '' : 'Start typing a customer or company name.');
+    }
+
+    function loadIndex() {
+      if (index) return Promise.resolve(index);
+      if (!indexRequest) {
+        const request = Promise.resolve().then(() => source.loadIndex());
+        indexRequest = request;
+        request.then(entries => {
+          if (indexRequest !== request) return;
+          index = entries;
+          indexRequest = null;
+        }, () => {
+          if (indexRequest === request) indexRequest = null;
+        });
+      }
+      return indexRequest;
+    }
+
+    function isCurrent(stamp, term) {
+      return isAvailable() && stamp === version && input.value.trim() === term;
+    }
+
+    function displayName(entry) {
+      return entry.name || entry.displayName;
+    }
+
+    function companyName(entry) {
+      return entry.company || entry.companyName || '';
+    }
+
+    function render(entries, total) {
+      matches = entries.slice(0, limit);
+      list.replaceChildren(...matches.map((entry, i) => {
+        const option = document.createElement('li');
+        option.id = list.id + '-' + i;
+        option.setAttribute('role', 'option');
+        option.setAttribute('aria-selected', 'false');
+        const name = displayName(entry);
+        const company = companyName(entry);
+        option.textContent = name + (company && key(company) !== key(name) ? ' — ' + company : '');
+        option.addEventListener('pointerdown', event => event.preventDefault());
+        option.addEventListener('click', () => choose(entry));
+        return option;
+      }));
+      close();
+      if (!matches.length) return;
+      if (!dismissed && (document.activeElement === input || document.activeElement === search)) {
+        list.hidden = false;
+        input.setAttribute('aria-expanded', 'true');
+      }
+      message(total > matches.length
+        ? 'Showing ' + matches.length + ' of ' + total + ' customers. Type more to narrow the list.'
+        : 'Choose the correct customer from the list.');
+    }
+
+    function highlight(index) {
+      if (!matches.length) return;
+      active = Math.max(0, Math.min(matches.length - 1, index));
+      Array.from(list.children).forEach((option, i) => {
+        option.setAttribute('aria-selected', String(i === active));
+      });
+      const option = list.children[active];
+      input.setAttribute('aria-activedescendant', option.id);
+      option.scrollIntoView?.({block: 'nearest'});
+    }
+
+    async function choose(entry) {
+      if (!isAvailable() || selecting) return;
+      cancel();
+      const stamp = version;
+      const term = displayName(entry);
+      selected = false;
+      selecting = true;
+      input.value = term;
+      search.hidden = true;
+      onEdit();
+      if (!directoryOnly) message('Checking the selected customer and delivery address in QuickBooks…');
+      try {
+        const result = await source.select(entry);
+        if (!isCurrent(stamp, term)) return;
+        selected = true;
+        input.value = result.customer.displayName || result.customer.name;
+        onSelect(result);
+        message(directoryOnly ? 'Selected from the Batch Orders customer list.' : 'QuickBooks customer: ' + input.value);
+      } catch {
+        if (!isCurrent(stamp, term)) return;
+        index = null;
+        search.hidden = !source.searchLive || key(term).length < 2;
+        message(directoryOnly ? 'Could not select this customer. Refresh the customer list to try again.'
+          : 'QuickBooks could not verify this customer. Refresh the list or search QuickBooks.');
+      } finally {
+        if (stamp === version) selecting = false;
+      }
+    }
+
+    function matchingEntries(entries, term) {
+      const wanted = key(term);
+      const exact = [];
+      const partial = [];
+      for (const entry of entries) {
+        const name = entry.nameKey || key(displayName(entry));
+        const company = entry.companyKey || key(companyName(entry));
+        if (name === wanted || company === wanted) exact.push(entry);
+        else if (name.includes(wanted) || company.includes(wanted)) partial.push(entry);
+      }
+      return exact.concat(partial);
+    }
+
+    function paintLive(results) {
+      if (results.entries.length) {
+        render(results.entries, results.total);
+        return;
+      }
+      render([], 0);
+      message('No customers in QuickBooks matched. Try another name.');
+    }
+
+    async function searchLive() {
+      const term = input.value.trim();
+      if (!isAvailable() || selecting || !source.searchLive || key(term).length < 2) return;
+      clearTimeout(timer);
+      const stamp = ++version;
+      search.disabled = true;
+      message('Searching QuickBooks for more customers…');
+      try {
+        const results = await source.searchLive(term);
+        if (!isCurrent(stamp, term)) return;
+        liveResults = {term, results};
+        paintLive(results);
+      } catch {
+        if (isCurrent(stamp, term)) message('QuickBooks search is unavailable. Select Search QuickBooks to try again.');
+      } finally {
+        if (stamp === version) search.disabled = false;
+      }
+    }
+
+    function useLiveSearch() {
+      if (search.disabled) return;
+      dismissed = false;
+      void searchLive();
+    }
+
+    function offerLiveSearch(term, stamp) {
+      search.hidden = !source.searchLive;
+      if (!source.searchLive) return;
+      timer = setTimeout(() => {
+        if (!dismissed && isCurrent(stamp, term) && document.activeElement === input && !search.disabled) void searchLive();
+      }, 650);
+    }
+
+    async function filter() {
+      const term = input.value.trim();
+      if (!isAvailable() || selecting || selected) return;
+      if (liveResults?.term === term) {
+        paintLive(liveResults.results);
+        return;
+      }
+      if (search.disabled) return;
+      clearTimeout(timer);
+      const stamp = ++version;
+      search.hidden = true;
+      if (key(term).length < 2) {
+        render([], 0);
+        message(term ? 'Type at least 2 characters to search customers.' : 'Start typing a customer name.');
+        return;
+      }
+      if (!index) message('Loading the customer list…');
+      try {
+        const entries = index || await loadIndex();
+        if (!isCurrent(stamp, term)) return;
+        const results = matchingEntries(entries, term);
+        render(results, results.length);
+        search.hidden = !source.searchLive;
+        if (!results.length) {
+          message(source.searchLive ? 'No customers in the saved list matched. Try another name or search QuickBooks.'
+            : 'No customers matched. Try another customer or company name.');
+          offerLiveSearch(term, stamp);
+        }
+      } catch {
+        if (!isCurrent(stamp, term)) return;
+        render([], 0);
+        message('Could not load the customer list. Select Refresh customer list to retry.');
+        offerLiveSearch(term, stamp);
+      }
+    }
+
+    function preload() {
+      if (isAvailable()) void loadIndex().catch(() => {});
+    }
+
+    async function refreshList() {
+      if (!isAvailable() || selecting) return;
+      cancel();
+      index = null;
+      indexRequest = null;
+      refresh.disabled = true;
+      const term = input.value.trim();
+      const stamp = ++version;
+      close();
+      message('Loading the customer list…');
+      try {
+        await loadIndex();
+        if (!isCurrent(stamp, term)) return;
+        if (selected || key(term).length < 2) message('Customer list refreshed.');
+        else {
+          void filter();
+          input.focus();
+        }
+      } catch {
+        if (isCurrent(stamp, term)) message('Could not load the customer list. Try Refresh customer list again.');
+      } finally {
+        refresh.disabled = false;
+      }
+    }
+
+    input.addEventListener('focus', () => { dismissed = false; void filter(); });
+    input.addEventListener('blur', () => { close(); });
+    input.addEventListener('input', () => {
+      if (!isAvailable()) return;
+      cancel();
+      search.disabled = false;
+      selected = false;
+      onEdit();
+      void filter();
+    });
+    input.addEventListener('keydown', event => {
+      if (event.isComposing || !isAvailable()) return;
+      if (event.key === 'Escape') {
+        clearTimeout(timer);
+        dismissed = true;
+        close();
+      }
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        if (!list.hidden && active >= 0) void choose(matches[active]);
+        else if (!list.hidden && matches.length === 1) void choose(matches[0]);
+        else if (list.hidden) { dismissed = false; void filter(); }
+      }
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        if (list.hidden) {
+          dismissed = false;
+          void filter();
+          if (list.hidden) return;
+        }
+        const next = active === -1 && event.key === 'ArrowUp' ? matches.length - 1
+          : active + (event.key === 'ArrowUp' ? -1 : 1);
+        highlight(next);
+      }
+    });
+    refresh.addEventListener('click', refreshList);
+    search.addEventListener('click', useLiveSearch);
+    return {reset, preload, isSelecting: () => selecting};
+  }
+
+  return {create, key};
+})();
+
+</script>
+<script>
+const reportConfig = {"fields":{"number":{"label":"Back order"},"customer":{"label":"Customer"},"date":{"label":"Order date","format":"date"},"reference":{"label":"Customer order / PO ref."},"currency":{"label":"Currency"},"notes":{"label":"Notes"},"customerId":{"label":"QuickBooks Customer ID"},"billing":{"label":"Billing address"},"delivery":{"label":"Delivery address"},"contactName":{"label":"Contact name"},"phone":{"label":"Phone"},"email":{"label":"Email"},"status":{"label":"Status"},"orderQty":{"label":"Backorder Total Qty","format":"quantity"},"orderAmount":{"label":"Backorder Total Amount","format":"money"},"item":{"label":"Item","product":true},"description":{"label":"Description","product":true},"backordered":{"label":"Backordered Qty","format":"quantity","product":true},"price":{"label":"Unit Price","format":"money","product":true},"amount":{"label":"Item Total Amount","format":"money","product":true}},"builtIn":{"po":{"name":"Backorder for PO Report","columns":["customer","backordered","item","description","price","amount"],"labels":{"backordered":"Backordered","price":"Unit price","amount":"Total amount"}},"bareBones":{"name":"Bare Bones Backorder Report","columns":["item","backordered"],"labels":{"backordered":"Backordered"}}}};
+(() => {
+  const root = document.getElementById('wsc-back-orders-preview');
+  const ui = key => root.querySelector('#wscp-' + key);
+  const isLive = root.hasAttribute('data-wsc-live');
+  let bridge;
+  if (isLive) {
+    try {
+      if (window.parent !== window && window.parent.location.origin === window.location.origin) {
+        bridge = window.parent.wscBackOrdersBridge;
+      }
+    } catch {
+      // The Back Orders page only connects to a same-origin WSC window.
+    }
+    const requireActive = event => {
+      if (bridge?.noteActivity()) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    };
+    for (const type of ['pointerdown', 'keydown', 'wheel', 'touchstart', 'click']) {
+      document.addEventListener(type, requireActive, {capture: true, passive: false});
+    }
+  }
+  const amounts = new Intl.NumberFormat('en-GB');
+  const dates = new Intl.DateTimeFormat('en-GB', {day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC'});
+  const reportTextOrder = new Intl.Collator('en-GB', {numeric: true, sensitivity: 'base'});
+  const builtInReports = Object.entries(reportConfig.builtIn).map(([kind, report]) => ({...report, kind, revision: 0}));
+  const moneyFormats = Object.fromEntries(['GBP', 'EUR', 'USD'].map(currency => [
+    currency, new Intl.NumberFormat('en-GB', {style: 'currency', currency})
+  ]));
+  let products;
+  let productRequest;
+  let orders = [];
+  let ordersLoaded = false;
+  let deliveryMatches = new Map();
+  let deliveryMatchKey;
+  let refreshingDeliveryMatches = false;
+  let draft = null;
+  let draftRequestId;
+  let completingOrder;
+  let dirty = false;
+  let leaveTarget = 'list';
+  let view = 'list';
+  let customReports = [];
+  const templatePreferences = new Map();
+  let reportLoadRequest;
+  let reportPickerMode;
+  let selectedFields = [];
+  let openingReport = false;
+  let editingReport;
+  let deletingReport;
+  let activeReport;
+  let activeReportRows = [];
+  let reportSortColumn;
+  let reportSortDirection;
+  const reportHeaders = new Map();
+  const fieldButtons = new Map();
+
+  function element(tag, text, className) {
+    const node = document.createElement(tag);
+    if (text != null) node.textContent = text;
+    if (className) node.className = className;
+    return node;
+  }
+
+  function control(text, className, onClick) {
+    const node = element('button', text, className + ' cursor-interaction');
+    node.type = 'button';
+    node.addEventListener('click', onClick);
+    return node;
+  }
+
+  function orderId(number) { return 'BO-' + String(number).padStart(6, '0'); }
+  function remaining(line) { return line.backordered ?? Math.max(0, line.ordered - line.fulfilled); }
+  function total(order) { return order.lines.reduce((sum, line) => sum + remaining(line), 0); }
+
+  async function requestJson(url, recordLabel, method = 'GET', body) {
+    if (isLive) {
+      if (!bridge) throw new Error('Open Back Orders from Office Manager in WSC.');
+      return bridge.request(url, method, body);
+    }
+    let response;
+    try {
+      response = await fetch(url, {
+        method, credentials: 'same-origin', cache: 'no-store',
+        headers: body && {'Content-Type': 'application/json'}, body: JSON.stringify(body)
+      });
+    } catch {
+      throw new Error('Could not reach ' + recordLabel + '. Try again.');
+    }
+    if (response.status === 204) return;
+    const result = await response.json().catch(() => null);
+    if (!response.ok || !result) throw new Error(result?.error || 'Could not access ' + recordLabel + '. Try again.');
+    return result;
+  }
+
+  function requestOrders(number, method, body) {
+    const url = '/api/back-orders' + (number ? '/' + number : '');
+    return requestJson(url, 'saved back orders', method, body);
+  }
+
+  function setDeliveryMatches(matches) {
+    if (!Array.isArray(matches)) return false;
+    const key = JSON.stringify(matches.map(({number, sku}) => number + ':' + sku).sort());
+    if (key === deliveryMatchKey) return false;
+    deliveryMatchKey = key;
+    deliveryMatches = new Map();
+    for (const {number, sku} of matches) {
+      if (!deliveryMatches.has(number)) deliveryMatches.set(number, new Set());
+      deliveryMatches.get(number).add(sku);
+    }
+    return true;
+  }
+
+  function hasDeliveryMatch(order, line) {
+    return remaining(line) > 0 && (deliveryMatches.get(order.number)?.has(line.sku.trim().toUpperCase()) ?? false);
+  }
+
+  async function refreshDeliveryMatches() {
+    if (!ordersLoaded || refreshingDeliveryMatches || document.hidden ||
+        (isLive && !bridge?.isActive()) || !['list', 'editor'].includes(view)) return;
+    refreshingDeliveryMatches = true;
+    try {
+      const {deliveryMatches: matches} = await requestJson('/api/delivery-check', 'delivery matches');
+      if (setDeliveryMatches(matches)) {
+        renderList();
+        if (view === 'editor' && draft) updateOrderAmounts();
+      }
+    } catch {
+      // Keep the last known matches if the check cannot run.
+    } finally {
+      refreshingDeliveryMatches = false;
+    }
+  }
+
+  async function loadOrders() {
+    ui('load-error').hidden = true;
+    ui('list-count').textContent = 'Loading saved back orders…';
+    try {
+      const result = await requestOrders();
+      if (!Array.isArray(result.orders)) throw new Error('Could not read saved back orders. Try again.');
+      orders = result.orders;
+      setDeliveryMatches(result.deliveryMatches);
+      ordersLoaded = true;
+      ui('add').disabled = false;
+      ui('reports-open').disabled = false;
+      renderList();
+    } catch (error) {
+      ui('list-count').textContent = '';
+      ui('load-message').textContent = error.message;
+      ui('load-error').hidden = false;
+    }
+  }
+
+  function displayDate(value) {
+    return value ? dates.format(new Date(value + 'T12:00:00Z')) : '—';
+  }
+
+  function localToday() {
+    const formatter = new Intl.DateTimeFormat('en-GB', {
+      year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Europe/London'
+    });
+    const date = Object.fromEntries(formatter.formatToParts(new Date()).map(part => [part.type, part.value]));
+    return [date.year, date.month, date.day].join('-');
+  }
+
+  function showView(next, focus) {
+    view = next;
+    for (const page of ['office', 'list', 'editor', 'reports', 'report-editor', 'report']) {
+      ui(page).hidden = next !== page;
+    }
+    ui('office-link').hidden = next !== 'list';
+    ui('list-link').hidden = next !== 'editor' && next !== 'reports';
+    ui('reports-link').hidden = next !== 'report' && next !== 'report-editor';
+    document.title = next === 'report' ? activeReport.name : isLive ? 'WSC Back Orders' : 'WSC Back Orders Preview';
+    if (focus) ui(focus).focus();
+  }
+
+  function renderList() {
+    if (!ordersLoaded) return;
+    const term = ui('filter').value.trim().toLowerCase();
+    const shown = orders.filter(order => [companyName(order), order.reference, orderId(order.number)]
+      .some(text => text.toLowerCase().includes(term))
+    ).sort((a, b) => b.date.localeCompare(a.date) || b.number - a.number);
+    const rows = shown.map(order => {
+      const company = companyName(order);
+      const id = orderId(order.number);
+      const qty = total(order);
+      const state = qty ? 'Open' : 'Fulfilled';
+      const onDelivery = order.lines.some(line => hasDeliveryMatch(order, line));
+      const row = element('tr', null, onDelivery ? 'wscp-delivery-match' : '');
+      const companyCell = element('td');
+      companyCell.append(control(company, 'wscp-link wscp-company-link', () => openOrder(order)), element('small',
+        [id, order.reference, qty ? '' : state].filter(Boolean).join(' · '),
+        'wscp-list-detail'));
+      if (onDelivery) companyCell.append(element('small', 'Item on delivery invoice', 'wscp-delivery-label'));
+      const stateCell = element('td', null, 'wscp-wide');
+      stateCell.append(element('span', state, 'wscp-state' + (qty ? '' : ' wscp-state-done')));
+      const action = element('td', null, 'wscp-action');
+      const buttons = element('div', null, 'wscp-order-actions');
+      const edit = control('Edit', 'wscp-secondary', () => openOrder(order));
+      const complete = control('Complete', 'wscp-secondary', () => openCompletion(order));
+      edit.setAttribute('aria-label', 'Edit ' + id + ' for ' + company);
+      complete.setAttribute('aria-label', 'Complete ' + id + ' for ' + company);
+      buttons.append(edit, complete);
+      action.append(buttons);
+      row.append(companyCell, element('td', id, 'wscp-wide wscp-nowrap'), element('td', order.reference || '—', 'wscp-wide'),
+        element('td', displayDate(order.date), 'wscp-wide wscp-order-date wscp-nowrap'),
+        element('td', amounts.format(qty), 'wscp-number'), stateCell, action);
+      return row;
+    });
+    ui('orders').replaceChildren(...rows);
+    ui('table').hidden = !rows.length;
+    ui('list-count').textContent = !orders.length ? 'No back orders yet.' : rows.length
+      ? rows.length + (rows.length === 1 ? ' back order' : ' back orders')
+      : 'No back orders match your search.';
+  }
+
+  function openCompletion(order) {
+    completingOrder = order;
+    ui('complete-detail').textContent = orderId(order.number) + ' for ' + companyName(order) + ' will be deleted from Back Orders.';
+    ui('complete-error').hidden = true;
+    ui('complete').showModal();
+  }
+
+  async function completeOrder() {
+    const confirm = ui('complete-confirm');
+    if (!completingOrder || confirm.disabled) return;
+    const {number, revision} = completingOrder;
+    const cancel = ui('complete-cancel');
+    const errorMessage = ui('complete-error');
+    confirm.disabled = cancel.disabled = true;
+    confirm.textContent = 'Completing…';
+    errorMessage.hidden = true;
+    try {
+      await requestOrders(number, 'DELETE', {revision});
+      orders = orders.filter(order => order.number !== number);
+      ui('complete').close();
+      ui('notice').textContent = orderId(number) + ' completed and removed.';
+      renderList();
+      ui('add').focus();
+    } catch (error) {
+      errorMessage.textContent = error.message;
+      errorMessage.hidden = false;
+    } finally {
+      confirm.disabled = cancel.disabled = false;
+      confirm.textContent = 'Complete';
+      if (ui('complete').open) confirm.focus();
+    }
+  }
+
+  function priceInMinorUnits(value) {
+    if (value == null || value === '') return null;
+    const price = Number(value);
+    const minorUnits = Math.round(price * 100);
+    return price >= 0 && price <= 999999999 && minorUnits / 100 === price ? BigInt(minorUnits) : null;
+  }
+
+  function itemTotalAmount(quantity, unitPrice) {
+    const count = Number(quantity);
+    if (quantity === '' || !Number.isSafeInteger(count) || count < 0 || count > 999999999) return null;
+    if (count === 0) return 0n;
+    return unitPrice === null ? null : BigInt(count) * unitPrice;
+  }
+
+  function orderTotalAmount(lines, quantityForLine) {
+    let total = 0n;
+    for (const line of lines) {
+      const amount = itemTotalAmount(quantityForLine(line), priceInMinorUnits(line.price));
+      if (amount === null) return null;
+      total += amount;
+    }
+    return total;
+  }
+
+  function formatMoney(minorUnits, currency) {
+    if (minorUnits === null) return '—';
+    const fraction = String(minorUnits % 100n).padStart(2, '0');
+    return moneyFormats[currency].formatToParts(minorUnits / 100n)
+      .map(part => part.type === 'fraction' ? fraction : part.value).join('');
+  }
+
+  function bareBonesRows() {
+    const quantitiesBySku = new Map();
+    for (const order of orders) {
+      for (const line of order.lines) {
+        const quantity = remaining(line);
+        if (quantity > 0) {
+          quantitiesBySku.set(line.sku, (quantitiesBySku.get(line.sku) ?? 0) + quantity);
+        }
+      }
+    }
+
+    return Array.from(quantitiesBySku, ([item, backordered]) => ({item, backordered}));
+  }
+
+  function reportRows(report) {
+    if (report.kind === 'bareBones') return bareBonesRows();
+    const hasProductColumns = report.columns.some(column => reportConfig.fields[column].product);
+    return orders.flatMap(order => {
+      const contact = order.quickBooksCustomer;
+      const orderQty = total(order);
+      const orderFields = {
+        number: orderId(order.number), customer: companyName(order), date: order.date, reference: order.reference,
+        currency: order.currency, notes: order.notes, customerId: contact?.id,
+        billing: addressText(contact?.billingAddress), delivery: addressText(contact?.shippingAddress),
+        contactName: contact?.contactName, phone: contact?.phone || contact?.mobile, email: contact?.email,
+        status: orderQty ? 'Open' : 'Fulfilled', orderQty, orderAmount: orderTotalAmount(order.lines, remaining)
+      };
+      if (!hasProductColumns && report.kind !== 'po') return [orderFields];
+      return order.lines.flatMap(line => {
+        const backordered = remaining(line);
+        if (report.kind === 'po' && !backordered) return [];
+        const price = priceInMinorUnits(line.price);
+        return [{...orderFields, item: line.sku, description: line.name, backordered, price,
+          amount: itemTotalAmount(backordered, price)}];
+      });
+    });
+  }
+
+  function reportLabel(report, column) {
+    return report.labels?.[column] || reportConfig.fields[column].label;
+  }
+
+  function displayReportValue(row, column) {
+    const value = row[column];
+    if (value === null || value === undefined || value === '') return '—';
+    switch (reportConfig.fields[column].format) {
+      case 'money': return formatMoney(value, row.currency);
+      case 'quantity': return amounts.format(value);
+      case 'date': return displayDate(value);
+      default: return String(value);
+    }
+  }
+
+  function renderReport() {
+    const columns = activeReport.columns;
+    const searchColumn = ui('report-search-column').value;
+    const query = ui('report-search').value.trim().normalize('NFKC').toLowerCase();
+    const rows = activeReportRows.filter(row => {
+      if (!query) return true;
+      const value = row[searchColumn];
+      if (value == null || value === '') return false;
+      const display = displayReportValue(row, searchColumn).normalize('NFKC').toLowerCase();
+      if (display.includes(query)) return true;
+      const format = reportConfig.fields[searchColumn].format;
+      if (format === 'money') return display.replaceAll(',', '').includes(query);
+      return String(value).normalize('NFKC').toLowerCase().includes(query);
+    });
+    rows.sort((a, b) => {
+      const left = a[reportSortColumn];
+      const right = b[reportSortColumn];
+      if (left === right) return 0;
+      if (left == null || left === '') return 1;
+      if (right == null || right === '') return -1;
+      const comparison = typeof left === 'string' || typeof right === 'string'
+        ? reportTextOrder.compare(left, right) : (left < right ? -1 : 1);
+      return reportSortDirection * comparison;
+    });
+
+    for (const [column, header] of reportHeaders) {
+      if (column === reportSortColumn) {
+        header.setAttribute('aria-sort', reportSortDirection === 1 ? 'ascending' : 'descending');
+      } else {
+        header.removeAttribute('aria-sort');
+      }
+    }
+    const body = document.createDocumentFragment();
+    for (const row of rows) {
+      const tr = element('tr');
+      for (const column of columns) {
+        const format = reportConfig.fields[column].format;
+        tr.append(element('td', displayReportValue(row, column), format === 'money' || format === 'quantity' ? 'wscp-number' : ''));
+      }
+      body.append(tr);
+    }
+    ui('report-rows').replaceChildren(body);
+    const empty = ui('report-empty');
+    empty.hidden = rows.length > 0;
+    empty.textContent = query ? 'No results match your search.'
+      : activeReport.kind ? 'No products are currently backordered.' : 'No back orders to report.';
+  }
+
+  function openReport(report) {
+    activeReport = report;
+    activeReportRows = reportRows(report);
+    reportSortColumn = report.columns[0];
+    reportSortDirection = 1;
+    ui('report-title').textContent = report.name;
+    ui('report-search').value = '';
+    const searchSelect = ui('report-search-column');
+    searchSelect.replaceChildren(...report.columns.map(column => {
+      const option = element('option', reportLabel(report, column));
+      option.value = column;
+      return option;
+    }));
+    searchSelect.value = reportSortColumn;
+
+    reportHeaders.clear();
+    ui('report-head').replaceChildren(...report.columns.map(column => {
+      const format = reportConfig.fields[column].format;
+      const header = element('th', null, format === 'money' || format === 'quantity' ? 'wscp-number' : '');
+      header.scope = 'col';
+      const sort = control(reportLabel(report, column), 'wscp-sort', () => {
+        reportSortDirection = column === reportSortColumn ? -reportSortDirection : 1;
+        reportSortColumn = column;
+        renderReport();
+      });
+      const arrow = element('span');
+      arrow.setAttribute('aria-hidden', 'true');
+      sort.append(arrow);
+      header.append(sort);
+      reportHeaders.set(column, header);
+      return header;
+    }));
+    renderReport();
+    showView('report', 'report-title');
+  }
+
+  function visibleReports() {
+    const templates = builtInReports.map(report => ({...report, ...templatePreferences.get(report.kind)}));
+    return [...templates.filter(report => !report.deleted), ...customReports];
+  }
+
+  function reportKey(report) { return report.kind ?? String(report.number); }
+
+  async function runReport(report) {
+    if (!isLive) { openReport(report); return; }
+    if (openingReport) return;
+    openingReport = true;
+    const status = ui('report-notice');
+    status.textContent = 'Loading current back orders…';
+    try {
+      const {orders: currentOrders, deliveryMatches: matches} = await requestOrders();
+      if (!Array.isArray(currentOrders)) throw new Error('Could not read saved back orders. Try again.');
+      orders = currentOrders;
+      setDeliveryMatches(matches);
+      renderList();
+      status.textContent = '';
+      if (view === 'reports') openReport(report);
+    } catch (error) {
+      status.textContent = error.message;
+    } finally {
+      openingReport = false;
+    }
+  }
+
+  function renderReportMenu() {
+    const menu = ui('report-menu');
+    const focusId = menu.contains(document.activeElement) ? document.activeElement.id : '';
+    const items = visibleReports().map(report => {
+      const open = control(report.name, 'wscp-secondary', () => void runReport(report));
+      open.id = 'wscp-report-open-' + reportKey(report);
+      return open;
+    });
+    menu.replaceChildren(...(items.length ? items : [element('p', 'No reports saved.', 'wscp-report-help')]));
+    ui('report-edit').disabled = ui('report-remove').disabled = !items.length;
+    if (ui('report-picker').open) renderReportChoices();
+    if (view === 'reports' && focusId && !ui('report-delete').open && !ui('report-picker').open) {
+      (document.getElementById(focusId) || ui('report-create')).focus();
+    }
+  }
+
+  function requestReports(key, method, body) {
+    const url = '/api/back-order-reports' + (key ? '/' + key : '');
+    return requestJson(url, 'saved reports', method, body);
+  }
+
+  async function loadReports() {
+    const status = ui('report-load-error');
+    status.hidden = true;
+    if (!reportLoadRequest) {
+      reportLoadRequest = requestReports().finally(() => { reportLoadRequest = null; });
+    }
+    try {
+      const {reports, templates = []} = await reportLoadRequest;
+      if (!Array.isArray(reports)) throw new Error('Could not read saved reports.');
+      customReports = reports;
+      templatePreferences.clear();
+      for (const template of templates) templatePreferences.set(template.kind, template);
+      renderReportMenu();
+    } catch (error) {
+      status.replaceChildren(element('p', error.message), control('Try again', 'wscp-secondary', loadReports));
+      status.hidden = false;
+    }
+  }
+
+  function showReports() {
+    const focus = view === 'report' ? 'report-open-' + reportKey(activeReport)
+      : view === 'report-editor' && editingReport ? 'report-edit' : 'report-create';
+    showView('reports', ui(focus) ? focus : 'report-create');
+    void loadReports();
+  }
+
+  function openReportPicker(mode) {
+    reportPickerMode = mode;
+    ui('report-picker-title').textContent = 'Choose a report to ' + mode.toLowerCase();
+    ui('report-choice').value = '';
+    ui('report-picker-confirm').textContent = mode === 'Edit' ? 'Edit Report' : 'Continue';
+    renderReportChoices();
+    ui('report-picker').showModal();
+  }
+
+  function renderReportChoices() {
+    const choice = ui('report-choice');
+    const selected = choice.value;
+    const reports = visibleReports();
+    const prompt = element('option', 'Select a report…');
+    prompt.value = '';
+    prompt.disabled = true;
+    choice.replaceChildren(prompt, ...reports.map(report => {
+      const option = element('option', report.name);
+      option.value = reportKey(report);
+      return option;
+    }));
+    choice.value = reports.some(report => reportKey(report) === selected) ? selected : '';
+    ui('report-picker-confirm').disabled = !choice.value;
+    const errorMessage = ui('report-picker-error');
+    errorMessage.hidden = !!reports.length;
+    errorMessage.textContent = reports.length ? '' : 'No reports are available.';
+  }
+
+  function moveReportColumn(index, offset) {
+    const target = index + offset;
+    if (target < 0 || target >= selectedFields.length) return;
+    const column = selectedFields[index];
+    [selectedFields[index], selectedFields[target]] = [selectedFields[target], column];
+    const nextIndex = target + offset;
+    const focusOffset = nextIndex < 0 || nextIndex >= selectedFields.length ? -offset : offset;
+    updateSelectedFields('column-' + (focusOffset < 0 ? 'left' : 'right') + '-' + column);
+  }
+
+  function updateSelectedFields(focus) {
+    for (const [column, button] of fieldButtons) {
+      const selected = selectedFields.includes(column);
+      const label = reportConfig.fields[column].label;
+      button.textContent = selected ? '−' : '+';
+      button.setAttribute('aria-label', (selected ? 'Remove ' : 'Add ') + label);
+    }
+    const order = ui('report-column-order');
+    order.replaceChildren(...selectedFields.map((column, index) => {
+      const label = reportLabel(editingReport ?? {}, column);
+      const chip = element('li');
+      const arrow = (direction, symbol, offset) => {
+        const button = control(symbol, 'wscp-secondary', () => moveReportColumn(index, offset));
+        button.id = 'wscp-column-' + direction + '-' + column;
+        button.setAttribute('aria-label', 'Move ' + label + ' ' + direction);
+        button.disabled = index + offset < 0 || index + offset >= selectedFields.length;
+        return button;
+      };
+      chip.append(element('span', label), arrow('left', '←', -1), arrow('right', '→', 1));
+      return chip;
+    }));
+    order.hidden = !selectedFields.length;
+    ui('report-selected').textContent = selectedFields.length ? 'Column order (left to right)' : 'No columns selected.';
+    ui('report-save').disabled = !selectedFields.length;
+    if (focus) ui(focus)?.focus();
+  }
+
+  function startReport(report = null) {
+    editingReport = report;
+    selectedFields = report ? [...report.columns] : [];
+    for (const [column, button] of fieldButtons) {
+      button.parentElement.hidden = report?.kind === 'bareBones' && !reportConfig.builtIn.bareBones.columns.includes(column);
+    }
+    ui('report-editor-title').textContent = report ? 'Edit Report' : 'Create New Report';
+    ui('report-name').value = report?.name ?? '';
+    ui('report-save').textContent = report ? 'Save Changes' : 'Save and Generate';
+    ui('report-save-error').hidden = true;
+    updateSelectedFields();
+    showView('report-editor', 'report-name');
+  }
+
+  async function saveReport(event) {
+    event.preventDefault();
+    const save = ui('report-save');
+    const form = ui('report-form');
+    const back = ui('reports-link');
+    const errorMessage = ui('report-save-error');
+    if (save.disabled || form.inert) return;
+    const name = ui('report-name').value.trim();
+    if (!name) {
+      errorMessage.textContent = 'Enter a report name.';
+      errorMessage.hidden = false;
+      ui('report-name').focus();
+      return;
+    }
+    const key = editingReport && reportKey(editingReport);
+    const saveLabel = save.textContent;
+    form.inert = back.disabled = save.disabled = true;
+    save.textContent = 'Saving…';
+    errorMessage.hidden = true;
+    try {
+      await reportLoadRequest?.catch(() => {});
+      const {report} = await requestReports(key, key ? 'PUT' : 'POST', {name, columns: selectedFields, revision: editingReport?.revision});
+      if (report.kind) templatePreferences.set(report.kind, report);
+      else customReports = [...customReports.filter(item => item.number !== report.number), report]
+        .sort((left, right) => left.number - right.number);
+      ui('report-notice').textContent = '';
+      renderReportMenu();
+      const saved = {...reportConfig.builtIn[report.kind], ...report};
+      if (isLive) {
+        showView('reports', 'report-open-' + reportKey(saved));
+        await runReport(saved);
+      } else openReport(saved);
+    } catch (error) {
+      errorMessage.textContent = error.message;
+      errorMessage.hidden = false;
+    } finally {
+      form.inert = back.disabled = save.disabled = false;
+      save.textContent = saveLabel;
+      if (view === 'report-editor') save.focus();
+    }
+  }
+
+  function openReportDeletion(report) {
+    deletingReport = report;
+    ui('report-delete-detail').textContent = '“' + report.name + '” will be removed from Reports.';
+    ui('report-delete-error').hidden = true;
+    ui('report-delete').showModal();
+  }
+
+  async function deleteReport() {
+    const confirm = ui('report-delete-confirm');
+    if (confirm.disabled || !deletingReport) return;
+    const {number, name, revision, kind} = deletingReport;
+    const cancel = ui('report-delete-cancel');
+    const errorMessage = ui('report-delete-error');
+    confirm.disabled = cancel.disabled = true;
+    confirm.textContent = 'Deleting…';
+    errorMessage.hidden = true;
+    try {
+      await reportLoadRequest?.catch(() => {});
+      await requestReports(reportKey(deletingReport), 'DELETE', {revision});
+      if (kind) templatePreferences.set(kind, {deleted: true});
+      else customReports = customReports.filter(report => report.number !== number);
+      ui('report-delete').close();
+      renderReportMenu();
+      ui('report-notice').textContent = 'Deleted “' + name + '”.';
+      ui('report-create').focus();
+    } catch (error) {
+      errorMessage.textContent = error.message;
+      errorMessage.hidden = false;
+    } finally {
+      confirm.disabled = cancel.disabled = false;
+      confirm.textContent = 'Delete';
+      if (ui('report-delete').open) confirm.focus();
+    }
+  }
+
+  function companyName(order) {
+    const customer = order.quickBooksCustomer || order.indexedCustomer;
+    return customer?.companyName || customer?.company || customer?.displayName || customer?.name || '';
+  }
+
+  function addressText(address) {
+    return [
+      ...(Array.isArray(address?.lines) ? address.lines : []),
+      address?.city, address?.region, address?.postcode, address?.country
+    ].filter(Boolean).join('\n');
+  }
+
+  function paintCustomer() {
+    const live = draft?.quickBooksCustomer;
+    ui('addresses').hidden = !live;
+    ui('billing').textContent = live ? addressText(live.billingAddress) || '—' : '';
+    ui('shipping').textContent = live ? addressText(live.shippingAddress) || '—' : '';
+    ui('contact').textContent = live
+      ? [live.contactName, live.phone || live.mobile, live.email].filter(Boolean).join(' · ')
+      : '';
+    ui('customer-id').hidden = !live;
+    ui('customer-id').textContent = live ? 'QuickBooks Customer ID ' + live.id : '';
+  }
+
+  const wscCustomerLookup = bridge?.customers || window.wscQuickBooksCustomers;
+  const previewCustomerLookup = {
+    async loadIndex() {
+      const response = await fetch('/api/customer-index', {cache: 'no-store', credentials: 'same-origin'});
+      if (!response.ok) throw new Error('Customer list is unavailable.');
+      const {entries} = await response.json();
+      if (!Array.isArray(entries)) throw new Error('Invalid customer list.');
+      const {key} = window.wscCustomerPicker;
+      return entries.map(([row, name, company]) => ({
+        row, name, company, nameKey: key(name), companyKey: key(company)
+      }));
+    },
+    select({row, name, company}) {
+      return {customer: {name, company}, row};
+    }
+  };
+  const customerPicker = window.wscCustomerPicker.create({
+    input: ui('customer'), list: ui('customer-options'), status: ui('customer-status'),
+    refresh: ui('customer-refresh'), search: ui('customer-search'),
+    directoryOnly: !wscCustomerLookup,
+    source: wscCustomerLookup || previewCustomerLookup,
+    isAvailable: () => view === 'editor' && !!draft,
+    onEdit() {
+      draft.customer = '';
+      draft.quickBooksCustomer = null;
+      draft.indexedCustomer = null;
+      dirty = true;
+      paintCustomer();
+    },
+    onSelect({customer, row}) {
+      draft.customer = wscCustomerLookup ? 'qb:' + customer.id : 'index:' + row;
+      draft.quickBooksCustomer = wscCustomerLookup ? customer : null;
+      draft.indexedCustomer = wscCustomerLookup ? null : customer;
+      dirty = true;
+      paintCustomer();
+      clearError();
+    }
+  });
+
+  const productInput = ui('product');
+  const productOptions = ui('product-options');
+  const productStatus = ui('product-status');
+  const findProduct = ui('find-product');
+  const productKey = value => value.normalize('NFKC').trim().toLowerCase();
+  const productResultLimit = 25;
+  let productSearchVersion = 0;
+
+  function loadProducts() {
+    if (!productRequest) {
+      productRequest = (async () => {
+        const {entries} = isLive ? await bridge.productIndex() : await requestJson('/api/product-index', 'the product list');
+        if (!Array.isArray(entries) || !entries.length) throw new Error('Invalid product list.');
+        products = entries.map(([sku, name]) => ({sku, name, skuKey: productKey(sku), nameKey: productKey(name)}));
+        return products;
+      })().catch(error => {
+        productRequest = undefined;
+        throw error;
+      });
+    }
+    return productRequest;
+  }
+
+  function closeProducts() {
+    productSearchVersion++;
+    productOptions.hidden = true;
+  }
+
+  function addProduct(item) {
+    if (view !== 'editor' || !draft) return;
+    closeProducts();
+    if (draft.lines.length >= 25) {
+      productStatus.textContent = 'A back order can have up to 25 product lines.';
+      return;
+    }
+    draft.lines.push({sku: item.sku, name: item.name, backordered: 1, price: ''});
+    dirty = true;
+    productInput.value = '';
+    productStatus.textContent = '';
+    clearError();
+    renderLines();
+    ui('lines').lastElementChild.querySelector('input').focus();
+  }
+
+  async function searchProducts({addExact = false, focusResult = false} = {}) {
+    closeProducts();
+    const version = productSearchVersion;
+    const term = productKey(productInput.value);
+    if (!term) {
+      productStatus.textContent = 'Type a SKU or product name.';
+      return;
+    }
+    let catalogue = products;
+    if (!catalogue) {
+      productStatus.textContent = 'Loading WSC products…';
+      try {
+        catalogue = await loadProducts();
+      } catch {
+        if (version === productSearchVersion) productStatus.textContent = 'Could not load products. Select Find SKU to retry.';
+        return;
+      }
+    }
+    if (version !== productSearchVersion || view !== 'editor') return;
+    const exact = catalogue.find(item => item.skuKey === term);
+    const matches = catalogue.filter(item => item !== exact && (item.skuKey.includes(term) || item.nameKey.includes(term)));
+    if (exact) matches.unshift(exact);
+    if (addExact && (exact || matches.length === 1)) {
+      addProduct(exact || matches[0]);
+      return;
+    }
+    const visible = matches.slice(0, productResultLimit);
+    productOptions.replaceChildren(...visible.map(item => control(
+      item.sku + (item.name ? ' · ' + item.name : ''), 'wscp-choice', () => addProduct(item)
+    )));
+    productOptions.hidden = !visible.length;
+    productStatus.textContent = matches.length > productResultLimit
+      ? 'Showing ' + visible.length + ' of ' + matches.length + ' products. Type more to narrow the list.'
+      : matches.length ? '' : 'No products match that SKU or name.';
+    if (focusResult) productOptions.querySelector('button')?.focus();
+  }
+
+  productInput.addEventListener('focus', () => { if (productInput.value.trim()) void searchProducts(); });
+  productInput.addEventListener('input', () => void searchProducts());
+  productInput.addEventListener('keydown', event => {
+    if (event.isComposing) return;
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      void searchProducts({addExact: true});
+    }
+    if (event.key === 'Escape') closeProducts();
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      if (productOptions.hidden) void searchProducts({focusResult: true});
+      else productOptions.querySelector('button')?.focus();
+    }
+  });
+  productOptions.addEventListener('keydown', event => {
+    if (!['Escape', 'ArrowDown', 'ArrowUp'].includes(event.key)) return;
+    event.preventDefault();
+    if (event.key === 'Escape') {
+      productInput.focus();
+      closeProducts();
+    } else {
+      const next = event.key === 'ArrowDown' ? event.target.nextElementSibling : event.target.previousElementSibling;
+      next?.focus();
+    }
+  });
+  findProduct.addEventListener('click', () => void searchProducts({addExact: true}));
+  const closeOutsideProducts = ({target}) => {
+    if (target !== productInput && target !== findProduct && !productOptions.contains(target)) closeProducts();
+  };
+  root.addEventListener('focusin', closeOutsideProducts);
+  root.addEventListener('click', closeOutsideProducts);
+
+  function updateOrderAmounts() {
+    const currency = ui('currency').value;
+    const rows = ui('lines').children;
+    for (const [index, line] of draft.lines.entries()) {
+      const amount = itemTotalAmount(line.backordered, priceInMinorUnits(line.price));
+      const row = rows[index];
+      const onDelivery = hasDeliveryMatch(draft, line);
+      row.classList.toggle('wscp-delivery-match', onDelivery);
+      row.querySelector('.wscp-delivery-label').hidden = !onDelivery;
+      const output = row.querySelector('output');
+      const formatted = formatMoney(amount, currency);
+      if (output.value !== formatted) output.value = formatted;
+    }
+    ui('totals').hidden = draft.lines.length < 2;
+    const total = ui('order-amount');
+    const formattedTotal = formatMoney(orderTotalAmount(draft.lines, line => line.backordered), currency);
+    if (total.value !== formattedTotal) total.value = formattedTotal;
+  }
+
+  function renderLines() {
+    const lines = draft.lines.map((line, index) => {
+      const row = element('div', null, 'wscp-line');
+      const name = element('div', null, 'wscp-item');
+      name.append(element('strong', line.sku));
+      if (line.name) name.append(element('span', line.name));
+      const deliveryLabel = element('small', 'On delivery invoice', 'wscp-delivery-label');
+      deliveryLabel.hidden = true;
+      name.append(deliveryLabel);
+      const amount = element('output');
+      amount.setAttribute('aria-label', 'Item Total Amount, line ' + (index + 1));
+      const amountLabel = element('label', 'Item Total Amount', 'wscp-field');
+      amountLabel.append(amount);
+      function field(label, key, settings) {
+        const wrapper = element('label', label, 'wscp-field');
+        const input = element('input');
+        Object.assign(input, settings);
+        input.value = line[key];
+        input.addEventListener('input', () => {
+          line[key] = input.value;
+          dirty = true;
+          updateOrderAmounts();
+        });
+        wrapper.append(input);
+        return wrapper;
+      }
+      const remove = control('Remove', 'wscp-secondary wscp-remove', () => {
+        draft.lines.splice(index, 1);
+        dirty = true;
+        renderLines();
+        (ui('lines').children[index]?.querySelector('input') || ui('find-product')).focus();
+      });
+      remove.setAttribute('aria-label', 'Remove ' + line.sku + ', line ' + (index + 1));
+      row.append(name,
+        field('Backordered Qty', 'backordered', {type: 'number', min: '0', max: '999999999', step: '1', required: true, inputMode: 'numeric'}),
+        field('Unit Price', 'price', {type: 'number', min: '0', max: '999999999', step: '0.01', inputMode: 'decimal'}),
+        amountLabel, remove);
+      return row;
+    });
+    ui('lines').replaceChildren(...lines);
+    updateOrderAmounts();
+  }
+
+  function clearError() {
+    ui('error').hidden = true;
+    ui('error').textContent = '';
+  }
+
+  function showError(message, input) {
+    input.focus();
+    ui('error').textContent = message;
+    ui('error').hidden = false;
+  }
+
+  function openOrder(order) {
+    draft = order ? {...order, lines: order.lines.map(line => ({...line, backordered: remaining(line)}))} : {
+      number: 0, customer: '', date: localToday(), reference: '', currency: 'GBP', notes: '', lines: []
+    };
+    draftRequestId = order ? undefined : crypto.randomUUID();
+    dirty = false;
+    ui('editor-title').textContent = draft.number ? 'Edit ' + orderId(draft.number) : 'New Back Order';
+    ui('customer').value = companyName(draft);
+    for (const field of ['date', 'reference', 'currency', 'notes']) ui(field).value = draft[field];
+    ui('product').value = '';
+    ui('product-status').textContent = '';
+    customerPicker.reset({hasCustomer: !!draft.customer});
+    closeProducts();
+    paintCustomer();
+    renderLines();
+    clearError();
+    showView('editor', draft.number ? 'list-link' : 'customer');
+    customerPicker.preload();
+    void loadProducts().catch(() => {});
+  }
+
+  async function saveOrder() {
+    const save = ui('save');
+    const form = ui('form');
+    const back = ui('list-link');
+    if (view !== 'editor' || !draft || save.disabled || customerPicker.isSelecting()) return;
+    if (!draft.customer) return showError('Choose a customer from the results.', ui('customer'));
+    if (!draft.lines.length) return showError('Add at least one product.', ui('product'));
+    if (!form.reportValidity()) return;
+    const {number, revision, customer, quickBooksCustomer, indexedCustomer, lines} = draft;
+    const order = {
+      customer, quickBooksCustomer, indexedCustomer, date: ui('date').value, reference: ui('reference').value.trim(),
+      currency: ui('currency').value, notes: ui('notes').value.trim(),
+      lines: lines.map(line => ({...line, backordered: Number(line.backordered)}))
+    };
+    const request = number ? {order, revision} : {order, requestId: draftRequestId};
+    clearError();
+    back.disabled = save.disabled = form.inert = true;
+    save.textContent = 'Saving…';
+    try {
+      const {order: saved} = await requestOrders(number, number ? 'PUT' : 'POST', request);
+      orders = [...orders.filter(record => record.number !== saved.number), saved];
+      ui('filter').value = '';
+      ui('notice').textContent = orderId(saved.number) + ' saved.';
+      finishEditor('list');
+    } catch (error) {
+      ui('error').textContent = error.message;
+      ui('error').hidden = false;
+    } finally {
+      back.disabled = save.disabled = form.inert = false;
+      save.textContent = 'Save and Close';
+      if (view === 'editor') save.focus();
+    }
+  }
+
+  function finishEditor(next) {
+    customerPicker.reset();
+    dirty = false;
+    draft = null;
+    clearError();
+    closeProducts();
+    renderList();
+    showView(next, next === 'list' ? 'add' : 'open');
+  }
+
+  function leaveEditor(next) {
+    if (!dirty) { finishEditor(next); return; }
+    leaveTarget = next;
+    ui('discard').showModal();
+  }
+
+  ui('add').addEventListener('click', () => openOrder());
+  ui('open').addEventListener('click', () => { renderList(); showView('list', 'add'); });
+  ui('office-link').addEventListener('click', () => {
+    if (isLive) bridge?.close();
+    else showView('office', 'open');
+  });
+  ui('list-link').addEventListener('click', () => {
+    if (view === 'editor') leaveEditor('list');
+    else showView('list', 'reports-open');
+  });
+  ui('reports-open').addEventListener('click', showReports);
+  ui('reports-link').addEventListener('click', showReports);
+  ui('report-create').addEventListener('click', () => startReport());
+  ui('report-edit').addEventListener('click', () => openReportPicker('Edit'));
+  ui('report-remove').addEventListener('click', () => openReportPicker('Delete'));
+  ui('report-choice').addEventListener('change', () => { ui('report-picker-confirm').disabled = !ui('report-choice').value; });
+  ui('report-picker-cancel').addEventListener('click', () => ui('report-picker').close());
+  ui('report-picker-form').addEventListener('submit', event => {
+    event.preventDefault();
+    const report = visibleReports().find(item => reportKey(item) === ui('report-choice').value);
+    if (!report) {
+      renderReportChoices();
+      return;
+    }
+    ui('report-picker').close();
+    if (reportPickerMode === 'Edit') startReport(report);
+    else openReportDeletion(report);
+  });
+  ui('report-cancel').addEventListener('click', showReports);
+  ui('report-form').addEventListener('submit', saveReport);
+  ui('report-delete-cancel').addEventListener('click', () => ui('report-delete').close());
+  ui('report-delete-confirm').addEventListener('click', deleteReport);
+  ui('report-delete').addEventListener('cancel', event => {
+    if (ui('report-delete-confirm').disabled) event.preventDefault();
+  });
+  ui('report-delete').addEventListener('close', () => {
+    if (!ui('report-delete').open) deletingReport = null;
+  });
+  ui('report-search').addEventListener('input', renderReport);
+  ui('report-search-column').addEventListener('change', renderReport);
+  ui('report-print').addEventListener('click', () => window.print());
+  for (const [column, {label}] of Object.entries(reportConfig.fields)) {
+    const option = element('div', null, 'wscp-report-field-option');
+    option.setAttribute('role', 'listitem');
+    const button = control('+', 'wscp-secondary', () => {
+      selectedFields = selectedFields.includes(column)
+        ? selectedFields.filter(field => field !== column) : [...selectedFields, column];
+      updateSelectedFields();
+    });
+    fieldButtons.set(column, button);
+    option.append(element('span', label), button);
+    ui('report-fields').append(option);
+  }
+  ui('cancel').addEventListener('click', () => leaveEditor('list'));
+  ui('keep').addEventListener('click', () => ui('discard').close());
+  ui('leave').addEventListener('click', () => { ui('discard').close(); finishEditor(leaveTarget); });
+  ui('complete-cancel').addEventListener('click', () => ui('complete').close());
+  ui('complete-confirm').addEventListener('click', completeOrder);
+  ui('complete').addEventListener('cancel', event => {
+    if (ui('complete-confirm').disabled) event.preventDefault();
+  });
+  ui('complete').addEventListener('close', () => {
+    if (!ui('complete').open) completingOrder = null;
+  });
+  ui('filter').addEventListener('input', renderList);
+  ui('retry').addEventListener('click', loadOrders);
+  ui('save').addEventListener('click', saveOrder);
+  ui('form').addEventListener('submit', event => { event.preventDefault(); saveOrder(); });
+  ui('form').addEventListener('input', () => { dirty = true; clearError(); });
+  ui('form').addEventListener('change', () => { dirty = true; });
+  ui('currency').addEventListener('change', updateOrderAmounts);
+
+  renderReportMenu();
+  void loadOrders();
+  document.addEventListener('visibilitychange', refreshDeliveryMatches);
+  window.setInterval(refreshDeliveryMatches, isLive ? 30000 : 15000);
+})();
+</script>
+
+</body>
+</html>
