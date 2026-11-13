@@ -10101,6 +10101,14 @@ window.wscOpenPostageQuotes=async()=>{
    if(typeof result.text!=='string')throw new Error('Google Vision returned an invalid result.');
    return {text:result.text,words:result.words};
   },
+  async salesDocument(action, document){
+   const user=email();
+   if(!user)throw new Error('Sign in to WSC and open Batch Orders.');
+   if(!['createBatchQuickBooksDocument','getBatchQuickBooksPdf'].includes(action))throw new Error('Invalid QuickBooks document action.');
+   const result=await wscAdminRequest(action,{document});
+   if(email()!==user)throw new Error('WSC locked or the signed-in user changed. Check QuickBooks before retrying a creation.');
+   return result;
+  },
   async searchCustomers(term){
    const user=email();if(!user)throw new Error('Sign in to WSC and open Batch Orders.');
    if(typeof term!=='string'||term.trim().length<2||term.trim().length>100)throw new Error('Enter a customer name.');
@@ -10149,7 +10157,7 @@ window.wscOpenPostageQuotes=async()=>{
    if(!cachedPermission)await wscRefreshPermissions();
    if(wscPermissions?.functions?.BATCH_ORDERS!==true)throw new Error('Batch Orders access is disabled for this account.');
    const f=frame();if(!f)throw new Error('Batch Orders is unavailable.');
-   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=20261113-manual-price');batchUser=user;}
+   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=batch-qb-sales-1');batchUser=user;}
    wscShowHomeView('batch', 'wscBatchOrderHome');
    tidyBatchNavigation();
    if(cachedPermission)void wscRefreshPermissions();
