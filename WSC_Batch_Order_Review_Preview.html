@@ -57,14 +57,18 @@
 <button class="home" type="button" id="homeButton">🏠 Home</button>
 <h1>🧾 Customer Order Invoices</h1>
 <p class="muted" style="text-align:center">Review each order and prepare a batch</p>
-<div class="notice" id="previewNotice"><strong>Preview only.</strong> Review the details from a saved email or PDF. Sign in to WSC to scan image-only PDFs or order photos with Google Vision.</div>
-<div class="header"><span id="batchCount" class="status">0 orders in batch</span><button class="example" type="button" id="exampleButton">Try an example order</button></div>
+<div class="notice" id="previewNotice">Import and review customer orders. Sign in to WSC to scan emails and PDFs with Google Vision.</div>
+<div class="header"><span id="batchCount" class="status">0 orders in batch</span><button class="example" type="button" id="exampleButton" hidden>Try an example order</button></div>
 
 <form id="orderForm" novalidate>
  <p id="stepIndicator" class="muted">Step 1 of 2 — Select an order</p>
  <section id="uploadStep" class="card" aria-labelledby="uploadTitle"><div class="section-title"><span class="number">01</span><h2 id="uploadTitle">Select an email and/or PDF</h2></div>
   <div class="grid">
-   <div class="field"><label for="emailFile">Saved email</label><input id="emailFile" type="file" accept=".eml,.msg,.txt"><small>Use an .eml or .txt file. For .msg, paste the email text instead.</small></div>
+   <div class="field"><label for="emailFile">Saved email</label><input id="emailFile" type="file" accept=".eml,.msg,.txt"><small>Use an .eml or .txt file. For .msg, paste the email text instead.</small>
+    <button id="emailCameraButton" class="minor" type="button" aria-describedby="emailCameraHelp" hidden>Scan email with Camera</button>
+    <small id="emailCameraHelp" hidden>Photograph the email on your PC screen. Select Next to read it with Google Vision.</small>
+    <small id="emailPhotoName" role="status" hidden></small>
+   </div>
    <div class="field">
     <label for="pdfFile">PDF attachment</label><input id="pdfFile" type="file" accept="application/pdf,.pdf">
     <button id="orderCameraButton" class="minor" type="button" hidden>📷 Scan order with camera</button>
@@ -147,7 +151,7 @@
   </div>
  </div>
 </form>
-<section id="batchReview" hidden><div class="card"><h2>📋 Batch review</h2><p class="muted">Check the orders before creating anything in QuickBooks.</p><div id="invoicePreview" class="invoice-preview" role="region" aria-label="Illustrative invoice preview" hidden></div><h3>Orders in this batch</h3><div id="batchList"></div><div class="totals"><div class="total-row strong"><span>Available preview totals</span><span id="batchTotal">—</span></div><small>Invoice VAT is not calculated. Orders without complete prices or charges are not included.</small></div><div class="actions"><button class="soft" id="more" type="button">＋ Add another order</button><button class="primary" type="button" disabled aria-describedby="disabledHelp">Create in QuickBooks</button></div><p id="disabledHelp" class="muted">Disabled in this preview. No invoices or pro formas will be created.</p></div></section>
+<section id="batchReview" hidden><div class="card"><h2>📋 Batch review</h2><p class="muted">Review the drafts prepared in this WSC session.</p><div id="invoicePreview" class="invoice-preview" role="region" aria-label="Illustrative invoice preview" hidden></div><h3>Orders in this batch</h3><div id="batchList"></div><div class="totals"><div class="total-row strong"><span>Available preview totals</span><span id="batchTotal">—</span></div><small>Invoice VAT is not calculated. Orders without complete prices or charges are not included.</small></div><div class="actions"><button class="soft" id="more" type="button">＋ Add another order</button><button class="primary" type="button" disabled aria-describedby="disabledHelp">Create in QuickBooks</button></div><p id="disabledHelp" class="muted">QuickBooks invoice and pro forma creation is unavailable.</p></div></section>
 
 <p id="batchPreviewFooter" class="footer">WSC workflow preview · Files are read locally · No QuickBooks connection</p>
 </main>
@@ -914,7 +918,7 @@ function paintCustomerLookup(){
  const status=$('qbCustomerStatus'),box=$('qbCustomerAddress'),list=$('qbCustomerMatches'),retry=$('qbCustomerRetry'),input=$('customer'),refresh=$('qbCustomerRefresh');
  if(refresh)refresh.hidden=!customerBridge()||exampleInputSource();
  const footer=$('batchPreviewFooter');if(footer)footer.textContent=customerBridge()?'WSC Batch Orders · Private customer list · QuickBooks read-only · Invoice creation disabled':'WSC workflow preview · Files are read locally · No QuickBooks connection';
- const notice=$('previewNotice');if(notice&&customerBridge())notice.textContent='Batch Orders uses the live WSC product catalogue and checks the selected customer and delivery address in QuickBooks. Uploaded prices are kept in this browser. Invoice and pro forma documents are previews.';
+ const notice=$('previewNotice');if(notice&&customerBridge())notice.textContent='Batch Orders uses the live WSC product catalogue and checks the selected customer and delivery address in QuickBooks. Uploaded prices are kept in this browser. Confirm and complete opens a batch of WSC drafts. QuickBooks creation is unavailable.';
  list.hidden=true;list.replaceChildren();input.setAttribute('aria-expanded','false');input.removeAttribute('aria-activedescendant');box.replaceChildren();retry.hidden=true;retry.textContent='Try customer lookup again';
  if(customerState.status==='error'){status.textContent=customerState.error||customerLookupError();retry.hidden=false;return;}
  if(!input.value.trim()&&!customerState.matches.length){
@@ -1347,10 +1351,16 @@ function update(){
 function invalidate(){if(confirmedSignature!==null&&detailsSignature()!==confirmedSignature){clearPostForChangedOrder();confirmedSignature=null;examplePricing=false;manualFee=false;$('confirmedArea').hidden=true;$('detailError').textContent='The order details changed. Please confirm them again.';}}
 function reset(){form.reset();showSelectedOrderPhoto();clearPostForChangedOrder();postServiceTouched=false;items.replaceChildren();addItem();clearCustomerLookup();editing=null;exampleSource=false;savedSources=[];lastSourceSignature=null;confirmedSignature=null;examplePricing=false;manualFee=false;purchaseOrder='';priceCustomer='';priceChoice='';priceBook=null;priceTables=[];priceUploadCustomer='';priceLoadId++;clearPostLive();$('priceMapper').hidden=true;$('priceError').textContent='';$('sourceInfo').textContent='';$('uploadError').textContent='';$('extractStatus').textContent='';$('recognitionNotes').textContent='';$('detailError').textContent='';$('error').textContent='';$('confirmedArea').hidden=true;showPriceStatus();setStep(1);update();}
 function inputSources(){return [...savedSources,...['emailFile','pdfFile','orderPhoto'].flatMap(id=>{const file=$(id).files?.[0];return file?[file.name]:[];}),...($('emailText').value.trim()?['Pasted email text']:[]),...(exampleSource?['Example order']:[])];}
-function sourceSignature(){const fileInfo=id=>{const file=$(id).files?.[0];return file?[file.name,file.size,file.lastModified]:null;};return JSON.stringify([fileInfo('emailFile'),fileInfo('pdfFile'),fileInfo('orderPhoto'),$('emailText').value,savedSources]);}
+function sourceSignature(){const fileInfo=id=>{const file=$(id).files?.[0];return file?[file.name,file.size,file.lastModified]:null;};return JSON.stringify([fileInfo('emailFile'),fileInfo('pdfFile'),fileInfo('orderPhoto'),photoSource,$('emailText').value,savedSources]);}
+let photoSource='',requestedPhotoSource='';
 function showSelectedOrderPhoto(){
- const name=$('orderPhotoName'),photo=$('orderPhoto').files?.[0];
- name.hidden=!photo;name.textContent=photo?'Selected photo: '+photo.name:'';
+ const photo=$('orderPhoto').files?.[0];
+ if(!photo)photoSource='';
+ for(const [source,id] of [['email','emailPhotoName'],['order','orderPhotoName']]){
+  const status=$(id);
+  status.hidden=!photo||source!==photoSource;
+  status.textContent=status.hidden?'':'Selected photo: '+photo.name;
+ }
 }
 async function readOrder(){
  if(!inputSources().length){$('uploadError').textContent='Select an email, PDF or order photo, or paste the email text.';return;}
@@ -1358,6 +1368,7 @@ async function readOrder(){
  const button=$('uploadNext'),status=$('extractStatus'),bridge=customerBridge();
  const scan=bridge?.scanOrderPage?image=>bridge.scanOrderPage(image):null;
  const docs=[],notes=[];
+ const photoLabel=photoSource==='email'?'email photo':'order photo';
  let scanFailed=false,scanned=false;
  button.disabled=true;status.textContent='Reading order details…';
  async function addPdf(file,label){
@@ -1388,12 +1399,12 @@ async function readOrder(){
   }
   if(pdf)await addPdf(pdf,pdf.name);
   if(photo&&scan){
-   status.textContent='Reading the order photo with Google Vision…';
+   status.textContent='Reading the '+photoLabel+' with Google Vision…';
    try{
     const result=await WSCOrderExtract.readPhoto(photo,scan);
     if(result.text.trim()){docs.push({label:photo.name,...result});scanned=true;}
-    else {scanFailed=true;notes.push('Google Vision found no text in the order photo. Retake it or enter the details in Step 2.');}
-   }catch(_){scanFailed=true;notes.push('Google Vision could not read the order photo. Retake it or enter the details in Step 2.');}
+    else {scanFailed=true;notes.push('Google Vision found no text in the '+photoLabel+'. Retake it or enter the details in Step 2.');}
+   }catch(_){scanFailed=true;notes.push('Google Vision could not read the '+photoLabel+'. Retake it or enter the details in Step 2.');}
   }else if(photo){scanFailed=true;notes.push('Open Batch Orders inside signed-in WSC to read the order photo.');}
   if(scanned)notes.push('Check the customer, SKUs and quantities against the scan before confirming.');
   let products = window.WSCCatalog.products;
@@ -1489,7 +1500,7 @@ function renderInvoicePreview(index){
 }
 
 function editOrder(index){
- const o=orders[index];form.hidden=false;$('batchReview').hidden=true;$('exampleButton').hidden=false;reset();editing=index;exampleSource=o.example;savedSources=o.sources;purchaseOrder=o.po;$('sourceInfo').textContent='Previously selected: '+savedSources.join(', ');$('customer').value=o.customer;priceCustomer=WSCPriceSheets.key(o.customer);priceChoice=o.priceChoice;priceBook=o.priceBook;showPriceStatus();items.replaceChildren();(o.sourceRows||o.items).forEach(addItem);
+ const o=orders[index];form.hidden=false;$('batchReview').hidden=true;$('exampleButton').hidden=!!customerBridge();reset();editing=index;exampleSource=o.example;savedSources=o.sources;purchaseOrder=o.po;$('sourceInfo').textContent='Previously selected: '+savedSources.join(', ');$('customer').value=o.customer;priceCustomer=WSCPriceSheets.key(o.customer);priceChoice=o.priceChoice;priceBook=o.priceBook;showPriceStatus();items.replaceChildren();(o.sourceRows||o.items).forEach(addItem);
  document.querySelectorAll('[name=documentType]').forEach(r=>r.checked=r.value===o.type);$('bank').checked=o.bankOn;$('bankAmount').value=o.bankInput;$('postage').checked=o.postOn;
  const ps=o.postState||{};for(const [id,key] of [['postPacking','packing'],['postMarkup','markup'],['postService','service']])if(ps[key]!==undefined)$(id).value=ps[key];
  postServiceTouched=!!ps.service;
@@ -1535,10 +1546,30 @@ function usePriceSheet(){
  }catch(error){$('priceError').textContent=error.message||'Could not use this price sheet.';}
 }
 $('uploadNext').addEventListener('click',readOrder);$('reviewBack').addEventListener('click',()=>setStep(1));$('confirmDetails').addEventListener('click',confirmDetails);
-$('orderCameraButton').hidden=!customerBridge()?.scanOrderPage;
-$('orderCameraButton').addEventListener('click',()=>$('orderPhoto').click());
-$('orderPhoto').addEventListener('change',()=>{if($('orderPhoto').files?.[0])$('pdfFile').value='';showSelectedOrderPhoto();});
-$('pdfFile').addEventListener('change',()=>{if($('pdfFile').files?.[0])$('orderPhoto').value='';showSelectedOrderPhoto();});
+const canScan=!!customerBridge()?.scanOrderPage;
+$('emailCameraHelp').hidden=!canScan;
+for(const [id,source] of [['emailCameraButton','email'],['orderCameraButton','order']]){
+ const cameraButton=$(id);
+ cameraButton.hidden=!canScan;
+ cameraButton.addEventListener('click',()=>{
+  requestedPhotoSource=source;
+  $('orderPhoto').click();
+ });
+}
+$('orderPhoto').addEventListener('change',()=>{
+ if($('orderPhoto').files?.[0]){
+  photoSource=requestedPhotoSource;
+  if(photoSource==='email')$('emailFile').value='';
+  else $('pdfFile').value='';
+ }
+ showSelectedOrderPhoto();
+});
+for(const [id,source] of [['emailFile','email'],['pdfFile','order']]){
+ $(id).addEventListener('change',()=>{
+  if($(id).files?.[0]&&photoSource===source)$('orderPhoto').value='';
+  showSelectedOrderPhoto();
+ });
+}
 $('uploadPrice').addEventListener('click',()=>{if(!$('customer').value.trim()){$('priceError').textContent='Enter the customer before uploading a price sheet.';return;}$('priceError').textContent='';$('priceFile').click();});
 $('qbCustomerRetry').addEventListener('click',()=>{const picked=customerState.picked,preferredId=customerState.selected?.id||'';if(picked)resolveCustomer(picked,preferredId);else {resetCustomerIndex();scheduleCustomerLookup(true);}invalidate();update();});
 $('qbCustomerRefresh').addEventListener('click',()=>{resetCustomerIndex();scheduleCustomerLookup(true);invalidate();update();});
@@ -1572,10 +1603,11 @@ $('postAddBox').addEventListener('click',()=>{
  clearPostLive();update();
 });
 $('addItem').addEventListener('click',()=>{addItem();invalidate();update();});$('next').addEventListener('click',()=>save(false));$('complete').addEventListener('click',()=>save(true));
-$('more').addEventListener('click',()=>{form.hidden=false;$('batchReview').hidden=true;$('exampleButton').hidden=false;reset();});
-$('homeButton').addEventListener('click',()=>{const host=customerBridge();if(host&&typeof host.close==='function'){host.close();return;}if(!$('batchReview').hidden){form.hidden=false;$('batchReview').hidden=true;$('exampleButton').hidden=false;}setStep(1);});
+$('more').addEventListener('click',()=>{form.hidden=false;$('batchReview').hidden=true;$('exampleButton').hidden=!!customerBridge();reset();});
+$('homeButton').addEventListener('click',()=>{const host=customerBridge();if(host&&typeof host.close==='function'){host.close();return;}if(!$('batchReview').hidden){form.hidden=false;$('batchReview').hidden=true;$('exampleButton').hidden=!!customerBridge();}setStep(1);});
 for(const type of ['pointerdown','keydown','wheel','touchstart','input'])document.addEventListener(type,event=>{const host=customerBridge();if(host&&typeof host.noteActivity==='function'&&host.noteActivity()===false){event.preventDefault();event.stopImmediatePropagation();}},{capture:true,passive:false});
 $('exampleButton').addEventListener('click',()=>{reset();exampleSource=true;$('sourceInfo').textContent='Example order — press Next to read the details.';$('emailText').value=exampleText;update();});
+$('exampleButton').hidden=!!customerBridge();
 reset();
 })();
 </script>
