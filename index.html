@@ -10109,6 +10109,15 @@ window.wscOpenPostageQuotes=async()=>{
     return /^home$/i.test(label) && !el.closest('nav');
    });
    if(duplicate){duplicate.style.setProperty('display','none','important');duplicate.setAttribute('aria-hidden','true');duplicate.tabIndex=-1;}
+   // Remove the demonstration action from the embedded production workflow.
+   // Match its visible label exactly so real order controls are unaffected.
+   for(const el of candidates){
+    if(/^try an example order$/i.test((el.textContent||'').trim())){
+     el.style.setProperty('display','none','important');
+     el.setAttribute('aria-hidden','true');
+     el.tabIndex=-1;
+    }
+   }
   }catch(error){console.warn('Batch navigation adjustment:',error);}
  }
  const batchFrame=frame();
