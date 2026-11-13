@@ -344,6 +344,28 @@ input[type="reset"]:disabled,
 @media(max-width:850px){#wscPostageScreen .layout{grid-template-columns:1fr}} @media(max-width:600px){#wscPostageScreen .card{padding:16px} #wscPostageScreen .grid.three,#wscPostageScreen .grid.two{grid-template-columns:1fr}}
 #wscPostagePrint{display:none} @media print{body.wsc-postage-printing > *:not(#wscPostagePrint){display:none!important} body.wsc-postage-printing #wscPostagePrint{display:block!important;color:#182c45;font:13px/1.5 Arial,sans-serif} #wscPostagePrint table{border-collapse:collapse;width:100%;margin:20px 0} #wscPostagePrint td{padding:8px;border-bottom:1px solid #ddd} #wscPostagePrint td:first-child{width:42%;font-weight:bold}}
 </style>
+<style>
+/* WSC floating tools, independent of module navigation. */
+.wsc-tool-fab[hidden] {display:none!important;}
+.wsc-tool-fab {position:fixed;bottom:16px;width:52px;height:52px;border-radius:50%;padding:0;margin:0;background:#164b84;color:#fff;box-shadow:0 2px 12px #0004;z-index:1200;font-size:22px;display:grid;place-items:center;cursor:pointer;}
+#wscCurrencyFab {left:16px;}
+#wscHomeInfoTools {position:fixed;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:12px;z-index:1200;}
+#wscHomeInfoTools[hidden] {display:none!important;}
+#wscHomeInfoTools .wsc-tool-fab {position:static;width:44px;height:44px;font-size:15px;font-weight:700;}
+#wscCurrencyDialog {width:min(92vw,680px);max-height:85dvh;overflow:auto;border:0;border-radius:14px;padding:22px;box-sizing:border-box;color:#203247;background:#fff;box-shadow:0 10px 35px #0005;}
+#wscCurrencyDialog::backdrop {background:#0f223980;}
+#wscCurrencyDialog .wsc-currency-heading {display:flex;align-items:center;justify-content:space-between;gap:12px;}
+#wscCurrencyDialog h2 {margin:0;font-size:21px;}
+#wscCurrencyClose {width:auto;margin:0;padding:10px 14px;flex-shrink:0;}
+#wscCurrencyDialog .card {padding:0;border:0;}
+#wscCurrencyDialog .grid.three {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:14px;}
+#wscCurrencyDialog label {display:block;font-weight:600;margin-bottom:6px;}
+#wscCurrencyDialog input,#wscCurrencyDialog select {box-sizing:border-box;width:100%;padding:11px;min-height:44px;font-size:16px;border:1px solid #bac8d7;border-radius:7px;}
+#wscCurrencyDialog .conversion {padding:12px;margin-top:16px;background:#f4f7fa;border-radius:8px;font-weight:bold;}
+@media(max-width:540px){#wscCurrencyDialog .grid.three{grid-template-columns:1fr}#wscHomeInfoTools{gap:7px}#wscHomeInfoTools .wsc-tool-fab{width:40px;height:40px}}
+/* Keep the informational globe on Home only. Loading overlays remain unchanged. */
+.about-globe:not(#homePrivacyGlobe),#tradeShowReportGlobe {visibility:hidden!important;}
+</style>
 </head>
 
 <body>
@@ -660,7 +682,6 @@ input[type="reset"]:disabled,
  <a class="quiet" href="https://send.royalmail.com/" target="_blank" rel="noopener">Check price with Royal Mail ↗</a><div id="wscPQActionMessage" class="hint" role="status" style="text-align:center;margin-top:8px"></div>
  </section></aside></div>
  <div class="wizard-navigation" aria-label="Quote steps"><button type="button" class="secondary" id="wscPQStepBack" hidden>← Back</button><button type="button" class="primary" id="wscPQStepNext">Next →</button></div>
- <details class="card subcard"><summary>Currency converter</summary><p class="hint">Convert any amount using a rate you enter, with an optional percentage as in PandP.</p><div class="grid three"><div><label for="wscPQConvertAmount">Amount</label><input id="wscPQConvertAmount" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal"></div><div><label for="wscPQConvertFrom">From</label><select id="wscPQConvertFrom"><option value="GBP">GBP — Pound</option><option value="EUR">EUR — Euro</option><option value="USD">USD — US Dollar</option></select></div><div><label for="wscPQConvertTo">To</label><select id="wscPQConvertTo"><option value="EUR">EUR — Euro</option><option value="GBP">GBP — Pound</option><option value="USD">USD — US Dollar</option></select></div><div><label for="wscPQConvertRate">Exchange rate</label><input id="wscPQConvertRate" type="number" min="0.000001" step="0.0001" placeholder="Enter current rate" inputmode="decimal"></div><div><label for="wscPQConvertUplift">Add percentage</label><input id="wscPQConvertUplift" type="number" min="0" step="0.1" value="0" inputmode="decimal"></div></div><div id="wscPQConversionResult" class="conversion" role="status">Enter an amount and exchange rate.</div></details>
     </form>
     <dialog id="wscPQPdfDialog" aria-labelledby="wscPQPdfTitle"><h3 id="wscPQPdfTitle">Choose a quote</h3><p>Select the details to include in your PDF.</p><div class="pdf-options"><button class="primary" id="wscPQPrintInternal" type="button">In-house quote — all details</button><button class="primary" id="wscPQPrintCustomer" type="button">Customer quote — address, parcel and price</button><button class="secondary" id="wscPQPrintCancel" type="button">Cancel</button></div></dialog>
     <p class="pqp-footer">No orders or labels are created. Confirm the parcel and contents with Royal Mail.</p>
@@ -691,6 +712,17 @@ input[type="reset"]:disabled,
     </div>
   </section>
   <button id="wscAdminCog" type="button" onclick="wscOpenAdmin()" aria-label="Administrator settings" title="Administrator settings" style="display:none; position:fixed; right:16px; bottom:16px; z-index:1200; width:52px; height:52px; border-radius:50%; padding:0; font-size:25px; background:#164b84; color:white; box-shadow:0 2px 12px #0004;">⚙️</button>
+  <!-- WSC floating tools; admin cog remains permission controlled. -->
+  <button id="wscCurrencyFab" class="wsc-tool-fab" type="button" aria-label="Currency converter" title="Currency converter">💱</button>
+  <div id="wscHomeInfoTools" aria-label="Home information" hidden>
+    <button id="wscUserFab" class="wsc-tool-fab" type="button" aria-label="Signed-in user" title="Signed-in user">?</button>
+    <button id="wscBuildFab" class="wsc-tool-fab" type="button" aria-label="Build number" title="Build number">#</button>
+  </div>
+  <dialog id="wscCurrencyDialog" aria-labelledby="wscCurrencyTitle">
+    <div class="wsc-currency-heading"><h2 id="wscCurrencyTitle">💱 Currency converter</h2><button id="wscCurrencyClose" type="button">✕ Close</button></div>
+    <div id="wscCurrencyContents">
+ <details class="card subcard" open><summary>Currency converter</summary><p class="hint">Convert any amount using a rate you enter, with an optional percentage as in PandP.</p><div class="grid three"><div><label for="wscPQConvertAmount">Amount</label><input id="wscPQConvertAmount" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal"></div><div><label for="wscPQConvertFrom">From</label><select id="wscPQConvertFrom"><option value="GBP">GBP — Pound</option><option value="EUR">EUR — Euro</option><option value="USD">USD — US Dollar</option></select></div><div><label for="wscPQConvertTo">To</label><select id="wscPQConvertTo"><option value="EUR">EUR — Euro</option><option value="GBP">GBP — Pound</option><option value="USD">USD — US Dollar</option></select></div><div><label for="wscPQConvertRate">Exchange rate</label><input id="wscPQConvertRate" type="number" min="0.000001" step="0.0001" placeholder="Enter current rate" inputmode="decimal"></div><div><label for="wscPQConvertUplift">Add percentage</label><input id="wscPQConvertUplift" type="number" min="0" step="0.1" value="0" inputmode="decimal"></div></div><div id="wscPQConversionResult" class="conversion" role="status">Enter an amount and exchange rate.</div></details></div>
+  </dialog>
   <div id="homeSessionsLoading" role="status" aria-live="polite" style="display:none; padding:15px; text-align:center;">
     <div style="display:inline-flex;align-items:center;gap:14px;padding:18px 24px;border-radius:12px;background:white;box-shadow:0 5px 24px rgba(0,0,0,.2);color:#304B70;font-weight:600;max-width:calc(100% - 30px);">
       <img src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png" class="spinning" alt="" style="width:54px;height:54px;object-fit:contain;animation:globeSpin 3s linear infinite;">
@@ -699,10 +731,7 @@ input[type="reset"]:disabled,
   </div>
 
     <div id="updateStatus" style="display:none; text-align:left; margin-top:30px; margin-bottom:10px;" aria-live="polite"></div>
-   
-   <p id="welcomeUser" style="text-align:left; margin-top:auto; margin-bottom:0; padding-top:35px; padding-bottom:12px; font-size:13px;">
-    Checking sign-in...  
-   </p>
+   <p id="welcomeUser" hidden>Checking sign-in...</p>
    
 </div>
 
@@ -10085,6 +10114,61 @@ window.wscOpenPostageQuotes=async()=>{
  };
 })();
 
+</script>
+<script>
+/* WSC footer controls: the build value is the actual frontend WSC_VERSION. */
+(function () {
+  const byId = id => document.getElementById(id);
+  const currency = byId('wscCurrencyDialog');
+  const homeTools = byId('wscHomeInfoTools');
+  const userButton = byId('wscUserFab');
+  const nameByEmail = {'tmerry@sensafe.com':'Terry Merry','nmerry@sensafe.com':'Nicola Merry'};
+  function signedInEmail() {return String(window.getCurrentStaffEmail?.() || '').trim().toLowerCase();}
+  function signedInName(email) {
+    if (nameByEmail[email]) return nameByEmail[email];
+    const display = String(byId('welcomeUser')?.textContent || '');
+    const prefix = email.split('@')[0] || '';
+    return prefix.replace(/[._-]+/g,' ').replace(/\b\w/g,c=>c.toUpperCase()) || display || 'Staff member';
+  }
+  function initials(email) {
+    if (email === 'tmerry@sensafe.com') return 'TM';
+    if (email === 'nmerry@sensafe.com') return 'NM';
+    const name = signedInName(email);
+    const words = name.split(/\s+/).filter(Boolean);
+    return (words.length > 1 ? words[0][0]+words[words.length-1][0] : name.slice(0,2)).toUpperCase();
+  }
+  function refresh() {
+    const email = signedInEmail();
+    const welcome = byId('welcomeScreen');
+    const homeView = byId('wscHomeNavigation');
+    const login = byId('loginScreen');
+    const pin = byId('pinLockScreen');
+    const onHome = !!email && welcome?.style.display !== 'none' && !homeView?.hidden && login?.style.display === 'none' && pin?.style.display === 'none';
+    homeTools.hidden = !onHome;
+    byId('wscCurrencyFab').hidden = !email || login?.style.display !== 'none' || pin?.style.display !== 'none';
+    if (onHome) userButton.textContent = initials(email);
+    const globe = byId('homePrivacyGlobe');
+    if (globe && !onHome) globe.style.visibility = 'hidden';
+    else if (globe) globe.style.visibility = '';
+  }
+  byId('wscCurrencyFab').addEventListener('click',()=>{if (!currency.open) currency.showModal();});
+  byId('wscCurrencyClose').addEventListener('click',()=>currency.close());
+  userButton.addEventListener('click',()=>{
+    const email=signedInEmail();
+    if (email) window.showWSCMessage?.('Signed-in user',signedInName(email)+'\n'+email);
+  });
+  byId('wscBuildFab').addEventListener('click',()=>{
+    const version=typeof WSC_VERSION !== 'undefined' ? WSC_VERSION : 'Unavailable';
+    window.showWSCMessage?.('WSC build number','Frontend build: v'+version);
+  });
+  const observer=new MutationObserver(refresh);
+  ['welcomeScreen','wscHomeNavigation','loginScreen','pinLockScreen'].forEach(id=>{
+    const el=byId(id);if(el)observer.observe(el,{attributes:true,attributeFilter:['style','hidden']});
+  });
+  document.addEventListener('click',()=>queueMicrotask(refresh),true);
+  window.addEventListener('pageshow',refresh);
+  refresh();
+})();
 </script>
 </body>
 </html>
