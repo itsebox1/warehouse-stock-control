@@ -10091,6 +10091,7 @@ window.wscOpenPostageQuotes=async()=>{
    const user=email();if(!user)throw new Error('Sign in to WSC and open Batch Orders.');
    const products=await wscQuickGetCatalogue();
    if(email()!==user)throw new Error('WSC was locked or the signed-in user changed.');
+   if(!products.length)throw new Error('The WSC product catalogue is empty.');
    return products;
   },
   async searchCustomers(term){
@@ -10141,7 +10142,7 @@ window.wscOpenPostageQuotes=async()=>{
    if(!cachedPermission)await wscRefreshPermissions();
    if(wscPermissions?.functions?.BATCH_ORDERS!==true)throw new Error('Batch Orders access is disabled for this account.');
    const f=frame();if(!f)throw new Error('Batch Orders is unavailable.');
-   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=1.0.7');batchUser=user;}
+   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=1.0.8');batchUser=user;}
    wscShowHomeView('batch', 'wscBatchOrderHeading');
    tidyBatchNavigation();
    if(cachedPermission)void wscRefreshPermissions();
