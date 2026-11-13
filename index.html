@@ -10149,7 +10149,7 @@ window.wscOpenPostageQuotes=async()=>{
    if(!cachedPermission)await wscRefreshPermissions();
    if(wscPermissions?.functions?.BATCH_ORDERS!==true)throw new Error('Batch Orders access is disabled for this account.');
    const f=frame();if(!f)throw new Error('Batch Orders is unavailable.');
-   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=20261113-upload-help-2');batchUser=user;}
+   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=20261113-manual-price');batchUser=user;}
    wscShowHomeView('batch', 'wscBatchOrderHome');
    tidyBatchNavigation();
    if(cachedPermission)void wscRefreshPermissions();
