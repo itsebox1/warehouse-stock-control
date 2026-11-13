@@ -51,6 +51,12 @@
 .post-destination{grid-template-columns:1fr 1fr}
 @media(max-width:650px){.document-actions{align-items:stretch;flex-direction:column}.document-actions button{width:100%}.post-box-grid{grid-template-columns:1fr 1fr}}
 @media(prefers-reduced-motion:reduce){.is-loading .post-globe{animation:none}}
+
+.upload-label{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.upload-label label{margin:0}
+.upload-label .upload-info{display:inline-grid;place-items:center;width:30px;height:30px;padding:0;border:1px solid #c5cdd5;border-radius:50%;background:#fff;color:#485967;font-size:.95rem}
+.upload-help{color:#59636c}
+    <small id="emailUploadHelp" class="upload-help" hidden>Use an .eml or .txt file. For .msg, paste the email text instead. To scan an email, photograph it on your PC screen and select Next to read it with Google Vision.</small>
 </style>
 </head>
 <body><main>
@@ -64,17 +70,25 @@
  <p id="stepIndicator" class="muted">Step 1 of 2 — Select an order</p>
  <section id="uploadStep" class="card" aria-labelledby="uploadTitle"><div class="section-title"><span class="number">01</span><h2 id="uploadTitle">Select an email and/or PDF</h2></div>
   <div class="grid">
-   <div class="field"><label for="emailFile">Saved email</label><input id="emailFile" type="file" accept=".eml,.msg,.txt"><small>Use an .eml or .txt file. For .msg, paste the email text instead.</small>
-    <button id="emailCameraButton" class="minor" type="button" aria-describedby="emailCameraHelp" hidden>Scan email with Camera</button>
-    <small id="emailCameraHelp" hidden>Photograph the email on your PC screen. Select Next to read it with Google Vision.</small>
+   <div class="field">
+    <div class="upload-label">
+     <label for="emailFile">Saved email</label>
+     <button class="upload-info" type="button" aria-label="Saved email help" aria-expanded="false" aria-controls="emailUploadHelp">i</button>
+    </div>
+    <input id="emailFile" type="file" accept=".eml,.msg,.txt">
+    <button id="emailCameraButton" class="minor" type="button" hidden>Scan email with Camera</button>
     <small id="emailPhotoName" role="status" hidden></small>
    </div>
    <div class="field">
-    <label for="pdfFile">PDF attachment</label><input id="pdfFile" type="file" accept="application/pdf,.pdf">
-    <button id="orderCameraButton" class="minor" type="button" hidden>📷 Scan order with camera</button>
+    <div class="upload-label">
+     <label for="pdfFile">PDF attachment</label>
+     <button class="upload-info" type="button" aria-label="PDF attachment help" aria-expanded="false" aria-controls="pdfUploadHelp">i</button>
+    </div>
+    <input id="pdfFile" type="file" accept="application/pdf,.pdf">
+    <button id="orderCameraButton" class="minor" type="button" hidden>📷 Scan Order with Camera</button>
     <input id="orderPhoto" type="file" accept="image/*" capture="environment" hidden>
     <small id="orderPhotoName" role="status" hidden></small>
-    <small>Google Vision reads scanned PDF pages and order photos in signed-in WSC.</small>
+    <small id="pdfUploadHelp" class="upload-help" hidden>Google Vision reads scanned PDF pages and order photos when you’re signed in to WSC.</small>
    </div>
   </div>
   <div class="field" style="margin-top:12px"><label for="emailText">Or paste email text</label><textarea id="emailText" placeholder="Paste text here (optional)"></textarea></div>
@@ -1547,7 +1561,13 @@ function usePriceSheet(){
 }
 $('uploadNext').addEventListener('click',readOrder);$('reviewBack').addEventListener('click',()=>setStep(1));$('confirmDetails').addEventListener('click',confirmDetails);
 const canScan=!!customerBridge()?.scanOrderPage;
-$('emailCameraHelp').hidden=!canScan;
+for (const button of document.querySelectorAll('.upload-info')) {
+ const help = $(button.getAttribute('aria-controls'));
+ button.addEventListener('click', () => {
+  help.hidden = !help.hidden;
+  button.setAttribute('aria-expanded', String(!help.hidden));
+ });
+}
 for(const [id,source] of [['emailCameraButton','email'],['orderCameraButton','order']]){
  const cameraButton=$(id);
  cameraButton.hidden=!canScan;
