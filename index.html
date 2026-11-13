@@ -1016,6 +1016,10 @@ onclick="addDeliveryExtraProduct()">
 </div>
 
   <p id="deliveryReviewMessage"></p>
+  <div id="deliveryBackOrdersNotice" hidden style="margin:12px 0;padding:10px 12px;background:#fff8df;border-left:4px solid #d2a443;border-radius:5px;color:#594619;">
+    <span id="deliveryBackOrdersStatus" role="status"></span>
+    <button id="deliveryBackOrdersRetry" type="button" hidden style="width:auto;">Retry check</button>
+  </div>
 
 </div>
   <!-- TR - Trade Show Setup Screen -->
@@ -4407,6 +4411,40 @@ function reviewDeliveryInvoiceIssues(products) {
     await pdf.destroy();
   }
 }
+let deliveryBackOrdersCheck = 0;
+
+async function checkDeliveryBackOrders(invoice, products) {
+  const check = ++deliveryBackOrdersCheck;
+  const notice = document.getElementById('deliveryBackOrdersNotice');
+  const status = document.getElementById('deliveryBackOrdersStatus');
+  const retry = document.getElementById('deliveryBackOrdersRetry');
+  notice.hidden = false;
+  retry.hidden = true;
+  status.textContent = 'Checking Back Orders…';
+  try {
+    const idToken = await window.getCurrentStaffToken();
+    if (!idToken) throw new Error('Sign in to WSC to check Back Orders.');
+    const response = await fetch(workerUrl, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({action: 'checkDeliveryBackOrders', idToken, ...invoice, products})
+    });
+    const result = await response.json();
+    if (!response.ok || !result.success || !Number.isSafeInteger(result.matchedOrders)) {
+      throw new Error(result.error || 'Could not check Back Orders.');
+    }
+    if (check !== deliveryBackOrdersCheck) return;
+    status.textContent = result.matchedOrders === 0 ? 'No back orders match this delivery.'
+      : result.matchedOrders === 1 ? 'One back order has an item on this delivery.'
+      : result.matchedOrders + ' back orders have items on this delivery.';
+    retry.onclick = null;
+  } catch (error) {
+    if (check !== deliveryBackOrdersCheck) return;
+    status.textContent = error.message || 'Could not check Back Orders.';
+    retry.hidden = false;
+    retry.onclick = () => void checkDeliveryBackOrders(invoice, products);
+  }
+}
+
   async function startNewDelivery() {
   const invoiceInput = document.getElementById("deliveryInvoiceFile");
   const message = document.getElementById("deliveryInvoiceMessage");
@@ -4434,11 +4472,13 @@ function reviewDeliveryInvoiceIssues(products) {
   }
 
   if (file.type === "application/pdf") {
+  invoiceInput.value = "";
   message.textContent = "Reading supplier invoice...";
   message.style.color = "black";
 
   try {
     const invoiceText = await extractDeliveryPdfText(file);
+    if (!invoiceText.trim()) throw new Error('No selectable text found. This PDF may require OCR.');
     const invoiceHeader = parseDeliveryInvoiceHeader(invoiceText);
     const invoiceProducts = parseDeliveryInvoiceProducts(invoiceText);
     if(!await reviewDeliveryInvoiceIssues(invoiceProducts)){message.textContent="Invoice import cancelled.";return;}
@@ -4456,12 +4496,6 @@ document.getElementById("deliveryInvoiceDate").textContent =
   invoiceHeader.invoiceDate;
    renderDeliveryProducts(deliveryReviewProducts);
 
-    if (!invoiceText.trim()) {
-      throw new Error(
-        "No selectable text found. This PDF may require OCR."
-      );
-    }
-
    message.textContent =
   "Invoice " + invoiceHeader.invoiceNumber +
  " dated " + invoiceHeader.invoiceDate +
@@ -4469,6 +4503,8 @@ document.getElementById("deliveryInvoiceDate").textContent =
 invoiceProducts.length + " product lines found.";
 
     message.style.color = "green";
+    const backOrderProducts = invoiceProducts.map(({sku, invoicedQty}) => ({sku, invoicedQty}));
+    void checkDeliveryBackOrders(invoiceHeader, backOrderProducts);
 
   } catch (error) {
     message.textContent = "PDF reading failed: " + error.message;
@@ -4756,6 +4792,9 @@ function updateDeliveryConfirmationButton() {
 }
   
   function showDeliveryReview() {
+    deliveryBackOrdersCheck++;
+    document.getElementById('deliveryBackOrdersNotice').hidden = true;
+    document.getElementById('deliveryBackOrdersRetry').onclick = null;
     document.getElementById("deliveryInvoiceSkuSearch").value = "";
     document.getElementById("deliveryInvoiceSkuSuggestions").hidden = true;
     document.getElementById("deliveryInvoiceNumber").textContent = "";
@@ -8747,7 +8786,7 @@ async function getQuickBooksCommitStatusForST(reportNumber) {
 }
   
 // WSC deployment version. Update version.txt LAST, after any backend deployments.
-const WSC_VERSION = "1.0.7";
+const WSC_VERSION = "1.0.8";
 
 function isNewerWSCVersion(remote, current) {
   const r = remote.split(".").map(Number);
