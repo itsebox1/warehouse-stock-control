@@ -785,6 +785,7 @@ const reportConfig = {"fields":{"number":{"label":"Back order"},"customer":{"lab
   let refreshingDeliveryMatches = false;
   let draft = null;
   let draftRequestId;
+  let unconfirmedSave;
   let completingOrder;
   let dirty = false;
   let leaveTarget = 'list';
@@ -831,14 +832,22 @@ const reportConfig = {"fields":{"number":{"label":"Back order"},"customer":{"lab
     try {
       response = await fetch(url, {
         method, credentials: 'same-origin', cache: 'no-store',
-        headers: body && {'Content-Type': 'application/json'}, body: JSON.stringify(body)
+        headers: body && {'Content-Type': 'application/json'}, body: JSON.stringify(body),
+        signal: AbortSignal.timeout?.(20_000)
       });
     } catch {
-      throw new Error('Could not reach ' + recordLabel + '. Try again.');
+      const error = new Error('Could not reach ' + recordLabel + '. Try again.');
+      error.saveUnconfirmed = method !== 'GET';
+      throw error;
     }
     if (response.status === 204) return;
     const result = await response.json().catch(() => null);
-    if (!response.ok || !result) throw new Error(result?.error || 'Could not access ' + recordLabel + '. Try again.');
+    if (!response.ok || !result) {
+      const error = new Error(result?.error || 'Could not access ' + recordLabel + '. Try again.');
+      error.status = response.status;
+      error.saveUnconfirmed = method !== 'GET' && (response.status >= 500 || response.ok);
+      throw error;
+    }
     return result;
   }
 
@@ -1647,11 +1656,17 @@ const reportConfig = {"fields":{"number":{"label":"Back order"},"customer":{"lab
     ui('error').hidden = false;
   }
 
+  function saveNeedsConfirmation(error) {
+    return error.saveUnconfirmed === true || ['TimeoutError', 'AbortError', 'TypeError'].includes(error.name) ||
+      /^WSC could not confirm the change\./.test(error.message);
+  }
+
   function openOrder(order) {
     draft = order ? {...order, lines: order.lines.map(line => ({...line, backordered: remaining(line)}))} : {
       number: 0, customer: '', date: localToday(), reference: '', currency: 'GBP', notes: '', lines: []
     };
     draftRequestId = order ? undefined : crypto.randomUUID();
+    unconfirmedSave = undefined;
     dirty = false;
     ui('editor-title').textContent = draft.number ? 'Edit ' + orderId(draft.number) : 'New Back Order';
     ui('customer').value = companyName(draft);
@@ -1682,18 +1697,39 @@ const reportConfig = {"fields":{"number":{"label":"Back order"},"customer":{"lab
       currency: ui('currency').value, notes: ui('notes').value.trim(),
       lines: lines.map(line => ({...line, backordered: Number(line.backordered)}))
     };
-    const request = number ? {order, revision} : {order, requestId: draftRequestId};
+    const request = unconfirmedSave ?? (number ? {order, revision} : {order, requestId: draftRequestId});
+    const changesSinceLastSave = unconfirmedSave && JSON.stringify(request.order) !== JSON.stringify(order);
+    const method = number ? 'PUT' : 'POST';
     clearError();
     back.disabled = save.disabled = form.inert = true;
     save.textContent = 'Saving…';
     try {
-      const {order: saved} = await requestOrders(number, number ? 'PUT' : 'POST', request);
+      const result = await requestOrders(number, method, request);
+      const saved = result?.order;
+      if (!saved || !Number.isSafeInteger(saved.number) || !Number.isSafeInteger(saved.revision)) {
+        const error = new Error('No back order confirmation was returned.');
+        error.saveUnconfirmed = true;
+        throw error;
+      }
+      unconfirmedSave = undefined;
       orders = [...orders.filter(record => record.number !== saved.number), saved];
+      if (changesSinceLastSave) {
+        // A retry may confirm a previous save while the editor contains newer changes.
+        draft.number = saved.number;
+        draft.revision = saved.revision;
+        ui('editor-title').textContent = 'Edit ' + orderId(saved.number);
+        throw new Error('The earlier save was confirmed. Click Save and Close to save your latest changes.');
+      }
       ui('filter').value = '';
       ui('notice').textContent = orderId(saved.number) + ' saved.';
       finishEditor('list');
     } catch (error) {
-      ui('error').textContent = error.message;
+      const uncertain = saveNeedsConfirmation(error);
+      if (uncertain) unconfirmedSave = request;
+      else if (error.status === 409) unconfirmedSave = undefined;
+      ui('error').textContent = uncertain
+        ? 'WSC could not confirm the save. Your changes are still here. Click Save and Close to retry.'
+        : error.message;
       ui('error').hidden = false;
     } finally {
       back.disabled = save.disabled = form.inert = false;
@@ -1706,6 +1742,7 @@ const reportConfig = {"fields":{"number":{"label":"Back order"},"customer":{"lab
     customerPicker.reset();
     dirty = false;
     draft = null;
+    unconfirmedSave = undefined;
     clearError();
     closeProducts();
     renderList();
