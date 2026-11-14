@@ -1614,7 +1614,7 @@ function validateTradeShowFields() {
   
 <script>
 // WSC deployment version. Update version.txt after the live files are verified.
-const WSC_VERSION = "1.0.13";
+const WSC_VERSION = "1.0.14";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -5264,6 +5264,8 @@ function showTradeShowSetup() {
 // Home dashboard: one authenticated, read-only request for the four lists.
 // The normal individual list endpoints remain available outside home loading.
 let wscHomeDashboardLists = null;
+let wscHomeDashboardRequest = null;
+let wscOutstandingQBLoad = 0;
 
 async function fetchHomeSessionList(action, url, options) {
   if (wscHomeDashboardLists && Object.prototype.hasOwnProperty.call(wscHomeDashboardLists, action)) {
@@ -5275,20 +5277,8 @@ async function fetchHomeSessionList(action, url, options) {
   return fetch(url, options);
 }
 
-async function fetchHomeDashboard() {
-  const idToken = await window.getCurrentStaffToken();
-  const response = await fetch("https://warehouse-stock-reports.tmerry.workers.dev", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "getHomeDashboard", idToken })
-  });
-  const text = await response.text();
-  let result;
-  try { result = JSON.parse(text); }
-  catch (_) { throw new Error("Dashboard returned an invalid response."); }
-  if (!response.ok || result.success !== true) {
-    throw new Error(result.error || "Unable to load the dashboard.");
-  }
+async function fetchHomeDashboard(refresh = false) {
+  const result = await wscAdminRequest('getHomeDashboard', {refresh}, 20_000);
   const mapping = {
     listStockTakes: "stockTakes",
     listStockCounts: "stockCounts",
@@ -5304,6 +5294,29 @@ async function fetchHomeDashboard() {
   }
   if (result.qbCommitments) lists.getHomeQBCommitments = result.qbCommitments;
   return lists;
+}
+
+function refreshHomeDashboard(refresh = false) {
+  if (!refresh && wscHomeDashboardRequest) return wscHomeDashboardRequest;
+  const email = window.getCurrentStaffEmail?.();
+  const request = (async () => {
+    const lists = await fetchHomeDashboard(refresh);
+    if (wscHomeDashboardRequest !== request || window.getCurrentStaffEmail?.() !== email ||
+        (typeof window.wscHasUnlockedSession === 'function' && !window.wscHasUnlockedSession())) return;
+    wscHomeDashboardLists = lists;
+    const outstanding = wscLoadOutstandingQB(lists.getHomeQBCommitments).catch(error => console.warn('QB dashboard:', error));
+    try {
+      await Promise.allSettled([loadStockTakeList(), loadStockCountList(), loadTradeShowList(), loadOpenDeliveries()]);
+      if (wscHomeDashboardRequest === request) wscUpdateHomeModules();
+      await outstanding;
+    } finally {
+      if (wscHomeDashboardLists === lists) wscHomeDashboardLists = null;
+    }
+  })().finally(() => {
+    if (wscHomeDashboardRequest === request) wscHomeDashboardRequest = null;
+  });
+  wscHomeDashboardRequest = request;
+  return request;
 }
 
 // ITS Europe splash screen controls
@@ -5368,7 +5381,9 @@ function wscShowHomeView(view = 'home', focusId) {
 
 function wscOpenManager(manager) {
   const menu = wscManagerMenus[manager];
-  if (!document.getElementById(menu.button).hidden) wscShowHomeView(manager, menu.heading);
+  if (document.getElementById(menu.button).hidden) return;
+  wscShowHomeView(manager, menu.heading);
+  if (manager === 'office') window.wscPrefetchBackOrders?.();
 }
 
 function wscCloseManager(manager) {
@@ -5581,33 +5596,25 @@ function wscUpdateHomeModules() {
   });
   wscUpdateStockManagerSummary();
 }
-async function wscLoadOutstandingQB() {
+async function wscLoadOutstandingQB(result) {
   const module = document.getElementById('wscQbModule');
   const list = document.getElementById('wscOutstandingQBList');
   if (!module || !list) return;
+  const count = module.querySelector('.wsc-module-count');
+  const email = window.getCurrentStaffEmail?.();
+  const load = ++wscOutstandingQBLoad;
+  const canShow = () => load === wscOutstandingQBLoad && window.getCurrentStaffEmail?.() === email &&
+    (typeof window.wscHasUnlockedSession !== 'function' || window.wscHasUnlockedSession());
   try {
-  module.hidden = true;
-  list.replaceChildren();
-  let result = wscHomeDashboardLists?.getHomeQBCommitments;
-  if (!result) {
-    // Compatibility with an older backend while the deployment is being updated.
-    const idToken = await window.getCurrentStaffToken();
-    const response = await fetch('https://warehouse-stock-reports.tmerry.workers.dev', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({action:'getHomeQBCommitments',idToken})
-    });
-    result = await response.json();
-    if (!response.ok) result = {success:false,error:result.error || 'Unable to check QB commitments.'};
-  }
-  if (!result.success) {
-    module.hidden=false;
-    module.querySelector('.wsc-module-count').textContent='Report status unavailable';
-    list.textContent='Unable to check outstanding reports. Refresh Home to try again.';
+  result ??= await wscAdminRequest('getHomeQBCommitments', {refresh: true}, 20_000);
+  if (!canShow()) return;
+  if (!result.success || !Array.isArray(result.reports)) {
     throw new Error(result.error || 'Unable to check QB commitments.');
   }
-  const reports = result.reports || [];
+  const reports = result.reports;
+  module.hidden = reports.length === 0;
+  list.replaceChildren();
   if (!reports.length) return;
-  module.hidden = false;
   const ownCount = reports.filter(wscHomeReportIsMine).length;
   const otherCount = reports.length - ownCount;
   const header = module.querySelector('.wsc-module-header');
@@ -5617,10 +5624,9 @@ async function wscLoadOutstandingQB() {
     ownCount ? ownCount + ' yours' : '',
     otherCount ? otherCount + ' other' : ''
   ].filter(Boolean).join(', ');
-  module.querySelector('.wsc-module-count').textContent =
+  count.textContent =
     reports.length + ' report' + (reports.length === 1 ? '' : 's') +
     ' awaiting commitment' + (ownership ? ' — ' + ownership : '');
-  list.replaceChildren();
   reports.forEach(report => {
     const built = wscCreateHomeReportCard(
       report,
@@ -5669,7 +5675,6 @@ async function wscLoadOutstandingQB() {
       } finally {
         commit.disabled = !canManage || !wscLiveQBAllowed(report.type);
         review.disabled = !canManage;
-        if (wscHomeDashboardLists) delete wscHomeDashboardLists.getHomeQBCommitments;
         try { await wscLoadOutstandingQB(); }
         catch (error) { console.warn('QB dashboard refresh:', error); }
       }
@@ -5677,6 +5682,13 @@ async function wscLoadOutstandingQB() {
     actions.append(review,commit);
     item.append(actions); list.appendChild(item);
   });
+  } catch (error) {
+    if (canShow()) {
+      module.hidden = false;
+      count.textContent = 'Could not refresh outstanding reports';
+      if (!list.childElementCount) list.textContent = 'Open Home again to retry.';
+    }
+    throw error;
   } finally {wscUpdateStockManagerSummary(); wscPaintFavourites();}
 }
 
@@ -5684,7 +5696,7 @@ async function wscLoadOutstandingQB() {
   wscShowHomeView();
   const datesScreen=document.getElementById('wscDatesScreen'); if(datesScreen) datesScreen.style.display='none';
   const datesAmend=document.getElementById('wscDatesAmendScreen');if(datesAmend)datesAmend.style.display='none';
-  void wscRefreshPermissions();
+  void wscRefreshPermissions({preserveOnError: true});
      // Prepare the home screen immediately, while keeping the splash visible
      // for three seconds. Loading continues behind the splash.
      const splash = document.getElementById("itsSplashScreen");
@@ -5718,25 +5730,15 @@ if (privacyGlobe) {
   document.getElementById("reportOptionsScreen").style.display = "none";
 
    try {
-     wscHomeDashboardLists = await fetchHomeDashboard();
-     await Promise.allSettled([
-       loadStockTakeList(),
-       loadStockCountList(),
-       loadTradeShowList(),
-       loadOpenDeliveries()
-     ]);
-     wscUpdateHomeModules();
-     try { await wscLoadOutstandingQB(); } catch (qbError) { console.warn("QB dashboard:", qbError); }
+     await refreshHomeDashboard();
    } catch (error) {
      console.error("Home dashboard error:", error);
      const targets = ["homeStockTakeSessions", "homeStockCountSessions", "homeTradeShowSessions", "openDeliverySessions"];
      targets.forEach(id => {
        const element = document.getElementById(id);
-       if (element) element.textContent = "Unable to load sessions: " + error.message;
+       if (element && !element.childElementCount) element.textContent = "Unable to load sessions: " + error.message;
      });
    } finally {
-     wscHomeDashboardLists = null;
-
     if (homeLoading) {
       homeLoading.style.display = "none";
     }
@@ -7468,11 +7470,19 @@ function wscFunctionAllowed(areas, area) {
   // Older Apps Script deployments return only the original shared permission.
   return (areas?.[area] ?? (area === 'BACK_ORDERS' && areas?.BATCH_ORDERS)) === true;
 }
-async function wscAdminRequest(action, extra={}) {
+async function wscAdminRequest(action, extra={}, timeoutMs) {
   const idToken = await window.getCurrentStaffToken();
-  const response = await fetch(window.WSC_ADMIN_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,idToken,...extra})});
-  const result = await response.json();
-  if (!response.ok || !result.success) throw new Error(result.error || "Unable to retrieve administrator settings.");
+  const response = await fetch(window.WSC_ADMIN_URL, {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({action, idToken, ...extra}),
+    signal: timeoutMs ? AbortSignal.timeout?.(timeoutMs) : undefined
+  });
+  const result = await response.json().catch(() => null);
+  if (!response.ok || !result?.success) {
+    const error = new Error(result?.error || 'Unable to retrieve WSC data. Try again.');
+    error.status = response.status;
+    error.saveUnconfirmed = result?.saveUnconfirmed === true || response.status >= 500 || (response.ok && !result);
+    throw error;
+  }
   return result;
 }
 function wscUpdateCancelReportPreview() {
@@ -7526,21 +7536,10 @@ async function wscCancelInventoryReport() {
     // The yellow Home module buttons are driven by wscUpdateHomeModules(), not
     // by the individual session list rendering functions alone.
     try {
-      wscHomeDashboardLists = null; // Discard any pre-cancellation snapshot.
-      wscHomeDashboardLists = await fetchHomeDashboard();
-      await Promise.allSettled([
-        loadStockTakeList(),
-        loadStockCountList(),
-        loadTradeShowList(),
-        loadOpenDeliveries()
-      ]);
-      wscUpdateHomeModules();
-      try { await wscLoadOutstandingQB(); } catch (qbError) { console.warn("QB dashboard:", qbError); }
+      await refreshHomeDashboard(true);
     } catch (refreshError) {
       console.warn("Dashboard refresh after cancellation:", refreshError);
       status.textContent += " Refresh Home to update the session buttons.";
-    } finally {
-      wscHomeDashboardLists = null;
     }
   } catch (error) {
     status.textContent = "Unable to cancel: " + error.message;
@@ -7972,7 +7971,7 @@ function wscPaintPermissions(permissions) {
   wscPaintFavourites();
 }
 
-async function wscRefreshPermissions() {
+async function wscRefreshPermissions({preserveOnError = false} = {}) {
   const email = String(window.getCurrentStaffEmail?.() || "").trim().toLowerCase();
   if (!email) {
     wscPermissions = null;
@@ -7989,23 +7988,28 @@ async function wscRefreshPermissions() {
     wscPaintPermissions(wscPermissions);
   }
   if (wscPermissionRequest) return wscPermissionRequest;
-  wscPermissionRequest = (async () => {
+  const request = (async () => {
     try {
-      const permissions = await wscAdminRequest("getWSCPermissions");
+      const permissions = await wscAdminRequest("getWSCPermissions", {}, 15_000);
       if (wscPermissionEmail !== email) return;
       wscPermissions = permissions;
       wscPaintPermissions(permissions);
       if (typeof wscDatesRefreshAdminButton === 'function') wscDatesRefreshAdminButton();
     } catch (error) {
       console.error("Permissions unavailable:", error);
-      // Fail closed if the fresh server check fails.
-      if (wscPermissionEmail === email) {
+      const definitivelyDenied = error.status === 401 || error.status === 403;
+      // Leave the editor and its draft available when the access service times out.
+      // Mutations still require a successful server-side staff check.
+      if (wscPermissionEmail === email && (definitivelyDenied || !preserveOnError)) {
         wscPermissions = null;
         wscPaintPermissions(null);
       }
     }
   })();
-  try { await wscPermissionRequest; } finally { wscPermissionRequest = null; }
+  wscPermissionRequest = request;
+  try { await request; } finally {
+    if (wscPermissionRequest === request) wscPermissionRequest = null;
+  }
 }
 function wscCloseAdmin() {document.getElementById("wscAdminPanel").style.display="none";}
 async function wscOpenAdmin() {
@@ -8148,6 +8152,13 @@ window.wscHasUnlockedSession = () => Boolean(auth.currentUser && !wscIdleDialog 
   if (!user || (wscPermissionEmail && wscPermissionEmail !== String(user.email || "").toLowerCase())) {
     wscPermissions = null;
     wscPermissionEmail = null;
+    wscPermissionRequest = null;
+    wscHomeDashboardRequest = null;
+    wscHomeDashboardLists = null;
+    wscOutstandingQBLoad++;
+    document.getElementById('wscQbModule').hidden = true;
+    document.getElementById('wscOutstandingQBList').replaceChildren();
+    window.wscClearBackOrders?.();
     wscPaintPermissions(null);
   }
   document.getElementById("loginScreen").style.display = user ? "none" : "block";
@@ -10239,11 +10250,31 @@ window.wscOpenPostageQuotes=async()=>{
   let generation = 0;
   let opening = false;
   let permissionTimer;
+  let ordersLoad;
 
   function canUse(email) {
     return Boolean(email && window.wscHasUnlockedSession?.() &&
       email === wscPermissionEmail && wscFunctionAllowed(wscPermissions?.functions, 'BACK_ORDERS'));
   }
+
+  function loadBackOrders() {
+    const email = staffEmail();
+    if (!canUse(email)) return;
+    if (ordersLoad?.email === email && ordersLoad.expiresAt > Date.now()) return ordersLoad;
+    const pending = {email, expiresAt: Infinity};
+    pending.promise = wscAdminRequest('wscBackOrders', {path: '/api/back-orders', method: 'GET'}, 23_000)
+      .then(data => {
+        pending.expiresAt = Date.now() + 5_000;
+        return data.result;
+      }).catch(error => {
+        if (ordersLoad === pending) ordersLoad = undefined;
+        throw error;
+      });
+    ordersLoad = pending;
+    return pending;
+  }
+
+  window.wscPrefetchBackOrders = () => { void loadBackOrders()?.promise.catch(() => {}); };
 
   function isActive() {
     return !screen.hidden && canUse(staffEmail());
@@ -10283,7 +10314,14 @@ window.wscOpenPostageQuotes=async()=>{
     noteActivity() { return isActive() && window.wscBatchIdleActivity?.() === true; },
     close() { if (isActive()) wscShowHomeView('office', 'wscBackOrdersButton'); },
     request(path, method, payload) {
-      return withStaff(async () => (await wscAdminRequest('wscBackOrders', {path, method, payload})).result);
+      return withStaff(async () => {
+        if (method === 'GET' && path === '/api/back-orders') {
+          const pending = loadBackOrders();
+          ordersLoad = undefined;
+          return pending?.promise;
+        }
+        return (await wscAdminRequest('wscBackOrders', {path, method, payload}, 23_000)).result;
+      });
     },
     productIndex() {
       return withStaff(async () => {
@@ -10325,6 +10363,7 @@ window.wscOpenPostageQuotes=async()=>{
     generation++;
     clearInterval(permissionTimer);
     frame.removeAttribute('src');
+    ordersLoad = undefined;
   };
 
   window.wscOpenBackOrders = async () => {
@@ -10337,10 +10376,10 @@ window.wscOpenPostageQuotes=async()=>{
       if (!cached) await wscRefreshPermissions();
       if (email !== staffEmail() || !canUse(email)) throw new Error('Back Orders access is unavailable for this account.');
       wscShowHomeView('back-orders', 'wscBackOrdersScreen');
+      window.wscPrefetchBackOrders();
       frame.src = './WSC_Back_Orders.html?v=' + WSC_VERSION;
-      if (cached) void wscRefreshPermissions();
       permissionTimer = setInterval(() => {
-        if (!document.hidden && isActive()) void wscRefreshPermissions();
+        if (!document.hidden && isActive()) void wscRefreshPermissions({preserveOnError: true});
       }, 60000);
     } catch (error) {
       window.showWSCMessage('Back Orders', String(error?.message || error));
