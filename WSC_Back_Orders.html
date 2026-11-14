@@ -174,6 +174,7 @@
           <div id="wscp-error" class="wscp-error" role="alert" hidden></div>
           <div class="wscp-footer">
             <button type="button" id="wscp-cancel" class="wscp-secondary cursor-interaction">Cancel</button>
+            <button type="button" id="wscp-next-product" class="wscp-secondary cursor-interaction" aria-label="Next product">Next</button>
             <button type="button" id="wscp-save" class="wscp-primary cursor-interaction">Save and Close</button>
           </div>
         </form>
@@ -1463,8 +1464,10 @@ const reportConfig = {"fields":{"number":{"label":"Back order"},"customer":{"lab
   const productOptions = ui('product-options');
   const productStatus = ui('product-status');
   const findProduct = ui('find-product');
+  const nextProduct = ui('next-product');
   const productKey = value => value.normalize('NFKC').trim().toLowerCase();
   const productResultLimit = 25;
+  const productLineLimit = 25;
   let productSearchVersion = 0;
 
   function loadProducts() {
@@ -1490,8 +1493,8 @@ const reportConfig = {"fields":{"number":{"label":"Back order"},"customer":{"lab
   function addProduct(item) {
     if (view !== 'editor' || !draft) return;
     closeProducts();
-    if (draft.lines.length >= 25) {
-      productStatus.textContent = 'A back order can have up to 25 product lines.';
+    if (draft.lines.length >= productLineLimit) {
+      productStatus.textContent = 'A back order can have up to ' + productLineLimit + ' product lines.';
       return;
     }
     draft.lines.push({sku: item.sku, name: item.name, backordered: 1, price: ''});
@@ -1567,6 +1570,7 @@ const reportConfig = {"fields":{"number":{"label":"Back order"},"customer":{"lab
     }
   });
   findProduct.addEventListener('click', () => void searchProducts({addExact: true}));
+  nextProduct.addEventListener('click', () => productInput.focus());
   const closeOutsideProducts = ({target}) => {
     if (target !== productInput && target !== findProduct && !productOptions.contains(target)) closeProducts();
   };
@@ -1632,6 +1636,7 @@ const reportConfig = {"fields":{"number":{"label":"Back order"},"customer":{"lab
       return row;
     });
     ui('lines').replaceChildren(...lines);
+    nextProduct.disabled = lines.length >= productLineLimit;
     updateOrderAmounts();
   }
 
