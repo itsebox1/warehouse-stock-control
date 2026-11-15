@@ -10,6 +10,24 @@ input[type="file"]:not(:disabled):active::file-selector-button {
   filter: brightness(.88);
 }
 
+#wscCurrencyFab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0;
+}
+
+#wscCurrencyFab::before {
+  content: "£";
+  font: 700 28px/1 Arial, sans-serif;
+}
+
+#wscCurrencyFab::after {
+  content: "⇄";
+  margin-inline-start: 3px;
+  font: 700 20px/1 Arial, sans-serif;
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .wsc-button-pressed {
     animation: wsc-button-press 220ms ease-out both;
