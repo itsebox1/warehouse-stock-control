@@ -362,6 +362,7 @@ input[type="reset"]:disabled,
 #wscCurrencyDialog label {display:block;font-weight:600;margin-bottom:6px;}
 #wscCurrencyDialog input,#wscCurrencyDialog select {box-sizing:border-box;width:100%;padding:11px;min-height:44px;font-size:16px;border:1px solid #bac8d7;border-radius:7px;}
 #wscCurrencyDialog .conversion {padding:12px;margin-top:16px;background:#f4f7fa;border-radius:8px;font-weight:bold;}
+#wscCurrencyDialog .wsc-rate-retry {width:auto;margin:4px 0 0;padding:8px 14px;}
 @media(max-width:540px){#wscCurrencyDialog .grid.three{grid-template-columns:1fr}#wscHomeInfoTools{gap:7px}#wscHomeInfoTools .wsc-tool-fab{width:40px;height:40px}}
 /* Keep the informational globe on Home only. Loading overlays remain unchanged. */
 .about-globe:not(#homePrivacyGlobe),#tradeShowReportGlobe {visibility:hidden!important;}
@@ -679,7 +680,14 @@ input[type="reset"]:disabled,
   <div class="grid two" style="margin-top:14px"><div><label for="wscPQPackingCost">Packaging cost (£) <span class="hint">(optional)</span></label><div class="cost-field"><span>£</span><input id="wscPQPackingCost" type="number" min="0" step="0.01" value="0" inputmode="decimal"></div></div><div><label for="wscPQMarkup">Add percentage</label><input id="wscPQMarkup" type="number" min="0" step="0.1" value="10" inputmode="decimal"><small>Applied to postage plus packaging.</small></div></div>
  </section>
  </div><aside class="right" data-wsc-quote-step="5" hidden><section class="card" aria-label="Quote summary"><div class="summary-head"><h2>Quote summary</h2><span class="tag">Guide only</span></div>
-  <div class="grid two" style="margin-top:14px"><div><label for="wscPQQuoteCurrency">Quote currency</label><select id="wscPQQuoteCurrency"><option value="GBP">£ Pound sterling</option><option value="EUR">€ Euro</option><option value="USD">$ US dollar</option></select></div><div id="wscPQQuoteFxWrap" hidden><label for="wscPQQuoteFx">Exchange rate <span class="hint">(£1 = ?)</span></label><input id="wscPQQuoteFx" type="number" min="0.000001" step="0.0001" placeholder="Enter current rate" inputmode="decimal"><small>Enter your chosen rate; this is not a live rate.</small></div></div><p class="summary-dest" id="wscPQSummaryDest">—</p>
+  <div class="grid two" style="margin-top:14px">
+   <div><label for="wscPQQuoteCurrency">Quote currency</label><select id="wscPQQuoteCurrency" aria-describedby="wscPQQuoteFxStatus"><option value="GBP">£ Pound sterling</option><option value="EUR">€ Euro</option><option value="USD">$ US dollar</option></select></div>
+   <div id="wscPQQuoteFxWrap" hidden>
+    <p id="wscPQQuoteFxStatus" class="hint" role="status"></p>
+    <button id="wscPQQuoteFxRetry" class="secondary" type="button" hidden>Retry exchange rate</button>
+   </div>
+  </div>
+  <p class="summary-dest" id="wscPQSummaryDest">—</p>
  <div class="estimate"><span>ESTIMATED POSTAGE</span><strong id="wscPQPostageDisplay">—</strong><p id="wscPQServiceDisplay">Complete the delivery details</p></div>
  <dl class="breakdown"><div><dt>Destination address</dt><dd id="wscPQSummaryAddress">—</dd></div><div><dt>Packaging</dt><dd id="wscPQSummaryBox">—</dd></div><div><dt>Parcel dimensions</dt><dd id="wscPQSummaryDimensions" class="parcel-summary">—</dd></div><div><dt>Packed weight</dt><dd id="wscPQSummaryWeight" class="parcel-summary">—</dd></div><div><dt>Packaging cost</dt><dd id="wscPQSummaryPacking">—</dd></div><div><dt id="wscPQSummaryMarkupLabel">Uplift</dt><dd id="wscPQSummaryMarkup">—</dd></div><div class="total"><dt>Suggested charge</dt><dd id="wscPQChargeDisplay">—</dd></div></dl>
  <p id="wscPQQuoteNotice" class="notice" role="status">—</p>
@@ -726,7 +734,16 @@ input[type="reset"]:disabled,
   <dialog id="wscCurrencyDialog" aria-labelledby="wscCurrencyTitle">
     <div class="wsc-currency-heading"><h2 id="wscCurrencyTitle">💱 Currency converter</h2><button id="wscCurrencyClose" type="button">✕ Close</button></div>
     <div id="wscCurrencyContents">
- <details class="card subcard" open><summary>Currency converter</summary><p class="hint">Convert any amount using a rate you enter, with an optional percentage as in PandP.</p><div class="grid three"><div><label for="wscPQConvertAmount">Amount</label><input id="wscPQConvertAmount" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal"></div><div><label for="wscPQConvertFrom">From</label><select id="wscPQConvertFrom"><option value="GBP">GBP — Pound</option><option value="EUR">EUR — Euro</option><option value="USD">USD — US Dollar</option></select></div><div><label for="wscPQConvertTo">To</label><select id="wscPQConvertTo"><option value="EUR">EUR — Euro</option><option value="GBP">GBP — Pound</option><option value="USD">USD — US Dollar</option></select></div><div><label for="wscPQConvertRate">Exchange rate</label><input id="wscPQConvertRate" type="number" min="0.000001" step="0.0001" placeholder="Enter current rate" inputmode="decimal"></div><div><label for="wscPQConvertUplift">Add percentage</label><input id="wscPQConvertUplift" type="number" min="0" step="0.1" value="0" inputmode="decimal"></div></div><div id="wscPQConversionResult" class="conversion" role="status">Enter an amount and exchange rate.</div></details></div>
+      <div class="grid three">
+        <div><label for="wscPQConvertAmount">Amount</label><input id="wscPQConvertAmount" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal"></div>
+        <div><label for="wscPQConvertUplift">Add percentage</label><input id="wscPQConvertUplift" type="number" min="0" step="0.1" value="0" inputmode="decimal"></div>
+        <div><label for="wscPQConvertFrom">From</label><select id="wscPQConvertFrom"><option value="GBP">GBP — Pound</option><option value="EUR">EUR — Euro</option><option value="USD">USD — US Dollar</option></select></div>
+        <div><label for="wscPQConvertTo">To</label><select id="wscPQConvertTo"><option value="EUR">EUR — Euro</option><option value="GBP">GBP — Pound</option><option value="USD">USD — US Dollar</option></select></div>
+      </div>
+      <p id="wscPQConvertFxStatus" class="hint" role="status"></p>
+      <button id="wscPQConvertFxRetry" class="wsc-rate-retry" type="button" hidden>Retry exchange rate</button>
+      <div id="wscPQConversionResult" class="conversion" role="status">Enter an amount.</div>
+    </div>
   </dialog>
   <div id="homeSessionsLoading" role="status" aria-live="polite" style="display:none; padding:15px; text-align:center;">
     <div style="display:inline-flex;align-items:center;gap:14px;padding:18px 24px;border-radius:12px;background:white;box-shadow:0 5px 24px rgba(0,0,0,.2);color:#304B70;font-weight:600;max-width:calc(100% - 30px);">
@@ -1614,7 +1631,7 @@ function validateTradeShowFields() {
   
 <script>
 // WSC deployment version. Update version.txt after the live files are verified.
-const WSC_VERSION = "1.0.14";
+const WSC_VERSION = "1.0.15";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -9575,6 +9592,75 @@ let currentQuote = null, plannedParcels = [], packingEdited = false;
 let autoSuggestionSignature = null, autoFormatSignature = null;
 let liveResults = [], liveSignature = '', liveRequestSerial = 0, liveBusy = false;
 let liveExpiresAt = 0, liveExpiryTimer = null;
+const referenceRateUrl = 'https://api.frankfurter.dev/v2/rates?base=EUR&quotes=GBP%2CUSD&providers=ECB';
+const referenceRateCacheMs = 5 * 60 * 1000;
+const referenceRateFormat = new Intl.NumberFormat('en-GB', {maximumFractionDigits: 8});
+const referenceDateFormat = new Intl.DateTimeFormat('en-GB', {day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC'});
+let referenceRates = null;
+let referenceRateState = 'idle';
+
+async function refreshReferenceRates() {
+  if (referenceRateState === 'loading' || (referenceRates && Date.now() < referenceRates.expiresAt)) return;
+  referenceRateState = 'loading';
+  referenceRates = null;
+  convert();
+  if ($('quoteCurrency').value !== 'GBP') update();
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch(referenceRateUrl, {
+      credentials: 'omit', referrerPolicy: 'no-referrer', redirect: 'error', signal: controller.signal
+    });
+    if (!response.ok) throw new Error('Exchange rates unavailable');
+    const rows = await response.json();
+    if (!Array.isArray(rows)) throw new Error('Invalid exchange rates');
+    const gbp = rows.find(row => row?.base === 'EUR' && row.quote === 'GBP');
+    const usd = rows.find(row => row?.base === 'EUR' && row.quote === 'USD');
+    const published = new Date(gbp?.date + 'T00:00:00Z');
+    if (!gbp || !usd || gbp.date !== usd.date || !/^\d{4}-\d{2}-\d{2}$/.test(gbp.date) ||
+        !Number.isFinite(published.getTime()) || published.toISOString().slice(0, 10) !== gbp.date ||
+        !clean(gbp.rate) || gbp.rate === 0 || !clean(usd.rate) || usd.rate === 0) {
+      throw new Error('Incomplete exchange rates');
+    }
+    referenceRates = {quotes: {EUR: 1, GBP: gbp.rate, USD: usd.rate}, published, expiresAt: Date.now() + referenceRateCacheMs};
+    referenceRateState = 'ready';
+  } catch {
+    referenceRateState = 'failed';
+  } finally {
+    clearTimeout(timeout);
+    convert();
+    if ($('quoteCurrency').value !== 'GBP') update();
+  }
+}
+
+function describeReferenceRate(from, to, rate, published) {
+  return '1 ' + from + ' = ' + referenceRateFormat.format(rate) + ' ' + to +
+    ' · ECB reference rate, ' + referenceDateFormat.format(published);
+}
+
+function showReferenceRate(field, from, to) {
+  const same = from === to;
+  const quotes = referenceRates?.quotes;
+  const rate = same ? 1 : quotes && Object.hasOwn(quotes, from) && Object.hasOwn(quotes, to) ? quotes[to] / quotes[from] : null;
+  const waiting = referenceRateState === 'loading';
+  const failed = !same && !waiting && referenceRateState === 'failed';
+  $(field + 'Retry').hidden = !failed;
+  $(field + 'Status').textContent = same ? 'Same currency' : rate !== null
+    ? describeReferenceRate(from, to, rate, referenceRates.published)
+    : failed ? 'The exchange rate is temporarily unavailable.' : 'Getting the exchange rate…';
+  return rate;
+}
+
+function updateQuoteCurrency() {
+  if ($('quoteCurrency').value !== 'GBP') void refreshReferenceRates();
+  update();
+}
+
+function updateConverterCurrency() {
+  if ($('convertFrom').value !== $('convertTo').value) void refreshReferenceRates();
+  convert();
+}
 
 function countryName() {
   const destination = $('destination').value;
@@ -9912,8 +9998,9 @@ function update() {
   $('manualFields').hidden = !manual;
   $('liveFields').hidden = !live;
   $('otherCountryWrap').hidden = $('destination').value !== '__other__';
-  const currency = $('quoteCurrency').value, fx = num('quoteFx'), fxNeeded = currency !== 'GBP';
+  const currency = $('quoteCurrency').value, fxNeeded = currency !== 'GBP';
   $('quoteFxWrap').hidden = !fxNeeded;
+  const fx = fxNeeded ? showReferenceRate('quoteFx', 'GBP', currency) : null;
   const quote = manual
     ? {price:num('manualPrice'), service:$('manualService').value.trim() || 'Service not entered', source:'Price entered by user'}
     : live ? currentLiveQuote() : estimate();
@@ -9928,8 +10015,8 @@ function update() {
   const eligible = !error && clean(quote.price);
   const increase = eligible ? (quote.price + packing) * markup / 100 : null;
   const total = eligible ? quote.price + packing + increase : null;
-  const fxError = eligible && fxNeeded && !(clean(fx) && fx > 0);
-  const charge = !eligible ? '—' : fxNeeded && !fxError ? money(total * fx, currency) + ' (' + money(total) + ')' : money(total);
+  const fxError = eligible && fxNeeded && (fx === null || !Number.isFinite(total * fx));
+  const charge = !eligible || fxError ? '—' : fxNeeded ? money(total * fx, currency) + ' (' + money(total) + ')' : money(total);
   const weight = parcels.every(hasWeight) ? parcels.reduce((sum, parcel) => sum + parcel.weight, 0) : null;
 
   $('summaryAddress').textContent = address || 'Not entered';
@@ -9949,7 +10036,7 @@ function update() {
     'Saved reference rates dated 3 November 2026. ';
   const notice = $('quoteNotice');
   notice.textContent = error || priceNote + (plannedParcels.length ? 'Check the packing estimates against the actual parcels. ' : '') +
-    (fxError ? 'Enter a current exchange rate to convert the suggested charge.' : 'Confirm the price, service and contents with Click & Drop.');
+    (fxError ? 'The suggested charge will appear when the exchange rate is available.' : 'Confirm the price, service and contents with Click & Drop.');
   notice.classList.toggle('good', eligible && !fxError);
   $('copyQuote').disabled = !eligible || fxError;
   $('printQuote').disabled = $('copyQuote').disabled;
@@ -9960,12 +10047,30 @@ function update() {
     packageFormats:live ? liveQueries(parcels).map(query => formatLabels[query.packageFormat]) : [],
     postage:quote.price, apiCost:live ? quote.apiCost : null, vatCost:live ? quote.vatCost : null,
     vatTreatment:live ? quote.vatTreatment : 'Not applicable', service:quote.service, parcelServices:quote.parcelServices || [],
-    source:quote.source, packing, markup, increase, total, charge, currency, fxRate:fxNeeded ? fx : null,
+    source:quote.source, packing, markup, increase, total, charge, currency,
+    fxDescription:fxNeeded ? describeReferenceRate('GBP', currency, fx, referenceRates.published) : 'Not applicable',
     customerCharge:currency === 'GBP' ? money(total) : money(total * fx, currency)
   } : null;
 }
 
-function convert(){const amt=num('convertAmount'),rate=num('convertRate'),uplift=num('convertUplift'),from=$('convertFrom').value,to=$('convertTo').value,same=from===to;$('convertRate').disabled=same;if(same)$('convertRate').placeholder='Not needed';else $('convertRate').placeholder='Enter current rate';if(!clean(amt)||!clean(uplift)||(!same&&(!clean(rate)||rate<=0))){$('conversionResult').textContent='Enter an amount and '+(same?'percentage.':'exchange rate.');return;}const result=amt*(same?1:rate)*(1+uplift/100);$('conversionResult').textContent=money(amt,from)+' → '+money(result,to)+(uplift?' including '+uplift+'%':'');}
+function convert() {
+  const amount = num('convertAmount'), uplift = num('convertUplift') ?? 0;
+  const from = $('convertFrom').value, to = $('convertTo').value;
+  const rate = showReferenceRate('convertFx', from, to);
+  const result = $('conversionResult');
+  if (amount === null) {
+    result.textContent = 'Enter an amount.';
+  } else if (!clean(amount) || !clean(uplift)) {
+    result.textContent = 'Enter a valid amount and percentage.';
+  } else if (rate === null) {
+    result.textContent = '—';
+  } else {
+    const converted = amount * rate * (1 + uplift / 100);
+    result.textContent = Number.isFinite(converted)
+      ? money(amount, from) + ' → ' + money(converted, to) + (uplift ? ' including ' + uplift + '%' : '')
+      : 'Enter a smaller amount or percentage.';
+  }
+}
 function fullAddress(q){return [q.address,q.postcode,q.country].filter(Boolean).join('\n');}
 function parcelRows(q, internal) {
  const prefix = q.estimated ? 'Estimated packed weight' : 'Packed weight';
@@ -9990,13 +10095,13 @@ function inHouseRows(q){return [
  ['Service',q.service],['Postage used in quote',money(q.postage)],['Royal Mail cost field',q.apiCost===null?'Not applicable':money(q.apiCost)],
  ['Royal Mail VAT field',q.vatCost===null?'Not supplied / not applicable':money(q.vatCost)],['VAT treatment',q.vatTreatment],
  ['Packaging cost',money(q.packing)],['Uplift ('+q.markup+'%)',money(q.increase)],['Quote currency',q.currency],
- ['Exchange rate',q.fxRate===null?'Not applicable':'£1 = '+q.fxRate+' '+q.currency],['Suggested charge',q.charge],['Source',q.source]
+ ['Exchange rate',q.fxDescription],['Suggested charge',q.charge],['Source',q.source]
  ];}
 function customerRows(q){return [['Destination address',fullAddress(q)],...parcelRows(q,false),['Price',q.customerCharge]];}
 function quoteText(){if(!currentQuote)return '';return 'WSC — ESTIMATE ONLY\n'+inHouseRows(currentQuote).map(row=>row[0]+': '+row[1]).join('\n')+'\nConfirm current price, service and carrier acceptance in Click & Drop.';}
 function makePrint(kind){const customer=kind==='customer',table=$('printTable');$('printCustomerGreeting').hidden=!customer;if(customer)$('printGreeting').textContent=new Date().getHours()<12?'Good Morning,':'Good Afternoon,';$('printHeading').textContent=customer?'Customer Postage Quote':'WSC — In-house Postage Quote';$('printIntro').hidden=customer;$('printFooter').hidden=customer;table.replaceChildren();for(const [key,text] of (customer?customerRows(currentQuote):inHouseRows(currentQuote))){const row=document.createElement('tr'),label=document.createElement('td'),value=document.createElement('td');label.textContent=key;value.textContent=String(text);row.append(label,value);table.append(row);}}
 let quoteStep=1;
-function setQuoteStep(step,focus=true){quoteStep=Math.max(1,Math.min(5,step));document.querySelectorAll('#wscPostageScreen [data-wsc-quote-step]').forEach(el=>{el.hidden=Number(el.dataset.wscQuoteStep)!==quoteStep;});$('stepBack').hidden=quoteStep===1;$('stepNext').hidden=quoteStep===5;$('stepStatus').textContent='Step '+quoteStep+' of 5'+(quoteStep===5?' — Quote summary':'');window.scrollTo(0,0);if(focus){const heading=document.querySelector('#wscPostageScreen [data-wsc-quote-step="'+quoteStep+'"] h2');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}}}
+function setQuoteStep(step,focus=true){quoteStep=Math.max(1,Math.min(5,step));document.querySelectorAll('#wscPostageScreen [data-wsc-quote-step]').forEach(el=>{el.hidden=Number(el.dataset.wscQuoteStep)!==quoteStep;});$('stepBack').hidden=quoteStep===1;$('stepNext').hidden=quoteStep===5;$('stepStatus').textContent='Step '+quoteStep+' of 5'+(quoteStep===5?' — Quote summary':'');if(quoteStep===5)updateQuoteCurrency();window.scrollTo(0,0);if(focus){const heading=document.querySelector('#wscPostageScreen [data-wsc-quote-step="'+quoteStep+'"] h2');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}}}
 function closePdfDialog(returnFocus=true){const dialog=$('pdfDialog');if(dialog.open){if(typeof dialog.close==='function')dialog.close();else dialog.removeAttribute('open');}if(returnFocus)$('printQuote').focus({preventScroll:true});}
 function printSelectedQuote(kind){update();if(!currentQuote){closePdfDialog();$('actionMessage').textContent='Get a current price before printing.';return;}if(kind==='customer'&&!currentQuote.address){closePdfDialog(false);$('addressMessage').textContent='Please enter the destination address for the customer quote.';$('addressMessage').hidden=false;setQuoteStep(3,false);$('destinationAddress').focus({preventScroll:true});return;}makePrint(kind);closePdfDialog(false);document.body.classList.add('wsc-postage-printing');try{window.print();}catch(error){document.body.classList.remove('wsc-postage-printing');throw error;}}
 $('stepBack').addEventListener('click',()=>setQuoteStep(quoteStep-1));$('stepNext').addEventListener('click',()=>{if(quoteStep===1)suggestPackaging();setQuoteStep(quoteStep+1);});
@@ -10004,13 +10109,18 @@ $('autoBox').addEventListener('click',()=>suggestPackaging(true));
 $('destinationAddress').addEventListener('input',()=>{$('addressMessage').hidden=true;});
 $('printInternal').addEventListener('click',()=>printSelectedQuote('internal'));$('printCustomer').addEventListener('click',()=>printSelectedQuote('customer'));$('printCancel').addEventListener('click',()=>closePdfDialog());
 [...quantityFields,'postcode','destinationAddress','otherCountry','packageFormat','liveVatTreatment',
- 'manualPrice','manualService','packingCost','markup','quoteCurrency','quoteFx'].forEach(id=>{
+ 'manualPrice','manualService','packingCost','markup'].forEach(id=>{
   $(id).addEventListener('input',update);$(id).addEventListener('change',update);
 });
 ['destination','otherCountryCode'].forEach(id=>{
  $(id).addEventListener('change',()=>{if(plannedParcels.length && !packingEdited) suggestPackaging(true);else update();});
 });
-['convertAmount','convertFrom','convertTo','convertRate','convertUplift'].forEach(id=>{$(id).addEventListener('input',convert);$(id).addEventListener('change',convert);});
+$('quoteCurrency').addEventListener('change', updateQuoteCurrency);
+['convertAmount','convertUplift'].forEach(id => $(id).addEventListener('input', convert));
+['convertFrom','convertTo'].forEach(id => $(id).addEventListener('change', updateConverterCurrency));
+$('convertFxRetry').addEventListener('click', refreshReferenceRates);
+$('quoteFxRetry').addEventListener('click', refreshReferenceRates);
+document.getElementById('wscCurrencyFab').addEventListener('click', updateConverterCurrency);
 document.querySelectorAll('input[name="wscPostageSource"]').forEach(el=>el.addEventListener('change',update));
 $('guideType').addEventListener('change',()=>{populateGuide();applyGuide('Packaging selected manually. Check the packed size and weight.');});
 $('guideChoice').addEventListener('change',()=>applyGuide('Packaging selected manually. Check the packed size and weight.'));
