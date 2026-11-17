@@ -138,7 +138,6 @@
                 </div>
               </div>
               <label class="wscp-field">Order date <input type="date" id="wscp-date" required></label>
-              <label class="wscp-field">Customer order / PO ref. <input id="wscp-reference" maxlength="100" placeholder="e.g. PO-1042"></label>
               <label class="wscp-field">Currency
                 <select id="wscp-currency" required>
                   <option>GBP</option><option>EUR</option><option>USD</option>
@@ -340,7 +339,7 @@
   #wsc-back-orders-preview .wscp-state { display: inline-block; border-radius: 5px; padding: 2px 7px; background: var(--wscp-tint); color: var(--wscp-blue); font-size: 12px; white-space: nowrap; }
   #wsc-back-orders-preview .wscp-state-done { background: var(--wscp-ok-bg); color: var(--wscp-ok); }
   #wsc-back-orders-preview .wscp-pad { padding: 14px; margin-bottom: 12px; }
-  #wsc-back-orders-preview .wscp-order-fields { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, .65fr); gap: 11px; }
+  #wsc-back-orders-preview .wscp-order-fields { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr) minmax(0, .65fr); gap: 11px; }
   #wsc-back-orders-preview .wscp-field { display: grid; gap: 4px; align-content: start; min-width: 0; color: var(--wscp-text); font-weight: 700; }
   #wsc-back-orders-preview .wscp-notes { margin-top: 10px; }
   #wsc-back-orders-preview .wscp-addresses { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 14px; border-top: 1px solid var(--wscp-line); margin-top: 13px; padding-top: 11px; }
@@ -379,14 +378,16 @@
   #wsc-back-orders-preview .wscp-lines { display: grid; gap: 8px; margin-bottom: 12px; }
   #wsc-back-orders-preview .wscp-line {
     display: grid; align-items: end; gap: 8px;
-    grid-template-columns: minmax(125px, 1.85fr) minmax(100px, .85fr) minmax(85px, .85fr) minmax(112px, 1fr) auto;
+    grid-template-columns: minmax(135px, 1.85fr) minmax(140px, 1.15fr)
+      minmax(86px, .65fr) minmax(78px, .6fr) minmax(105px, .8fr) auto;
     padding: 9px; border: 1px solid var(--wscp-line); border-radius: 7px;
   }
   #wsc-back-orders-preview .wscp-item { align-self: center; min-width: 0; overflow-wrap: anywhere; }
   #wsc-back-orders-preview .wscp-item strong { display: block; }
   #wsc-back-orders-preview .wscp-line label { font-size: 12px; }
+  #wsc-back-orders-preview .wscp-line :is(input, output) { min-height: 38px; padding: 6px 8px; }
   #wsc-back-orders-preview .wscp-line output {
-    min-height: 42px; padding: 8px 10px; border: 1px solid var(--wscp-line); border-radius: 6px;
+    border: 1px solid var(--wscp-line); border-radius: 6px;
     background: var(--wscp-tint); font-size: 16px; text-align: right; font-variant-numeric: tabular-nums; overflow-wrap: anywhere;
   }
   #wsc-back-orders-preview .wscp-remove { padding-inline: 9px; }
@@ -400,11 +401,12 @@
   @media (max-width: 875px) {
     #wsc-back-orders-preview .wscp-order-date { display: none; }
     #wsc-back-orders-preview .wscp-line { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    #wsc-back-orders-preview .wscp-item { grid-column: 1 / -1; }
+    #wsc-back-orders-preview .wscp-item { grid-column: span 2; }
     #wsc-back-orders-preview .wscp-remove { grid-column: -2 / -1; justify-self: end; }
   }
   @media (max-width: 675px) {
     #wsc-back-orders-preview .wscp-order-fields { grid-template-columns: 1fr 1fr; }
+    #wsc-back-orders-preview :is(.wscp-item, .wscp-line-reference) { grid-column: 1 / -1; }
     #wsc-back-orders-preview .wscp-wide { display: none; }
     #wsc-back-orders-preview .wscp-list-detail { display: block; }
   }
@@ -419,7 +421,10 @@
     #wsc-back-orders-preview .wscp-pad { padding: 11px; }
     #wsc-back-orders-preview .wscp-options button { min-height: 44px; }
   }
-  @media (pointer: coarse) { #wsc-back-orders-preview button, #wsc-back-orders-preview .wscp-order-actions button, #wsc-back-orders-preview .wscp-report-column-order button { min-height: 44px; } }
+  @media (pointer: coarse) {
+    #wsc-back-orders-preview button, #wsc-back-orders-preview .wscp-order-actions button, #wsc-back-orders-preview .wscp-report-column-order button { min-height: 44px; }
+    #wsc-back-orders-preview .wscp-line :is(input, output) { min-height: 40px; }
+  }
   @media (prefers-reduced-motion: reduce) { #wsc-back-orders-preview button { transition: none; } }
   @media print {
     @page { size: A4 landscape; margin: 12mm; }
@@ -746,7 +751,7 @@ window.wscCustomerPicker = (function () {
 
 </script>
 <script>
-const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label":"Customer"},"date":{"label":"Order date","format":"date"},"reference":{"label":"Customer order / PO ref."},"currency":{"label":"Currency"},"notes":{"label":"Notes"},"customerId":{"label":"QB ID"},"billing":{"label":"Billing address"},"delivery":{"label":"Delivery address"},"contactName":{"label":"Contact name"},"phone":{"label":"Phone"},"email":{"label":"Email"},"status":{"label":"Status"},"orderQty":{"label":"Backorder Total Qty","format":"quantity"},"orderAmount":{"label":"Backorder Total Amount","format":"money"},"item":{"label":"Item","product":true},"description":{"label":"Description","product":true},"backordered":{"label":"Backordered Qty","format":"quantity","product":true},"price":{"label":"Unit Price","format":"money","product":true},"amount":{"label":"Item Total Amount","format":"money","product":true}},"builtIn":{"po":{"name":"Backorder for PO Report","columns":["customer","backordered","item","description","price","amount"],"labels":{"backordered":"Backordered","price":"Unit price","amount":"Total amount"}},"bareBones":{"name":"Bare Bones Backorder Report","columns":["item","backordered"],"labels":{"backordered":"Backordered"}}}};
+const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label":"Customer"},"date":{"label":"Order date","format":"date"},"reference":{"label":"Customer order / PO ref.","product":true},"currency":{"label":"Currency"},"notes":{"label":"Notes"},"customerId":{"label":"QB ID"},"billing":{"label":"Billing address"},"delivery":{"label":"Delivery address"},"contactName":{"label":"Contact name"},"phone":{"label":"Phone"},"email":{"label":"Email"},"status":{"label":"Status"},"orderQty":{"label":"Backorder Total Qty","format":"quantity"},"orderAmount":{"label":"Backorder Total Amount","format":"money"},"item":{"label":"Item","product":true},"description":{"label":"Description","product":true},"backordered":{"label":"Backordered Qty","format":"quantity","product":true},"price":{"label":"Unit Price","format":"money","product":true},"amount":{"label":"Item Total Amount","format":"money","product":true}},"builtIn":{"po":{"name":"Backorder for PO Report","columns":["customer","backordered","item","description","price","amount"],"labels":{"backordered":"Backordered","price":"Unit price","amount":"Total amount"}},"bareBones":{"name":"Bare Bones Backorder Report","columns":["item","backordered"],"labels":{"backordered":"Backordered"}}}};
 (() => {
   const root = document.getElementById('wsc-back-orders-preview');
   const ui = key => root.querySelector('#wscp-' + key);
@@ -822,6 +827,7 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
   function orderId(number) { return 'BK-' + String(number).padStart(6, '0'); }
   function remaining(line) { return line.backordered ?? Math.max(0, line.ordered - line.fulfilled); }
   function total(order) { return order.lines.reduce((sum, line) => sum + remaining(line), 0); }
+  function lineReference(order, line) { return line.reference ?? order.reference ?? ''; }
 
   async function requestJson(url, recordLabel, method = 'GET', body) {
     if (isLive) {
@@ -936,10 +942,13 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
   function renderList() {
     if (!ordersLoaded) return;
     const term = ui('filter').value.trim().toLowerCase();
-    const shown = orders.filter(order => [companyName(order), order.reference, orderId(order.number)]
+    const shown = orders.map(order => ({
+      order,
+      references: [...new Set(order.lines.map(line => lineReference(order, line).trim()).filter(Boolean))].join(', ')
+    })).filter(({order, references}) => [companyName(order), references, orderId(order.number)]
       .some(text => text.toLowerCase().includes(term))
-    ).sort((a, b) => b.date.localeCompare(a.date) || b.number - a.number);
-    const rows = shown.map(order => {
+    ).sort((a, b) => b.order.date.localeCompare(a.order.date) || b.order.number - a.order.number);
+    const rows = shown.map(({order, references}) => {
       const company = companyName(order);
       const id = orderId(order.number);
       const qty = total(order);
@@ -948,7 +957,7 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
       const row = element('tr', null, onDelivery ? 'wscp-delivery-match' : '');
       const companyCell = element('td');
       companyCell.append(control(company, 'wscp-link wscp-company-link', () => openOrder(order)), element('small',
-        [id, order.reference, qty ? '' : state].filter(Boolean).join(' · '),
+        [id, references, qty ? '' : state].filter(Boolean).join(' · '),
         'wscp-list-detail'));
       if (onDelivery) companyCell.append(element('small', 'Item on delivery invoice', 'wscp-delivery-label'));
       const stateCell = element('td', null, 'wscp-wide');
@@ -961,7 +970,7 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
       complete.setAttribute('aria-label', 'Complete ' + id + ' for ' + company);
       buttons.append(edit, complete);
       action.append(buttons);
-      row.append(companyCell, element('td', id, 'wscp-wide wscp-nowrap'), element('td', order.reference || '—', 'wscp-wide'),
+      row.append(companyCell, element('td', id, 'wscp-wide wscp-nowrap'), element('td', references || '—', 'wscp-wide'),
         element('td', displayDate(order.date), 'wscp-wide wscp-order-date wscp-nowrap'),
         element('td', amounts.format(qty), 'wscp-number'), stateCell, action);
       return row;
@@ -1058,7 +1067,7 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
       const contact = order.quickBooksCustomer;
       const orderQty = total(order);
       const orderFields = {
-        number: orderId(order.number), customer: companyName(order), date: order.date, reference: order.reference,
+        number: orderId(order.number), customer: companyName(order), date: order.date,
         currency: order.currency, notes: order.notes, customerId: contact?.id,
         billing: addressText(contact?.billingAddress), delivery: addressText(contact?.shippingAddress),
         contactName: contact?.contactName, phone: contact?.phone || contact?.mobile, email: contact?.email,
@@ -1069,7 +1078,7 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
         const backordered = remaining(line);
         if (report.kind === 'po' && !backordered) return [];
         const price = priceInMinorUnits(line.price);
-        return [{...orderFields, item: line.sku, description: line.name, backordered, price,
+        return [{...orderFields, item: line.sku, description: line.name, reference: lineReference(order, line), backordered, price,
           amount: itemTotalAmount(backordered, price)}];
       });
     });
@@ -1504,7 +1513,7 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
       productStatus.textContent = 'A back order can have up to ' + productLineLimit + ' product lines.';
       return;
     }
-    draft.lines.push({sku: item.sku, name: item.name, backordered: 1, price: ''});
+    draft.lines.push({sku: item.sku, name: item.name, reference: '', backordered: 1, price: ''});
     dirty = true;
     productInput.value = '';
     productStatus.textContent = '';
@@ -1623,7 +1632,7 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
         input.addEventListener('input', () => {
           line[key] = input.value;
           dirty = true;
-          updateOrderAmounts();
+          if (key !== 'reference') updateOrderAmounts();
         });
         wrapper.append(input);
         return wrapper;
@@ -1635,7 +1644,9 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
         (ui('lines').children[index]?.querySelector('input') || ui('find-product')).focus();
       });
       remove.setAttribute('aria-label', 'Remove ' + line.sku + ', line ' + (index + 1));
-      row.append(name,
+      const reference = field(reportConfig.fields.reference.label, 'reference', {type: 'text', maxLength: 100});
+      reference.className += ' wscp-line-reference';
+      row.append(name, reference,
         field('Backordered Qty', 'backordered', {type: 'number', min: '0', max: '999999999', step: '1', required: true, inputMode: 'numeric'}),
         field('Unit Price', 'price', {type: 'number', min: '0', max: '999999999', step: '0.01', inputMode: 'decimal'}),
         amountLabel, remove);
@@ -1662,15 +1673,17 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
   }
 
   function openOrder(order) {
-    draft = order ? {...order, lines: order.lines.map(line => ({...line, backordered: remaining(line)}))} : {
-      number: 0, customer: '', date: localToday(), reference: '', currency: 'GBP', notes: '', lines: []
+    draft = order ? {...order, lines: order.lines.map(line => ({
+      ...line, reference: lineReference(order, line), backordered: remaining(line)
+    }))} : {
+      number: 0, customer: '', date: localToday(), currency: 'GBP', notes: '', lines: []
     };
     draftRequestId = order ? undefined : crypto.randomUUID();
     unconfirmedSave = undefined;
     dirty = false;
     ui('editor-title').textContent = draft.number ? 'Edit ' + orderId(draft.number) : 'New Back Order';
     ui('customer').value = companyName(draft);
-    for (const field of ['date', 'reference', 'currency', 'notes']) ui(field).value = draft[field];
+    for (const field of ['date', 'currency', 'notes']) ui(field).value = draft[field];
     ui('product').value = '';
     ui('product-status').textContent = '';
     customerPicker.reset({hasCustomer: !!draft.customer});
@@ -1692,10 +1705,14 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
     if (!draft.lines.length) return showError('Add at least one product.', ui('product'));
     if (!form.reportValidity()) return;
     const {number, revision, customer, quickBooksCustomer, indexedCustomer, lines} = draft;
+    const savedLines = lines.map(line => ({...line, reference: line.reference.trim(), backordered: Number(line.backordered)}));
+    const firstReference = savedLines[0].reference;
+    // Keep the shared reference available to earlier clients when every line has the same value.
+    const reference = savedLines.every(line => line.reference === firstReference) ? firstReference : '';
     const order = {
-      customer, quickBooksCustomer, indexedCustomer, date: ui('date').value, reference: ui('reference').value.trim(),
+      customer, quickBooksCustomer, indexedCustomer, date: ui('date').value, reference,
       currency: ui('currency').value, notes: ui('notes').value.trim(),
-      lines: lines.map(line => ({...line, backordered: Number(line.backordered)}))
+      lines: savedLines
     };
     const request = unconfirmedSave ?? (number ? {order, revision} : {order, requestId: draftRequestId});
     const changesSinceLastSave = unconfirmedSave && JSON.stringify(request.order) !== JSON.stringify(order);
