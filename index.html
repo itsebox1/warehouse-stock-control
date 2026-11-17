@@ -47,6 +47,15 @@
 .wsc-module-detail[hidden], .wsc-module-arrow[hidden] { display:none !important; }
 .wsc-module-count { font-size:12px; padding:0 0 10px; text-align:center; }
 .wsc-manager-entry { width:100%; margin:12px 0; background:#294766; color:white; border-radius:12px; }
+.wsc-office-icon {
+  display:inline-block; position:relative; width:1em; height:.66em;
+  margin-inline-end:.25em; vertical-align:.01em; pointer-events:none;
+  background:#ffcf75; border-radius:.1em; box-shadow:inset 0 -.09em #e8a447;
+}
+.wsc-office-icon::before {
+  content:""; position:absolute; inset-block-start:-.13em; inset-inline-start:0;
+  width:.45em; height:.24em; border-radius:.08em .08em 0 0; background:#ffcf75;
+}
 .wsc-manager-action { margin:12px 0; background:#476984; }
 .wsc-manager-action[hidden], .wsc-manager-entry[hidden] { display:none !important; }
 .wsc-module-header > .wsc-favourite-toggle {
@@ -585,7 +594,7 @@ input[type="reset"]:disabled,
     <button id="wscStockManagerButton" class="wsc-manager-entry" type="button" onclick="wscOpenManager('stock')">📦 Stock Manager</button>
     <p id="wscStockManagerSummary" role="status" aria-live="polite" hidden style="text-align:center;font-size:12px;margin:0 0 10px;"></p>
     <button id="wscPostButton" class="wsc-manager-entry" type="button" onclick="wscOpenManager('post')" hidden>📮 Post Manager</button>
-    <button id="wscOfficeManagerButton" class="wsc-manager-entry" type="button" onclick="wscOpenManager('office')" hidden>🗂 Office Manager</button>
+    <button id="wscOfficeManagerButton" class="wsc-manager-entry" type="button" onclick="wscOpenManager('office')" hidden><span class="wsc-office-icon" aria-hidden="true"></span>Office Manager</button>
     <section id="wscFavourites" aria-labelledby="wscFavouritesHeading" hidden>
       <h2 id="wscFavouritesHeading">Favourites</h2>
       <div id="wscFavouriteList"></div>
@@ -603,7 +612,7 @@ input[type="reset"]:disabled,
   </section>
   <section id="wscOfficeManagerScreen" data-wsc-home-view="office" aria-labelledby="wscOfficeManagerHeading" hidden>
     <button type="button" onclick="wscCloseManager('office')" style="width:100%;">🏠 Home</button>
-    <h2 id="wscOfficeManagerHeading" tabindex="-1" style="text-align:center;">🗂 Office Manager</h2>
+    <h2 id="wscOfficeManagerHeading" tabindex="-1" style="text-align:center;"><span class="wsc-office-icon" aria-hidden="true"></span>Office Manager</h2>
     <div class="wsc-module-header wsc-manager-action" hidden>
       <button id="wscBatchOrderButton" class="wsc-module-main" data-wsc-favourite="batch" data-wsc-area="BATCH_ORDERS" type="button" onclick="wscOpenBatchOrders()">📋 Batch Orders</button>
     </div>
@@ -1669,8 +1678,8 @@ function validateTradeShowFields() {
 </div>
   
 <script>
-// WSC deployment version. Update version.txt after the live files are verified.
-const WSC_VERSION = "1.0.16";
+// Keep version.txt in sync with this version so installed apps can pick up releases.
+const WSC_VERSION = "1.0.17";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
