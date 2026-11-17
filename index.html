@@ -192,7 +192,7 @@
       margin: 12px 0;
     }
 
-    #reader {
+    #reader, #wscQuickCheckReader {
       width: 100%;
       max-width: 450px;
       margin-top: 16px;
@@ -202,6 +202,23 @@
       overflow-wrap: anywhere;
       margin-top: 16px;
     }
+
+    #wscQuickCheckButton { margin-top: 0; }
+    #wscQuickCheck { padding: 15px; margin: 15px 0; border: 1px solid #ccc; }
+    #wscQuickCheckHeading { margin-top: 0; }
+    .wsc-quick-check-search { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-top: 6px; }
+    .wsc-quick-check-search input {
+      width: 100%; min-width: 0; box-sizing: border-box; padding: 12px;
+      border: 1px solid #bac8d7; border-radius: 6px; font: inherit;
+    }
+    .wsc-quick-check-search button { width: auto; min-height: 48px; margin: 0; padding: 10px 14px; }
+    #wscQuickCheck button:disabled { opacity: .6; }
+    #wscQuickCheckBack, #wscQuickCheckStop { background: #e7edf4; color: #244b72; }
+    #wscQuickCheckStatus:empty { display: none; }
+    #wscQuickCheckStatus, #wscQuickCheckResult { overflow-wrap: anywhere; }
+    #wscQuickCheckResult { background: #eef4f9; padding: 15px; border: 1px solid #cad7e4; border-radius: 8px; }
+    #wscQuickCheckResult p { margin: 6px 0; }
+    #wscQuickCheckQuantity { display: block; color: #244b72; font-size: 1.9rem; }
 
 .count-type-selector {
   display: flex;
@@ -1185,7 +1202,29 @@ function validateTradeShowFields() {
     Start New Stock Count
   </button>
 
+  <button id="wscQuickCheckButton" type="button" data-wsc-area="SC">Quick Check</button>
+
 </div>
+<section id="wscQuickCheck" aria-labelledby="wscQuickCheckHeading" hidden>
+  <h3 id="wscQuickCheckHeading" tabindex="-1">Quick Check</h3>
+  <form id="wscQuickCheckForm" role="search" aria-label="Find stock quantity">
+    <label for="wscQuickCheckSku">Product SKU</label>
+    <div class="wsc-quick-check-search">
+      <input id="wscQuickCheckSku" type="search" maxlength="100" autocomplete="off" spellcheck="false" enterkeyhint="search">
+      <button id="wscQuickCheckSearch" type="submit">Search</button>
+    </div>
+  </form>
+  <button id="wscQuickCheckScan" type="button">Scan QR Code</button>
+  <div id="wscQuickCheckReader" hidden></div>
+  <button id="wscQuickCheckStop" type="button" hidden>Stop scanning</button>
+  <p id="wscQuickCheckStatus" role="status"></p>
+  <div id="wscQuickCheckResult" role="status" aria-atomic="true" hidden>
+    <strong id="wscQuickCheckProduct"></strong>
+    <p id="wscQuickCheckFoundSku"></p>
+    <p>QuickBooks stock quantity <strong id="wscQuickCheckQuantity"></strong></p>
+  </div>
+  <button id="wscQuickCheckBack" type="button">Back to Stock Count</button>
+</section>
 <div id="countingScreen" style="display:none;">
   
   <p id="activeStockTakeNumber"
@@ -1631,7 +1670,7 @@ function validateTradeShowFields() {
   
 <script>
 // WSC deployment version. Update version.txt after the live files are verified.
-const WSC_VERSION = "1.0.15";
+const WSC_VERSION = "1.0.16";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -2144,11 +2183,11 @@ async function findDeliveryExtraSku() {
   }
 }
 
-  async function wscAuthenticatedLiveProductLookup_(sku) {
+  async function wscAuthenticatedLiveProductLookup_(sku, signal) {
     const idToken = await window.getCurrentStaffToken();
     if (!idToken) throw new Error('Sign in required for live stock lookup.');
     const response = await fetch(workerUrl, {
-      method: 'POST', headers: {'Content-Type':'application/json'},
+      method: 'POST', headers: {'Content-Type':'application/json'}, signal,
       body: JSON.stringify({action:'getLiveProduct', idToken, sku:String(sku).trim()})
     });
     const result = await response.json();
@@ -5710,6 +5749,7 @@ async function wscLoadOutstandingQB(result) {
 }
 
  async function showWelcomeScreen() {
+  window.wscCloseQuickCheck?.();
   wscShowHomeView();
   const datesScreen=document.getElementById('wscDatesScreen'); if(datesScreen) datesScreen.style.display='none';
   const datesAmend=document.getElementById('wscDatesAmendScreen');if(datesAmend)datesAmend.style.display='none';
@@ -6489,6 +6529,7 @@ async function loadTradeShowList() {
   }
 }  
 function showStockScreen() {
+  window.wscCloseQuickCheck?.();
   document.getElementById("welcomeScreen").style.display = "none";
   document.getElementById("stockApp").style.display = "block";
   document.getElementById("reportsScreen").style.display = "none";
@@ -6538,6 +6579,7 @@ function openSelectedStock() {
 }
   
  function showCountingScreen() {
+     window.wscCloseQuickCheck?.();
      resetProductLookup();
      stReviewReset();
    
@@ -7949,6 +7991,7 @@ async function wscConfirmStockQBReviewResolved(number) {
 function wscPaintPermissions(permissions) {
   const cog = document.getElementById("wscAdminCog");
   const areas = permissions?.functions || {};
+  if (areas.SC !== true) window.wscCloseQuickCheck?.();
   const canUsePost = areas.POSTAGE_QUOTES === true || areas.SHOPIFY_INVOICES === true;
   const canUseBatchOrders = wscFunctionAllowed(areas, 'BATCH_ORDERS');
   const canUseBackOrders = wscFunctionAllowed(areas, 'BACK_ORDERS');
@@ -8166,6 +8209,7 @@ function isPinSessionValid() {
 window.wscHasUnlockedSession = () => Boolean(auth.currentUser && !wscIdleDialog && isPinSessionValid());
   
   onAuthStateChanged(auth, (user) => {
+  window.wscCloseQuickCheck?.();
   if (!user || (wscPermissionEmail && wscPermissionEmail !== String(user.email || "").toLowerCase())) {
     wscPermissions = null;
     wscPermissionEmail = null;
@@ -8351,6 +8395,7 @@ function wscResumeAfterIdlePIN() {
 }
 function wscLockForInactivity() {
   if(wscIdleDialog || !auth.currentUser || !sessionStorage.getItem(PIN_SESSION_KEY))return;
+  window.wscCloseQuickCheck?.();
   const refreshAllowed=wscIdleSafeToRefresh();
   sessionStorage.removeItem(PIN_SESSION_KEY);
   const dialog=document.createElement('dialog');dialog.id='wscIdleDialog';
@@ -10497,6 +10542,180 @@ window.wscOpenPostageQuotes=async()=>{
       opening = false;
     }
   };
+})();
+</script>
+<script>
+(() => {
+  const element = name => document.getElementById('wscQuickCheck' + name);
+  const screen = element('');
+  const stockApp = document.getElementById('stockApp');
+  const session = document.getElementById('stockCountSession');
+  const input = element('Sku');
+  const status = element('Status');
+  const result = element('Result');
+  const reader = element('Reader');
+  const format = new Intl.NumberFormat('en-GB', {maximumFractionDigits: 20});
+  const staffEmail = () => String(window.getCurrentStaffEmail?.() || '').trim().toLowerCase();
+  let openedFor = '';
+  let lookup = null;
+  let camera = null;
+
+  function hasAccess(email) {
+    return Boolean(email && email === wscPermissionEmail &&
+      wscPermissions?.functions?.SC === true && window.wscHasUnlockedSession?.());
+  }
+
+  function isActive() {
+    return !screen.hidden && stockApp.style.display !== 'none' &&
+      staffEmail() === openedFor && hasAccess(openedFor);
+  }
+
+  function updateControls() {
+    const scanning = camera && !camera.stopping;
+    element('Search').disabled = Boolean(lookup);
+    element('Scan').disabled = Boolean(lookup || camera);
+    element('Stop').hidden = !scanning;
+    reader.hidden = !scanning;
+  }
+
+  function stopCamera() {
+    const active = camera;
+    if (!active || active.stopping) return;
+    active.stopping = (async () => {
+      try {
+        await active.ready;
+        if (active.scanner.isScanning) await active.scanner.stop();
+      } catch {
+        // Release the reader's video tracks even if the scanner did not stop cleanly.
+      } finally {
+        reader.querySelector('video')?.srcObject?.getTracks().forEach(track => track.stop());
+        try { active.scanner.clear(); } catch { reader.replaceChildren(); }
+        camera = null;
+        updateControls();
+      }
+    })();
+    updateControls();
+  }
+
+  function clearLookup() {
+    lookup?.abort();
+    lookup = null;
+    result.hidden = true;
+    updateControls();
+  }
+
+  function close() {
+    if (screen.hidden) return;
+    screen.hidden = true;
+    openedFor = '';
+    clearLookup();
+    stopCamera();
+    input.value = '';
+    status.textContent = '';
+    for (const name of ['Product', 'FoundSku', 'Quantity']) element(name).textContent = '';
+    session.style.display = 'block';
+  }
+
+  async function search(rawSku) {
+    if (!isActive()) return;
+    clearLookup();
+    stopCamera();
+    const sku = String(rawSku ?? '').trim();
+    if (!sku || sku.length > 100 || /[\r\n]/.test(sku)) {
+      status.textContent = 'Enter a valid product SKU.';
+      return;
+    }
+    input.value = sku;
+    const request = new AbortController();
+    lookup = request;
+    updateControls();
+    status.textContent = 'Checking stock for ' + sku + '…';
+    try {
+      const product = await wscAuthenticatedLiveProductLookup_(sku, request.signal);
+      if (lookup !== request || !isActive()) return;
+      const quantity = product.qbStock;
+      if (typeof quantity !== 'number' && !(typeof quantity === 'string' && quantity.trim())) {
+        throw new Error('Stock quantity unavailable.');
+      }
+      element('Product').textContent = product.name || product.sku;
+      element('FoundSku').textContent = 'SKU ' + product.sku;
+      element('Quantity').textContent = format.format(Number(quantity));
+      result.hidden = false;
+      status.textContent = '';
+    } catch (error) {
+      if (lookup !== request || !isActive()) return;
+      status.textContent = /not found|no matching product/i.test(error?.message || '')
+        ? 'SKU ' + sku + ' was not found.'
+        : 'Could not check the stock quantity. Try again.';
+    } finally {
+      if (lookup === request) {
+        lookup = null;
+        updateControls();
+      }
+    }
+  }
+
+  async function scan() {
+    if (!isActive() || lookup || camera) return;
+    result.hidden = true;
+    input.blur();
+    status.textContent = 'Opening camera…';
+    try {
+      const active = {scanner: new Html5Qrcode(reader.id)};
+      camera = active;
+      updateControls();
+      active.ready = active.scanner.start({facingMode: 'environment'}, {
+        fps: 10,
+        qrbox(width, height) {
+          const size = Math.floor(Math.min(width, height, 300) * 0.8);
+          return {width: size, height: size};
+        }
+      }, decoded => {
+        if (camera === active && !active.stopping && isActive()) void search(decoded);
+      }, () => {});
+      await active.ready;
+      if (!isActive()) stopCamera();
+      else if (camera === active && !active.stopping) status.textContent = 'Point the camera at a product QR code.';
+    } catch {
+      if (isActive() && !camera?.stopping) status.textContent = 'Could not open the camera. Enter the SKU manually or try again.';
+      stopCamera();
+    }
+  }
+
+  element('Button').addEventListener('click', () => {
+    const email = staffEmail();
+    if (!hasAccess(email) || stockApp.style.display === 'none' || session.style.display === 'none') return;
+    openedFor = email;
+    session.style.display = 'none';
+    screen.hidden = false;
+    window.scrollTo(0, 0);
+    element('Heading').focus({preventScroll: true});
+  });
+  element('Form').addEventListener('submit', event => {
+    event.preventDefault();
+    void search(input.value);
+  });
+  input.addEventListener('input', () => {
+    clearLookup();
+    if (!camera || camera.stopping) status.textContent = '';
+  });
+  element('Scan').addEventListener('click', scan);
+  element('Stop').addEventListener('click', () => {
+    stopCamera();
+    status.textContent = '';
+  });
+  element('Back').addEventListener('click', () => {
+    close();
+    element('Button').focus();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && camera && !camera.stopping) {
+      stopCamera();
+      status.textContent = '';
+    }
+  });
+  window.addEventListener('pagehide', close);
+  window.wscCloseQuickCheck = close;
 })();
 </script>
 <script>
