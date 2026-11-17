@@ -41,6 +41,11 @@
         <div class="wscp-panel">
           <div class="wscp-filters">
             <input type="search" id="wscp-filter" placeholder="Search company or order reference" aria-label="Search back orders" autocomplete="off">
+            <div class="wscp-list-sort" id="wscp-list-sort" hidden>
+              <label for="wscp-list-sort-by">Sort by</label>
+              <select id="wscp-list-sort-by"></select>
+              <button type="button" id="wscp-list-sort-direction" class="wscp-secondary cursor-interaction" aria-label="Sort ascending">↓</button>
+            </div>
           </div>
           <div id="wscp-notice" class="wscp-notice" role="status"></div>
           <div id="wscp-list-count" class="wscp-list-count" aria-live="polite">Loading saved back orders…</div>
@@ -51,12 +56,12 @@
           <table id="wscp-table" aria-label="Companies with back orders" hidden>
             <thead>
               <tr>
-                <th scope="col">Company</th>
-                <th scope="col" class="wscp-wide">WSC ref</th>
-                <th scope="col" class="wscp-wide">Customer ref.</th>
-                <th scope="col" class="wscp-wide wscp-order-date">Order date</th>
-                <th scope="col" class="wscp-number">Qty outstanding</th>
-                <th scope="col" class="wscp-wide">Status</th>
+                <th scope="col" data-order-sort="company">Company</th>
+                <th scope="col" data-order-sort="number" class="wscp-wide">WSC ref</th>
+                <th scope="col" data-order-sort="references" class="wscp-wide">Customer ref.</th>
+                <th scope="col" data-order-sort="date" class="wscp-wide wscp-order-date">Order date</th>
+                <th scope="col" data-order-sort="qty" class="wscp-number">Qty outstanding</th>
+                <th scope="col" data-order-sort="status" class="wscp-wide">Status</th>
                 <th scope="col" class="wscp-action">Actions</th>
               </tr>
             </thead>
@@ -275,6 +280,9 @@
   #wsc-back-orders-preview .wscp-panel { background: var(--wscp-surface); border: 1px solid var(--wscp-line); border-radius: 10px; }
   #wsc-back-orders-preview .wscp-filters { padding: 11px 14px; background: var(--wscp-tint); border-radius: 9px 9px 0 0; }
   #wsc-back-orders-preview .wscp-filters input[type="search"] { flex: 1 1 250px; width: auto; }
+  #wsc-back-orders-preview .wscp-list-sort { display: none; }
+  #wsc-back-orders-preview .wscp-list-sort select { flex: 1; }
+  #wsc-back-orders-preview .wscp-list-sort button { min-width: 44px; padding-inline: 0; font-size: 18px; }
   #wsc-back-orders-preview input, #wsc-back-orders-preview textarea, #wsc-back-orders-preview select {
     width: 100%; min-width: 0; min-height: 42px; padding: 8px 10px; border: 1px solid var(--wscp-input-line);
     border-radius: 6px; background: var(--wscp-surface); color: var(--wscp-text); font-size: 16px;
@@ -331,6 +339,9 @@
   #wsc-back-orders-preview .wscp-sort span::before { content: '↕'; }
   #wsc-back-orders-preview th[aria-sort="ascending"] .wscp-sort span::before { content: '↑'; }
   #wsc-back-orders-preview th[aria-sort="descending"] .wscp-sort span::before { content: '↓'; }
+  #wscp-table thead th { padding-block: 0; }
+  #wscp-table .wscp-sort { text-align: inherit; white-space: normal; }
+  #wscp-table .wscp-sort:hover { text-decoration: underline; }
   #wsc-back-orders-preview .wscp-action { text-align: right; }
   #wsc-back-orders-preview .wscp-order-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
   #wsc-back-orders-preview .wscp-order-actions button { padding: 6px 11px; min-height: 36px; }
@@ -399,6 +410,7 @@
   #wsc-back-orders-preview dialog::backdrop { background: #10233888; }
   #wsc-back-orders-preview #wscp-report-delete-detail { overflow-wrap: anywhere; }
   @media (max-width: 875px) {
+    #wsc-back-orders-preview .wscp-list-sort { display: flex; flex: 1 0 100%; align-items: center; gap: 8px; }
     #wsc-back-orders-preview .wscp-order-date { display: none; }
     #wsc-back-orders-preview .wscp-line { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     #wsc-back-orders-preview .wscp-item { grid-column: span 2; }
@@ -776,7 +788,7 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
   }
   const amounts = new Intl.NumberFormat('en-GB');
   const dates = new Intl.DateTimeFormat('en-GB', {day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC'});
-  const reportTextOrder = new Intl.Collator('en-GB', {numeric: true, sensitivity: 'base'});
+  const textOrder = new Intl.Collator('en-GB', {numeric: true, sensitivity: 'base'});
   const builtInReports = Object.entries(reportConfig.builtIn).map(([kind, report]) => ({...report, kind, revision: 0}));
   const moneyFormats = Object.fromEntries(['GBP', 'EUR', 'USD'].map(currency => [
     currency, new Intl.NumberFormat('en-GB', {style: 'currency', currency})
@@ -785,6 +797,9 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
   let productRequest;
   let orders = [];
   let ordersLoaded = false;
+  let listSortColumn = 'date';
+  let listSortDirection = -1;
+  const listHeaders = new Map();
   let deliveryMatches = new Map();
   let deliveryMatchKey;
   let refreshingDeliveryMatches = false;
@@ -822,6 +837,34 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
     node.type = 'button';
     node.addEventListener('click', onClick);
     return node;
+  }
+
+  function sortButton(label, onClick) {
+    const button = control(label, 'wscp-sort', onClick);
+    const arrow = element('span');
+    arrow.setAttribute('aria-hidden', 'true');
+    button.append(arrow);
+    return button;
+  }
+
+  function updateSortHeaders(headers, activeColumn, direction) {
+    for (const [column, header] of headers) {
+      if (column === activeColumn) {
+        header.setAttribute('aria-sort', direction === 1 ? 'ascending' : 'descending');
+      } else {
+        header.removeAttribute('aria-sort');
+      }
+    }
+  }
+
+  function compareValues(left, right, direction) {
+    if (left === right) return 0;
+    const leftBlank = left == null || left === '';
+    const rightBlank = right == null || right === '';
+    if (leftBlank || rightBlank) return Number(leftBlank) - Number(rightBlank);
+    const comparison = typeof left === 'string' || typeof right === 'string'
+      ? textOrder.compare(left, right) : (left < right ? -1 : 1);
+    return direction * comparison;
   }
 
   function orderId(number) { return 'BK-' + String(number).padStart(6, '0'); }
@@ -939,29 +982,47 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
     if (focus) ui(focus).focus();
   }
 
+  function changeListSort(column) {
+    listSortDirection = column === listSortColumn ? -listSortDirection : 1;
+    listSortColumn = column;
+    renderList();
+  }
+
   function renderList() {
     if (!ordersLoaded) return;
     const term = ui('filter').value.trim().toLowerCase();
-    const shown = orders.map(order => ({
-      order,
-      references: [...new Set(order.lines.map(line => lineReference(order, line).trim()).filter(Boolean))].join(', ')
-    })).filter(({order, references}) => [companyName(order), references, orderId(order.number)]
-      .some(text => text.toLowerCase().includes(term))
-    ).sort((a, b) => b.order.date.localeCompare(a.order.date) || b.order.number - a.order.number);
-    const rows = shown.map(({order, references}) => {
+    const shown = orders.map(order => {
       const company = companyName(order);
-      const id = orderId(order.number);
-      const qty = total(order);
-      const state = qty ? 'Open' : 'Fulfilled';
+      const references = [...new Set(order.lines.map(line => lineReference(order, line).trim()).filter(Boolean))].join(', ');
+      return {order, company, references, id: orderId(order.number)};
+    }).filter(({company, references, id}) => [company, references, id].some(text => text.toLowerCase().includes(term)))
+      .map(row => {
+        const {date, number} = row.order;
+        const qty = total(row.order);
+        return {...row, date: date || '', number: Number(number), qty, status: qty ? 'Open' : 'Fulfilled'};
+      });
+    shown.sort((a, b) => compareValues(a[listSortColumn], b[listSortColumn], listSortDirection)
+      || compareValues(a.date, b.date, -1) || b.number - a.number);
+
+    updateSortHeaders(listHeaders, listSortColumn, listSortDirection);
+    ui('list-sort').hidden = !orders.length;
+    ui('list-sort-by').value = listSortColumn;
+    const direction = ui('list-sort-direction');
+    direction.textContent = listSortDirection === 1 ? '↑' : '↓';
+    const nextDirection = listSortDirection === 1 ? 'Sort descending' : 'Sort ascending';
+    direction.setAttribute('aria-label', nextDirection);
+    direction.title = nextDirection;
+
+    const rows = shown.map(({order, company, references, id, qty, status, date}) => {
       const onDelivery = order.lines.some(line => hasDeliveryMatch(order, line));
       const row = element('tr', null, onDelivery ? 'wscp-delivery-match' : '');
       const companyCell = element('td');
       companyCell.append(control(company, 'wscp-link wscp-company-link', () => openOrder(order)), element('small',
-        [id, references, qty ? '' : state].filter(Boolean).join(' · '),
+        [id, references, qty ? '' : status].filter(Boolean).join(' · '),
         'wscp-list-detail'));
       if (onDelivery) companyCell.append(element('small', 'Item on delivery invoice', 'wscp-delivery-label'));
       const stateCell = element('td', null, 'wscp-wide');
-      stateCell.append(element('span', state, 'wscp-state' + (qty ? '' : ' wscp-state-done')));
+      stateCell.append(element('span', status, 'wscp-state' + (qty ? '' : ' wscp-state-done')));
       const action = element('td', null, 'wscp-action');
       const buttons = element('div', null, 'wscp-order-actions');
       const edit = control('Edit', 'wscp-secondary', () => openOrder(order));
@@ -971,7 +1032,7 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
       buttons.append(edit, complete);
       action.append(buttons);
       row.append(companyCell, element('td', id, 'wscp-wide wscp-nowrap'), element('td', references || '—', 'wscp-wide'),
-        element('td', displayDate(order.date), 'wscp-wide wscp-order-date wscp-nowrap'),
+        element('td', displayDate(date), 'wscp-wide wscp-order-date wscp-nowrap'),
         element('td', amounts.format(qty), 'wscp-number'), stateCell, action);
       return row;
     });
@@ -1113,24 +1174,8 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
       if (format === 'money') return display.replaceAll(',', '').includes(query);
       return String(value).normalize('NFKC').toLowerCase().includes(query);
     });
-    rows.sort((a, b) => {
-      const left = a[reportSortColumn];
-      const right = b[reportSortColumn];
-      if (left === right) return 0;
-      if (left == null || left === '') return 1;
-      if (right == null || right === '') return -1;
-      const comparison = typeof left === 'string' || typeof right === 'string'
-        ? reportTextOrder.compare(left, right) : (left < right ? -1 : 1);
-      return reportSortDirection * comparison;
-    });
-
-    for (const [column, header] of reportHeaders) {
-      if (column === reportSortColumn) {
-        header.setAttribute('aria-sort', reportSortDirection === 1 ? 'ascending' : 'descending');
-      } else {
-        header.removeAttribute('aria-sort');
-      }
-    }
+    rows.sort((a, b) => compareValues(a[reportSortColumn], b[reportSortColumn], reportSortDirection));
+    updateSortHeaders(reportHeaders, reportSortColumn, reportSortDirection);
     const body = document.createDocumentFragment();
     for (const row of rows) {
       const tr = element('tr');
@@ -1167,15 +1212,11 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
       const format = reportConfig.fields[column].format;
       const header = element('th', null, format === 'money' || format === 'quantity' ? 'wscp-number' : '');
       header.scope = 'col';
-      const sort = control(reportLabel(report, column), 'wscp-sort', () => {
+      header.append(sortButton(reportLabel(report, column), () => {
         reportSortDirection = column === reportSortColumn ? -reportSortDirection : 1;
         reportSortColumn = column;
         renderReport();
-      });
-      const arrow = element('span');
-      arrow.setAttribute('aria-hidden', 'true');
-      sort.append(arrow);
-      header.append(sort);
+      }));
       reportHeaders.set(column, header);
       return header;
     }));
@@ -1836,6 +1877,17 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
   ui('complete').addEventListener('close', () => {
     if (!ui('complete').open) completingOrder = null;
   });
+  for (const header of ui('table').querySelectorAll('th[data-order-sort]')) {
+    const column = header.dataset.orderSort;
+    const label = header.textContent.trim();
+    const option = element('option', label);
+    option.value = column;
+    ui('list-sort-by').append(option);
+    header.replaceChildren(sortButton(label, () => changeListSort(column)));
+    listHeaders.set(column, header);
+  }
+  ui('list-sort-by').addEventListener('change', event => changeListSort(event.target.value));
+  ui('list-sort-direction').addEventListener('click', () => changeListSort(listSortColumn));
   ui('filter').addEventListener('input', renderList);
   ui('retry').addEventListener('click', loadOrders);
   ui('save').addEventListener('click', saveOrder);
