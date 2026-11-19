@@ -188,14 +188,14 @@
       <dialog id="wscp-email" aria-labelledby="wscp-email-title">
         <h2 id="wscp-email-title">Email back order PDF</h2>
         <p id="wscp-email-summary"></p>
-        <label class="wscp-field">Email to <input id="wscp-email-to" type="email" maxlength="254" autocomplete="email" required></label>
-        <p id="wscp-email-help">Choose Mail in your device’s share options to attach the PDF. Check the recipient in Mail before sending. If sharing is unavailable, download the PDF, open the email and attach it manually.</p>
+        <label id="wscp-email-recipient" class="wscp-field">Email to <input id="wscp-email-to" type="email" maxlength="254" autocomplete="email" required></label>
+        <p id="wscp-email-help">Sender: ITS Europe &lt;itsebox@gmail.com&gt;</p>
         <p id="wscp-email-status" role="status"></p>
         <div class="wscp-footer">
           <button type="button" id="wscp-email-close" class="wscp-secondary cursor-interaction">Close</button>
           <a id="wscp-email-download" class="wscp-download" download>Download PDF</a>
-          <button type="button" id="wscp-email-share" class="wscp-primary cursor-interaction" hidden>Share PDF</button>
-          <a id="wscp-email-compose" class="wscp-download">Open email</a>
+          <button type="button" id="wscp-email-send" class="wscp-primary cursor-interaction">Send with PDF</button>
+          <a id="wscp-email-wsc" class="wscp-download" href="https://itsebox1.github.io/warehouse-stock-control/" target="_blank" rel="noopener" hidden>Open WSC</a>
         </div>
       </dialog>
       <dialog id="wscp-discard" aria-labelledby="wscp-discard-title">
@@ -2369,13 +2369,6 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
     emailPdf = null;
   }
 
-  function updateEmailLink() {
-    if (!emailPdf) return;
-    const recipient = ui('email-to').value.trim();
-    ui('email-compose').href = 'mailto:' + encodeURIComponent(recipient) + '?subject=' + encodeURIComponent(emailPdf.subject)
-      + '&body=' + encodeURIComponent(emailPdf.body);
-  }
-
   function prepareEmailPdf() {
     if (view !== 'editor' || !draft || customerPicker.isSelecting()) return;
     if (!draft.customer) return showError('Choose a customer from the results.', ui('customer'));
@@ -2387,18 +2380,20 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
       const order = {...draft, currency: ui('currency').value, notes: ui('notes').value.trim()};
       const {bytes, filename} = window.wscBackOrderPdf.create(order);
       const file = new File([bytes], filename, {type: 'application/pdf'});
-      const subject = 'ITS Europe | Back order ' + (order.number ? orderId(order.number) : 'details');
-      const body = 'Please find attached your back order details.\n\nKind regards,\nITS Europe';
-      emailPdf = {file, url: URL.createObjectURL(file), subject, body};
+      emailPdf = {file, url: URL.createObjectURL(file), orderNumber: order.number ? orderId(order.number) : '', busy: false};
+      ui('email-to').disabled = false;
+      ui('email-close').disabled = false;
+      ui('email-send').disabled = false;
+      ui('email-send').hidden = ui('email-recipient').hidden = !isLive;
+      ui('email-wsc').hidden = isLive;
+      if (!isLive) ui('email-help').textContent = 'To email the PDF, open this back order in Office Manager in WSC.';
       ui('email-to').value = order.quickBooksCustomer?.email || order.indexedCustomer?.email || '';
       ui('email-summary').textContent = companyName(order) + ' — ' + filename + (dirty ? ' (includes your current unsaved changes).' : '.');
       ui('email-download').href = emailPdf.url;
       ui('email-download').download = filename;
-      ui('email-status').textContent = 'PDF ready. No email has been sent.';
-      ui('email-share').hidden = !navigator.canShare?.({files: [file]});
-      updateEmailLink();
+      ui('email-status').textContent = '';
       ui('email').showModal();
-      ui('email-to').focus();
+      ui(isLive ? 'email-to' : 'email-download').focus();
     } catch (error) {
       showError('Could not prepare the PDF. ' + error.message, ui('email-pdf'));
     }
@@ -2408,23 +2403,43 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
   ui('email-pdf').addEventListener('click', prepareEmailPdf);
   ui('email-close').addEventListener('click', () => ui('email').close());
   ui('email').addEventListener('close', closeEmailPdf);
-  ui('email-to').addEventListener('input', updateEmailLink);
-  ui('email-compose').addEventListener('click', event => {
-    if (!ui('email-to').reportValidity()) { event.preventDefault(); return; }
-    updateEmailLink();
-    ui('email-status').textContent = 'Attach the downloaded PDF in your email app, then review and send it.';
-  });
-  ui('email-share').addEventListener('click', async () => {
-    if (!emailPdf || !ui('email-to').reportValidity()) return;
-    ui('email-share').disabled = true;
+  ui('email').addEventListener('cancel', event => { if (emailPdf?.busy) event.preventDefault(); });
+  ui('email-send').addEventListener('click', async () => {
+    const pdf = emailPdf;
+    if (!isLive || !pdf || pdf.busy || pdf.complete || !ui('email-to').reportValidity()) return;
+    const recipient = ui('email-to').value.trim();
+    if (!bridge?.emailPdf) {
+      ui('email-status').textContent = 'Reopen Back Orders in the latest version of WSC to send this PDF.';
+      return;
+    }
+    pdf.busy = true;
+    ui('email-send').disabled = ui('email-to').disabled = ui('email-close').disabled = true;
+    ui('email-status').textContent = 'Sending the PDF…';
+    let submitted = false;
     try {
-      await navigator.share({files: [emailPdf.file], title: emailPdf.subject,
-        text: 'To: ' + ui('email-to').value.trim() + '\n\n' + emailPdf.body});
-      ui('email-status').textContent = 'PDF handed to your chosen app. Check and send the email there.';
+      const pdfBase64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = () => reject(new Error('Could not read the PDF attachment.'));
+        reader.readAsDataURL(pdf.file);
+      });
+      const payload = {recipient, orderNumber: pdf.orderNumber, filename: pdf.file.name,
+        pdfBase64, requestId: crypto.randomUUID()};
+      submitted = true;
+      const result = await bridge.emailPdf(payload);
+      if (result?.sent !== true) throw new Error('The email service did not confirm sending.');
+      pdf.complete = true;
+      ui('email-status').textContent = 'PDF emailed to ' + recipient + (result.sender ? ' from ' + result.sender : '') + '.';
     } catch (error) {
-      ui('email-status').textContent = error.name === 'AbortError' ? 'Sharing cancelled. No email was sent by WSC.'
-        : 'Sharing is unavailable. Download the PDF and attach it using Open email.';
-    } finally { ui('email-share').disabled = false; }
+      pdf.complete = submitted;
+      ui('email-status').textContent = submitted
+        ? 'Sending was not confirmed. Check the sending mailbox before trying again. ' + error.message
+        : 'Could not prepare the email. ' + error.message;
+    } finally {
+      pdf.busy = false;
+      ui('email-send').disabled = ui('email-to').disabled = !!pdf.complete;
+      ui('email-close').disabled = false;
+    }
   });
 
   ui('add').addEventListener('click', () => openOrder());

@@ -1695,7 +1695,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.0.22";
+const WSC_VERSION = "1.0.23";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -10507,6 +10507,9 @@ window.wscOpenPostageQuotes=async()=>{
         }
         return (await wscAdminRequest('wscBackOrders', {path, method, payload}, 23_000)).result;
       });
+    },
+    emailPdf({recipient, orderNumber, filename, pdfBase64, requestId}) {
+      return withStaff(() => wscAdminRequest('emailBackOrderPdf', {recipient, orderNumber, filename, pdfBase64, requestId}, 60_000));
     },
     productIndex() {
       return withStaff(async () => {
