@@ -402,6 +402,8 @@ input[type="reset"]:disabled,
 #wscSignatureText[contenteditable="false"] {resize:none}
 #wscSignatureStatus:empty {display:none}
 #wscMailboxClose, #wscMailboxDisconnect, #wscSignatureClose {background:white;color:#244b72;border:1px solid #bac8d7}
+#wscSignatureDialog[data-saved] #wscSignatureStatus {font-weight:700;color:#20572e}
+#wscSignatureDialog[data-saved] #wscSignatureClose {background:#294b70;color:white;border-color:#294b70;font-weight:700}
 /* WSC floating tools, independent of module navigation. */
 .wsc-tool-fab[hidden] {display:none!important;}
 .wsc-tool-fab {position:fixed;bottom:16px;width:52px;height:52px;border-radius:50%;padding:0;margin:0;background:#164b84;color:#fff;box-shadow:0 2px 12px #0004;z-index:1200;font-size:22px;display:grid;place-items:center;cursor:pointer;}
@@ -1771,7 +1773,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.1.0";
+const WSC_VERSION = "1.1.1";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -10862,6 +10864,7 @@ window.wscOpenPostageQuotes=async()=>{
   const profile = document.getElementById('wscUserDialog');
   let signatureVisit;
   let signatureSession;
+  let suspendedSignatureDraft;
   let epoch = 0;
   let busy = false;
 
@@ -10881,6 +10884,7 @@ window.wscOpenPostageQuotes=async()=>{
     if (signatureDialog.open) signatureDialog.close();
   }
   window.wscCloseMailbox = () => {
+    suspendedSignatureDraft = null;
     closeSignature();
     close();
     signatureVisit = null;
@@ -10889,6 +10893,7 @@ window.wscOpenPostageQuotes=async()=>{
   window.wscPaintMailbox = () => {
     const email = signedInEmail();
     const allowed = eligible(email);
+    if (!allowed || suspendedSignatureDraft?.email !== email) suspendedSignatureDraft = null;
     sig('Open').hidden = id('Open').hidden = !allowed;
     if (!allowed || !profile.open || signatureVisit?.email !== email) signatureVisit = null;
     if (allowed && profile.open && !signatureVisit) startSignatureVisit(email);
@@ -10996,6 +11001,8 @@ window.wscOpenPostageQuotes=async()=>{
   }
   function renderSignature(session, mode, selectedId) {
     session.imageDraft = {};
+    session.dirty = false;
+    delete signatureDialog.dataset.saved;
     session.preparing = false;
     editor.inert = false;
     sig('Image').disabled = false;
@@ -11023,9 +11030,9 @@ window.wscOpenPostageQuotes=async()=>{
     sig('Use').hidden = !preview || selectedId === book?.activeSignatureId;
     sig('Save').hidden = !editing;
     sig('Save').textContent = 'Save signature';
-    sig('Save').disabled = true;
-    sig('Cancel').hidden = !editing || !book?.signatures.length;
-    sig('Close').hidden = editing && !sig('Cancel').hidden;
+    sig('Save').disabled = !editing;
+    sig('Cancel').hidden = !editing;
+    sig('Close').hidden = false;
     sig('Image').hidden = !editing;
     sig('Help').hidden = !editing;
     sig('Help').textContent = mode === 'edit'
@@ -11041,6 +11048,7 @@ window.wscOpenPostageQuotes=async()=>{
       editor.replaceChildren(selected.signatureHtml ? richSignature.restore(selected.signatureHtml, selected.signatureImages)
         : richSignature.plainText(selected.signature));
     } else editor.replaceChildren();
+    session.initialHtml = editing ? editor.innerHTML : null;
     updateMissingPictureButton();
     if (editing) editor.focus();
   }
@@ -11070,7 +11078,8 @@ window.wscOpenPostageQuotes=async()=>{
     if (mode === 'add' && previous.signatures.some(entry => entry.id === id)) return false;
     const entry = result.signatures.find(item => item.id === id);
     if (!fields.signature.trim()) return !entry;
-    if (entry?.signature !== fields.signature || !sameSignatureImages(entry, fields)) return false;
+    const plain = value => value.replace(/\r\n?/g, '\n').replace(/\u00a0/g, ' ').trimEnd();
+    if (!entry || plain(entry.signature) !== plain(fields.signature) || !sameSignatureImages(entry, fields)) return false;
     const template = document.createElement('template');
     template.innerHTML = entry.signatureHtml;
     const sources = [...template.content.querySelectorAll('img')].map(image => image.getAttribute('src'));
@@ -11121,7 +11130,10 @@ window.wscOpenPostageQuotes=async()=>{
         sig('Status').textContent = 'The formatted signature is too large. Paste a smaller signature block.';
         return;
       }
-      if (mode === 'add' && !fields.signature.trim()) return;
+      if (mode === 'add' && !fields.signature.trim()) {
+        sig('Status').textContent = 'Enter or paste your signature before saving.';
+        return;
+      }
     }
     session.pending = true;
     updateMissingPictureButton();
@@ -11132,65 +11144,67 @@ window.wscOpenPostageQuotes=async()=>{
     let completed = false;
     const active = () => signatureActive(session);
     try {
-      let result;
+      let acknowledgement, writeError;
       try {
-        result = validateSignatures(await profileRequest('saveWSCEmailSignature', fields, visit.email, active));
-        if (!matchesSignatureChange(result, visit.book, fields, false))
-          throw new Error('The returned signature does not match the requested change.');
-      } catch (writeError) {
-        if (!active()) throw writeError;
-        // A response can be lost after saving. Read once to confirm; never replay the write.
-        sig('Status').textContent = 'Checking whether your signature was saved…';
-        const latest = await profileRequest('getWSCEmailSignature', {}, visit.email, active)
-          .then(validateSignatures).catch(() => null);
-        if (!active() || !latest || latest.signatureRevision === visit.book.signatureRevision) throw writeError;
-        if (!matchesSignatureChange(latest, visit.book, fields, true)) {
-          const previous = visit.book.signatures.find(entry => entry.id === fields.signatureId);
-          const saved = latest.signatures.find(entry => entry.id === fields.signatureId);
-          setSignatureBook(visit, latest);
-          if (mode === 'edit' && (!saved || !previous || saved.signature !== previous.signature ||
-              saved.signatureHtml !== previous.signatureHtml || !sameSignatureImages(saved, previous))) {
-            // Keep the editor DOM and its images. The old entry can no longer be safely overwritten.
-            session.mode = 'add';
-            session.selected = latest.activeSignatureId;
-            sig('Title').textContent = 'Save a new signature';
-            sig('Save').textContent = 'Save as new signature';
-            sig('Help').textContent = 'The saved copy has changed. Saving this draft will create a new signature.';
-            sig('Cancel').hidden = !latest.signatures.length;
-            sig('Close').hidden = !sig('Cancel').hidden;
-          }
-          if (mode === 'activate') renderSignature(session, latest.activeSignatureId ? 'preview' : 'add', latest.activeSignatureId);
-          const conflict = new Error(session.mode === 'add' && mode === 'edit'
-            ? 'The saved signature has changed. You can save this draft as a new signature.'
-            : mode === 'activate' ? 'The saved signatures have changed. Choose a signature again.'
-            : 'Another saved signature changed. Select Save again to keep your draft.');
-          conflict.rejected = true;
-          throw conflict;
+        acknowledgement = validateSignatures(await profileRequest('saveWSCEmailSignature', fields, visit.email, active));
+      } catch (error) {
+        writeError = error;
+      }
+      if (!active()) return;
+      // The POST can acknowledge before persistence or lose its reply. Confirm with a fresh read, never a second write.
+      sig('Status').textContent = 'Checking saved signature…';
+      const result = await profileRequest('getWSCEmailSignature', {}, visit.email, active)
+        .then(validateSignatures).catch(error => { throw writeError || error; });
+      if (!active()) return;
+      const confirmedRevision = acknowledgement?.signatureRevision === result.signatureRevision;
+      if (!matchesSignatureChange(result, visit.book, fields, !confirmedRevision)) {
+        if (result.signatureRevision === visit.book.signatureRevision)
+          throw writeError || new Error('The saved signature could not be verified.');
+        const previous = visit.book.signatures.find(entry => entry.id === fields.signatureId);
+        const saved = result.signatures.find(entry => entry.id === fields.signatureId);
+        setSignatureBook(visit, result);
+        if (mode === 'edit' && (!saved || !previous || saved.signature !== previous.signature ||
+            saved.signatureHtml !== previous.signatureHtml || !sameSignatureImages(saved, previous))) {
+          // Keep the editor DOM and its images. The old entry can no longer be safely overwritten.
+          session.mode = 'add';
+          session.selected = result.activeSignatureId;
+          sig('Title').textContent = 'Save a new signature';
+          sig('Save').textContent = 'Save as new signature';
+          sig('Help').textContent = 'The saved copy has changed. Saving this draft will create a new signature.';
+          sig('Cancel').hidden = false;
         }
-        result = latest;
+        if (mode === 'activate') renderSignature(session, result.activeSignatureId ? 'preview' : 'add', result.activeSignatureId);
+        const conflict = new Error(session.mode === 'add' && mode === 'edit'
+          ? 'The saved signature has changed. You can save this draft as a new signature.'
+          : mode === 'activate' ? 'The saved signatures have changed. Choose a signature again.'
+          : 'Another saved signature changed. Select Save again to keep your draft.');
+        conflict.rejected = true;
+        throw conflict;
       }
       if (!active()) return;
       setSignatureBook(visit, result);
       const selected = mode === 'edit' && result.signatures.some(entry => entry.id === session.selected)
         ? session.selected : result.activeSignatureId;
       renderSignature(session, selected ? 'preview' : 'add', selected);
-      sig('Status').textContent = mode === 'activate' ? 'This signature is now in use.' :
-        fields.signature.trim() ? 'Signature saved.' : 'Signature removed.';
+      suspendedSignatureDraft = null;
+      sig('Status').textContent = 'Saved';
+      signatureDialog.dataset.saved = 'true';
       completed = true;
     } catch (error) {
       if (active()) {
         visit.failed = true;
         const reason = error.rejected ? error.message : 'WSC could not confirm the save.';
         const editable = mode !== 'activate';
-        if (editable) editor.contentEditable = 'true';
+        if (editable) { editor.contentEditable = 'true'; session.dirty = true; }
         sig('Status').textContent = reason + (editable ? ' Your draft is still here.' : '');
       }
     } finally {
       session.pending = false;
       if (active()) {
         controls.forEach(control => { control.disabled = false; });
-        sig('Save').disabled = completed || mode === 'activate' || (session.mode === 'add' && !editor.innerText.trim() && !editor.querySelector('img'));
+        sig('Save').disabled = completed || mode === 'activate';
         updateMissingPictureButton();
+        if (completed) sig('Close').focus();
       }
     }
   }
@@ -11206,6 +11220,20 @@ window.wscOpenPostageQuotes=async()=>{
     signatureDialog.showModal();
     await visit.ready;
     if (!signatureActive(session)) return;
+    const draft = suspendedSignatureDraft;
+    if (draft && draft.email === email) {
+      // Keep the draft's original revision so a changed server copy gets conflict handling on Save.
+      visit.book = draft.book;
+      renderSignature(session, draft.mode, draft.selected);
+      editor.replaceChildren(draft.content);
+      sig('Save').textContent = draft.saveLabel;
+      sig('Save').disabled = false;
+      sig('Status').textContent = 'Unsaved draft';
+      session.dirty = true;
+      suspendedSignatureDraft = null;
+      updateMissingPictureButton();
+      return;
+    }
     if (visit.failed || !visit.book) {
       sig('Status').textContent = 'Could not load your signatures. Close and reopen Signature to try again.';
       return;
@@ -11219,8 +11247,9 @@ window.wscOpenPostageQuotes=async()=>{
   });
   for (const [key, mode] of [['Edit','edit'], ['New','add'], ['Cancel','preview']]) {
     sig(key).addEventListener('click', () => {
-      if (signatureActive(signatureSession) && !signatureSession.pending)
-        renderSignature(signatureSession, mode, signatureSession.selected);
+      if (!signatureActive(signatureSession) || signatureSession.pending) return;
+      if (key === 'Cancel' && !signatureSession.visit.book.signatures.length) closeSignature();
+      else renderSignature(signatureSession, mode, signatureSession.selected);
     });
   }
   sig('Use').addEventListener('click', () => {
@@ -11242,23 +11271,50 @@ window.wscOpenPostageQuotes=async()=>{
   });
   editor.addEventListener('input', () => {
     if (editor.isContentEditable && signatureActive(signatureSession)) {
+      signatureSession.dirty = true;
       updateMissingPictureButton();
-      sig('Save').disabled = signatureSession.mode === 'add' && !editor.innerText.trim() && !editor.querySelector('img');
+      sig('Save').disabled = !!signatureSession.preparing || !!signatureSession.pending;
       sig('Status').textContent = '';
     }
   });
-  sig('Form').addEventListener('submit', event => {
+  function submitSignature(event) {
     event.preventDefault();
-    if (signatureActive(signatureSession) && ['edit','add'].includes(signatureSession.mode) &&
-        !sig('Save').disabled) void saveSignature(signatureSession, signatureSession.mode);
-  });
-  sig('Close').addEventListener('click', closeSignature);
+    const session = signatureSession;
+    if (!signatureActive(session) || !['edit','add'].includes(session.mode) || session.pending || session.preparing) return;
+    void saveSignature(session, session.mode).catch(error => {
+      if (signatureActive(session)) {
+        session.dirty = true;
+        sig('Status').textContent = 'Could not save your signature. ' + error.message;
+      }
+    }).finally(() => {
+      if (signatureActive(session)) sig('Status').scrollIntoView?.({block:'nearest'});
+    });
+  }
+  sig('Save').addEventListener('click', submitSignature);
+  sig('Form').addEventListener('submit', submitSignature);
+  function dismissSignature() {
+    const session = signatureSession;
+    if (session?.pending) return;
+    if (signatureActive(session) && (session.mode === 'edit' || session.mode === 'add') &&
+        (session.dirty || editor.innerHTML !== session.initialHtml)) {
+      if (richSignature.isPreparing(editor)) {
+        sig('Status').textContent = 'Please wait for your picture to finish loading.';
+        return;
+      }
+      const content = document.createDocumentFragment();
+      while (editor.firstChild) content.appendChild(editor.firstChild);
+      suspendedSignatureDraft = {email:session.visit.email, book:session.visit.book, mode:session.mode,
+        selected:session.selected, saveLabel:sig('Save').textContent, content};
+    }
+    closeSignature();
+  }
+  sig('Close').addEventListener('click', dismissSignature);
   signatureDialog.addEventListener('cancel', event => {
     event.preventDefault();
-    if (!signatureSession?.pending) closeSignature();
+    dismissSignature();
   });
   profile.addEventListener('close', () => { if (!profile.open) signatureVisit = null; });
-  window.addEventListener('pagehide', () => { signatureVisit = null; closeSignature(); });
+  window.addEventListener('pagehide', () => { suspendedSignatureDraft = signatureVisit = null; closeSignature(); });
 
   id('Open').addEventListener('click', () => {
     if (!eligible() || dialog.open) return;
