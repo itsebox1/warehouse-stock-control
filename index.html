@@ -1773,7 +1773,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.1.1";
+const WSC_VERSION = "1.1.2";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -10845,9 +10845,9 @@ window.wscOpenPostageQuotes=async()=>{
   window.wscCloseQuickCheck = close;
 })();
 </script>
-<script src="./wsc-signature-rtf.js?v=1"></script>
-<script src="./wsc-signature-images.js?v=1"></script>
-<script src="./wsc-signature.js?v=1.1.0"></script>
+<script src="./wsc-signature-rtf.js?v=1.1.2"></script>
+<script src="./wsc-signature-images.js?v=1.1.2"></script>
+<script src="./wsc-signature.js?v=1.1.2"></script>
 <script>
 /* A mailbox can be enrolled only by its signed-in, unlocked owner. */
 (() => {
@@ -11086,53 +11086,47 @@ window.wscOpenPostageQuotes=async()=>{
     if ((fields.signatureImages || []).some(image => !sources.includes('cid:' + image.cid))) return false;
     return !compareFormatting || comparableSignatureHtml(entry.signatureHtml) === comparableSignatureHtml(fields.signatureHtml);
   }
+  function setSignaturePreparing(session, preparing) {
+    session.preparing = preparing;
+    editor.inert = preparing;
+    sig('Save').disabled = sig('Image').disabled = preparing;
+    updateMissingPictureButton();
+    if (preparing) sig('Status').textContent = 'Preparing signature pictures…';
+  }
   async function saveSignature(session, mode) {
     if (!signatureActive(session) || session.pending || session.preparing) return;
     const visit = session.visit;
     const fields = {signatureMode:mode, signatureRevision:visit.book.signatureRevision,
       signature:'', signatureHtml:''};
     if (mode !== 'add') fields.signatureId = session.selected;
-    if (mode !== 'activate' && richSignature.isPreparing(editor)) {
+    if (mode !== 'activate') {
       const draft = session.imageDraft;
       const activeDraft = () => signatureActive(session) && session.imageDraft === draft;
-      session.preparing = true;
-      updateMissingPictureButton();
-      editor.inert = true;
-      sig('Save').disabled = sig('Image').disabled = true;
-      sig('Status').textContent = 'Preparing your picture…';
       try {
-        await richSignature.ready(editor, activeDraft);
+        if (richSignature.isPreparing(editor)) {
+          setSignaturePreparing(session, true);
+          await richSignature.ready(editor, activeDraft);
+          if (!activeDraft()) return;
+        }
+        const img = editor.querySelector('img');
+        fields.signature = editor.innerText.replace(/\r\n?/g, '\n');
+        if (!fields.signature.trim() && img) fields.signature = img.alt || '[Signature image]';
+        if (fields.signature.length > 5000) throw Error('Shorten your signature to 5,000 characters before saving.');
+        if (mode === 'add' && !fields.signature.trim()) throw Error('Enter or paste your signature before saving.');
+        Object.assign(fields, richSignature.pack(editor));
+        if (!fields.signature.trim()) fields.signatureHtml = '';
+        if (richSignature.needsFit(fields)) {
+          setSignaturePreparing(session, true);
+          const fitted = await richSignature.fitPacked(fields, activeDraft);
+          if (!activeDraft()) return;
+          Object.assign(fields, fitted);
+        }
+        if (fields.signatureHtml.length > 32000) throw Error('The formatted signature is too large. Paste a smaller signature block.');
       } catch (error) {
         if (activeDraft()) sig('Status').textContent = error.message;
         return;
       } finally {
-        if (activeDraft()) {
-          session.preparing = false;
-          editor.inert = false;
-          sig('Save').disabled = sig('Image').disabled = false;
-          updateMissingPictureButton();
-        }
-      }
-      if (!activeDraft()) return;
-    }
-    if (mode !== 'activate') {
-      const img = editor.querySelector('img');
-      fields.signature = editor.innerText.replace(/\r\n?/g, '\n');
-      if (!fields.signature.trim() && img) fields.signature = img.alt || '[Signature image]';
-      if (fields.signature.length > 5000) {
-        sig('Status').textContent = 'Shorten your signature to 5,000 characters before saving.';
-        return;
-      }
-      try { Object.assign(fields,richSignature.pack(editor)); }
-      catch (error) { sig('Status').textContent = error.message; return; }
-      if (!fields.signature.trim()) fields.signatureHtml = '';
-      if (fields.signatureHtml.length > 32000) {
-        sig('Status').textContent = 'The formatted signature is too large. Paste a smaller signature block.';
-        return;
-      }
-      if (mode === 'add' && !fields.signature.trim()) {
-        sig('Status').textContent = 'Enter or paste your signature before saving.';
-        return;
+        if (session.preparing && activeDraft()) setSignaturePreparing(session, false);
       }
     }
     session.pending = true;

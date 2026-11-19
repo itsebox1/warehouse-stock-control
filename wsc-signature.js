@@ -151,10 +151,33 @@ window.wscRichSignature = (() => {
     const clean = cleanHtml(editor.innerHTML, (raw,target) => {
       target.setAttribute('src',window.wscSignatureImages.pack(raw,signatureImages));
     });
+    return {signatureHtml:fragmentXml(clean),signatureImages};
+  }
+  function fragmentXml(fragment) {
     const xml = new XMLSerializer();
-    const signatureHtml = Array.from(clean.childNodes, node => xml.serializeToString(node)).join('')
+    return Array.from(fragment.childNodes,node => xml.serializeToString(node)).join('')
       .replace(/ xmlns="http:\/\/www\.w3\.org\/1999\/xhtml"/g, '');
-    return {signatureHtml,signatureImages};
+  }
+  function preserveSize(element,width,height) {
+    if (!element.hasAttribute('width') && !element.hasAttribute('height') &&
+        !element.style.width && !element.style.height && width>0 && height>0) {
+      element.setAttribute('width',String(width));
+      element.setAttribute('height',String(height));
+    }
+  }
+  const needsFit = fields => !!fields.signatureImages?.length && window.wscSignatureImages.needsFit(fields.signatureImages);
+  async function fitPacked(fields,active = () => true) {
+    const {images,dimensions} = await window.wscSignatureImages.fitCollection(fields.signatureImages,active);
+    if (!active()) throw Error('The signature editor has closed.');
+    const template = document.createElement('template');
+    template.innerHTML = fields.signatureHtml;
+    for (const img of template.content.querySelectorAll('img')) {
+      const src = img.getAttribute('src') || '';
+      if (!src.startsWith('cid:')) continue;
+      const size=dimensions.get(src.slice(4));
+      if (size) preserveSize(img,size.width,size.height);
+    }
+    return {signatureImages:images, signatureHtml:fragmentXml(template.content)};
   }
   function editorRange(editor) {
     const selection = window.getSelection();
@@ -204,8 +227,11 @@ window.wscRichSignature = (() => {
       // Replacing an existing picture also makes the draft savable immediately.
       editor.dispatchEvent(new Event('input',{bubbles:true}));
       try {
-        const url = await images.fit(typeof source === 'string' ? source : await images.fromFile(source));
+        let originalSize;
+        const url = await images.fit(typeof source === 'string' ? source : await images.fromFile(source),
+          images.maxBytes,(width,height) => { originalSize={width,height}; },active);
         if (!active()) return;
+        if (originalSize) preserveSize(target,originalSize.width,originalSize.height);
         target.src = url;
         delete target.dataset.wscMissing;
         editor.dispatchEvent(new Event('input',{bubbles:true}));
@@ -310,5 +336,5 @@ window.wscRichSignature = (() => {
     });
   }
   const serialize = editor => pack(editor).signatureHtml;
-  return {cleanHtml, plainText, restore, ready, isPreparing, missingCount, removeMissing, pack, serialize, bindPaste};
+  return {cleanHtml, plainText, restore, ready, isPreparing, missingCount, removeMissing, pack, needsFit, fitPacked, serialize, bindPaste};
 })();
