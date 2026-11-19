@@ -382,12 +382,12 @@ input[type="reset"]:disabled,
 #wscPostagePrint{display:none} @media print{body.wsc-postage-printing > *:not(#wscPostagePrint){display:none!important} body.wsc-postage-printing #wscPostagePrint{display:block!important;color:#182c45;font:13px/1.5 Arial,sans-serif} #wscPostagePrint table{border-collapse:collapse;width:100%;margin:20px 0} #wscPostagePrint td{padding:8px;border-bottom:1px solid #ddd} #wscPostagePrint td:first-child{width:42%;font-weight:bold}}
 </style>
 <style>
-#wscMailboxOpen {display:block;width:auto;min-height:42px;padding:8px 18px;margin:10px auto;background:white;color:#244b72;border:1px solid #bac8d7}
+#wscUserDialog button {width:auto;min-height:42px;padding:8px 15px;margin:0 6px 0 0}
 #wscMailboxOpen[hidden], #wscMailboxDialog [hidden] {display:none!important}
-#wscMailboxDialog {box-sizing:border-box;width:min(92vw,425px);padding:22px;border:0;border-radius:12px;color:#203247;box-shadow:0 10px 35px #0005;text-align:left}
-#wscMailboxDialog::backdrop {background:#0f223980}
-#wscMailboxDialog h2 {margin:0 0 6px;font-size:21px}
-#wscMailboxDialog p {margin:0 0 14px;line-height:1.45}
+#wscUserDialog, #wscMailboxDialog {box-sizing:border-box;width:min(92vw,425px);padding:22px;border:0;border-radius:12px;color:#203247;box-shadow:0 10px 35px #0005;text-align:left}
+#wscUserDialog::backdrop, #wscMailboxDialog::backdrop {background:#0f223980}
+#wscUserDialog h2, #wscMailboxDialog h2 {margin:0 0 6px;font-size:21px}
+#wscUserDialog p, #wscMailboxDialog p {margin:0 0 14px;line-height:1.45}
 #wscMailboxAddress {font-weight:bold}
 #wscMailboxForm label {display:block;font-weight:bold}
 #wscMailboxPassword {box-sizing:border-box;width:100%;padding:10px;margin:6px 0 12px;border:1px solid #bac8d7;border-radius:6px;font-size:16px}
@@ -622,12 +622,17 @@ input[type="reset"]:disabled,
     <p id="wscStockManagerSummary" role="status" aria-live="polite" hidden style="text-align:center;font-size:12px;margin:0 0 10px;"></p>
     <button id="wscPostButton" class="wsc-manager-entry" type="button" onclick="wscOpenManager('post')" hidden>📮 Post Manager</button>
     <button id="wscOfficeManagerButton" class="wsc-manager-entry" type="button" onclick="wscOpenManager('office')" hidden><span class="wsc-office-icon" aria-hidden="true"></span>Office Manager</button>
-    <button id="wscMailboxOpen" type="button" hidden>Email account</button>
     <section id="wscFavourites" aria-labelledby="wscFavouritesHeading" hidden>
       <h2 id="wscFavouritesHeading">Favourites</h2>
       <div id="wscFavouriteList"></div>
     </section>
   </nav>
+  <dialog id="wscUserDialog" aria-labelledby="wscUserTitle">
+    <h2 id="wscUserTitle">Signed-in user</h2>
+    <p><strong id="wscUserName"></strong><br><span id="wscUserEmail"></span></p>
+    <button id="wscMailboxOpen" type="button" aria-haspopup="dialog" aria-controls="wscMailboxDialog" hidden>Email account</button>
+    <button id="wscUserClose" type="button">Close</button>
+  </dialog>
   <dialog id="wscMailboxDialog" aria-labelledby="wscMailboxTitle">
     <h2 id="wscMailboxTitle">Email account</h2>
     <p id="wscMailboxAddress"></p>
@@ -794,7 +799,7 @@ input[type="reset"]:disabled,
   <!-- WSC floating tools; admin cog remains permission controlled. -->
   <button id="wscCurrencyFab" class="wsc-tool-fab" type="button" aria-label="Currency converter" title="Currency converter">💱</button>
   <div id="wscHomeInfoTools" aria-label="Home information" hidden>
-    <button id="wscUserFab" class="wsc-tool-fab" type="button" aria-label="Signed-in user" title="Signed-in user">?</button>
+    <button id="wscUserFab" class="wsc-tool-fab" type="button" aria-haspopup="dialog" aria-controls="wscUserDialog" aria-label="Signed-in user" title="Signed-in user">?</button>
     <button id="wscBuildFab" class="wsc-tool-fab" type="button" aria-label="Build number" title="Build number">#</button>
   </div>
   <dialog id="wscCurrencyDialog" aria-labelledby="wscCurrencyTitle">
@@ -1719,7 +1724,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.0.24";
+const WSC_VERSION = "1.0.25";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -10798,7 +10803,11 @@ window.wscOpenPostageQuotes=async()=>{
     id('Close').disabled = false;
     if (dialog.open) dialog.close();
   }
-  window.wscCloseMailbox = close;
+  window.wscCloseMailbox = () => {
+    close();
+    const profile = document.getElementById('wscUserDialog');
+    if (profile.open) profile.close();
+  };
   window.wscPaintMailbox = () => {
     id('Open').hidden = !eligible();
     if (id('Open').hidden && dialog.open) close();
@@ -10895,6 +10904,7 @@ window.wscOpenPostageQuotes=async()=>{
   const currency = byId('wscCurrencyDialog');
   const homeTools = byId('wscHomeInfoTools');
   const userButton = byId('wscUserFab');
+  const profile = byId('wscUserDialog');
   const nameByEmail = {'tmerry@sensafe.com':'Terry Merry','nmerry@sensafe.com':'Nicola Merry'};
   function signedInEmail() {return String(window.getCurrentStaffEmail?.() || '').trim().toLowerCase();}
   function signedInName(email) {
@@ -10918,6 +10928,9 @@ window.wscOpenPostageQuotes=async()=>{
     const pin = byId('pinLockScreen');
     const onHome = !!email && welcome?.style.display !== 'none' && !homeView?.hidden && login?.style.display === 'none' && pin?.style.display === 'none';
     homeTools.hidden = !onHome;
+    if (profile.open && (!onHome || byId('wscUserEmail').textContent !== email || !window.wscHasUnlockedSession?.())) {
+      window.wscCloseMailbox();
+    }
     window.wscPaintMailbox?.();
     byId('wscCurrencyFab').hidden = !email || login?.style.display !== 'none' || pin?.style.display !== 'none';
     if (onHome) userButton.textContent = initials(email);
@@ -10929,8 +10942,13 @@ window.wscOpenPostageQuotes=async()=>{
   byId('wscCurrencyClose').addEventListener('click',()=>currency.close());
   userButton.addEventListener('click',()=>{
     const email=signedInEmail();
-    if (email) window.showWSCMessage?.('Signed-in user',signedInName(email)+'\n'+email);
+    if (!email || homeTools.hidden || profile.open || !window.wscHasUnlockedSession?.()) return;
+    byId('wscUserName').textContent = signedInName(email);
+    byId('wscUserEmail').textContent = email;
+    window.wscPaintMailbox?.();
+    profile.showModal();
   });
+  byId('wscUserClose').addEventListener('click', () => profile.close());
   byId('wscBuildFab').addEventListener('click',()=>{
     window.showWSCMessage?.('WSC build number','Frontend build: v'+WSC_VERSION);
   });
