@@ -974,8 +974,8 @@ window.wscSalesOrderLogo = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA4QAAA
       }
     }
 
-    const headers = ['Item', 'Description', 'Qty', 'Rate', 'Amt', 'Shpd', 'Invd', 'Due Date'];
-    const widths = [26.5, 48.2, 18.2, 19.3, 21.2, 15.2, 15.1, 19.3];
+    const headers = ['SKU', 'Description', 'Customer Ref', 'Qty', 'Unit Price', 'Amount'];
+    const widths = [26, 62, 30, 16, 23, 26];
     const x = [left];
     widths.forEach(width => x.push(x[x.length - 1] + width));
     function tableHeader() {
@@ -986,21 +986,15 @@ window.wscSalesOrderLogo = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA4QAAA
       nextPage();
       tableHeader();
     }
-    function productCells(line) {
-      const count = quantity(line);
-      const unit = minor(line.price);
-      const po = line.reference ?? order.reference;
-      const due = /^(\d{4})-(\d{2})-(\d{2})$/.exec(line.due || line.dueDate || '');
-      // The product's backorder date is distinct from a promised due date.
-      const values = [line.sku, line.name + (po ? ' - PO # ' + po : ''), count,
-        money(unit, order.currency), money(unit === null ? null : BigInt(count) * unit, order.currency),
-        line.shipped ?? '', line.invoiced ?? '', due ? due[3] + '/' + due[2] + '/' + due[1] : ''];
+    function productCells(line, count, unit, amount) {
+      const values = [line.sku, line.name, line.reference ?? order.reference ?? '', count,
+        money(unit, order.currency), money(amount, order.currency)];
       return values.map((value, i) => {
         const text = String(value);
         const width = widths[i] - 3.2;
         let size = 8.8;
         font(size);
-        if (i > 1 && doc.getTextWidth(text) > width) {
+        if (i >= 3 && doc.getTextWidth(text) > width) {
           size = Math.max(7, size * width / doc.getTextWidth(text));
           font(size);
         }
@@ -1010,29 +1004,38 @@ window.wscSalesOrderLogo = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA4QAAA
 
     letterhead();
     drawAddresses();
-    const minHeight = 13.8, padding = 2.8;
-    if (bottom - y < bandHeight + minHeight) nextPage();
+    const minHeight = 13.8, padding = 2.8, totalsHeight = 16;
+    if (bottom - y < bandHeight + minHeight + (lines.length === 1 ? totalsHeight : 0)) nextPage();
     tableHeader();
     let tableTop = y;
-    for (const line of lines) {
-      const cells = productCells(line);
+    let outstanding = 0;
+    let total = 0n;
+    for (const [index, line] of lines.entries()) {
+      const count = quantity(line);
+      const unit = minor(line.price);
+      const amount = unit === null ? null : BigInt(count) * unit;
+      outstanding += count;
+      total = total === null || amount === null ? null : total + amount;
+      // Keep the two totals with the last product, including on continuation pages.
+      const rowBottom = index === lines.length - 1 ? bottom - totalsHeight : bottom;
+      const cells = productCells(line, count, unit, amount);
       const rows = Math.max(...cells.map(cell => cell.rows.length));
       const fullHeight = Math.max(minHeight, rows * leading + padding);
       // Keep ordinary rows together; a very long row can span several pages.
-      if (fullHeight > bottom - y && y > tableTop) {
+      if (fullHeight > rowBottom - y && y > tableTop) {
         nextTablePage();
         tableTop = y;
       }
       for (let offset = 0; offset < rows;) {
-        const take = Math.min(rows - offset, Math.floor((bottom - y - padding) / leading));
+        const take = Math.min(rows - offset, Math.floor((rowBottom - y - padding) / leading));
         const height = Math.max(minHeight, take * leading + padding);
         cells.forEach((cell, i) => {
           doc.rect(x[i], y, widths[i], height);
           font(cell.size);
-          const centred = i > 1;
-          const at = x[i] + (centred ? widths[i] / 2 : 1.6);
+          const align = i < 3 ? 'left' : i === 3 ? 'center' : 'right';
+          const at = align === 'left' ? x[i] + 1.6 : align === 'center' ? x[i] + widths[i] / 2 : x[i + 1] - 1.6;
           cell.rows.slice(offset, offset + take).forEach((value, j) => {
-            doc.text(value, at, y + 3.9 + j * leading, {align: centred ? 'center' : 'left'});
+            doc.text(value, at, y + 3.9 + j * leading, {align});
           });
         });
         y += height;
@@ -1043,6 +1046,9 @@ window.wscSalesOrderLogo = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAA4QAAA
         }
       }
     }
+    font(10);
+    doc.text('Quantity outstanding: ' + outstanding, left, y + 7);
+    doc.text('Backorder total: ' + (total === null ? '—' : money(total, order.currency)), left, y + 13);
     const safeCompany = company(order).normalize('NFKD').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 70) || 'Customer';
     return {bytes: new Uint8Array(doc.output('arraybuffer')), filename: 'ITS_Europe_Back_Order_' + (order.number ? label(order) + '_' : '') + safeCompany + '.pdf'};
   }
