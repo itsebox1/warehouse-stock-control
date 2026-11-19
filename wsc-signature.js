@@ -99,9 +99,54 @@ window.wscRichSignature = (() => {
       target.alt = 'Signature image';
     });
   }
+  const pendingImages = new WeakMap();
+  const openPickers = new WeakMap();
+  const missingSelector = 'img[data-wsc-missing]:not([src]):not([data-wsc-loading])';
+  const missingCount = editor => editor.querySelectorAll(missingSelector).length;
+  function removeMissing(editor) {
+    const missing = Array.from(editor.querySelectorAll(missingSelector));
+    for (const picture of missing) picture.remove();
+    if (missing.length) editor.dispatchEvent(new Event('input',{bubbles:true}));
+    return missing.length;
+  }
+  function isPreparing(editor) {
+    const picker = openPickers.get(editor);
+    return !!(picker?.active() || editor.querySelector('img[data-wsc-loading]'));
+  }
+  function waitForPicker(picker) {
+    // A browser without a file-dialog cancellation event may leave a picker outstanding.
+    // Retain the draft and offer a retry instead of submitting a previous image.
+    return new Promise((resolve,reject) => {
+      const timeout = setTimeout(() => reject(Error('Finish choosing the picture, or open Add image and choose the file again.')), 4000);
+      picker.done.then(() => { clearTimeout(timeout); resolve(); });
+    });
+  }
+  function checkPictures(editor) {
+    const pictures = Array.from(editor.querySelectorAll('img'));
+    const index = pictures.findIndex(img => img.hasAttribute('data-wsc-image-error') || img.hasAttribute('data-wsc-missing'));
+    if (index < 0) return;
+    const img = pictures[index];
+    const which = pictures.length > 1 ? 'Picture ' + (index + 1) + ' of ' + pictures.length : 'Picture';
+    const label = img.alt && img.alt !== 'Choose signature image' ? ' (' + img.alt.slice(0,80) + ')' : '';
+    const reason = img.dataset.wscImageError || 'The picture file is missing.';
+    throw Error(which + label + ': ' + reason + ' Select this picture and use Add image to replace it, or remove it from the signature.');
+  }
+  async function ready(editor, active = () => true) {
+    while (active()) {
+      const picker = openPickers.get(editor);
+      if (picker && picker.active()) { await waitForPicker(picker); continue; }
+      const jobs = Array.from(editor.querySelectorAll('img'), img => pendingImages.get(img)).filter(Boolean);
+      if (!jobs.length) {
+        checkPictures(editor);
+        return;
+      }
+      await Promise.race(jobs.map(job => job.done));
+    }
+    throw Error('The signature editor has closed.');
+  }
   function pack(editor) {
-    if (editor.querySelector('img[data-wsc-loading]')) throw Error('Wait for the image to finish loading before saving.');
-    if (editor.querySelector('img[data-wsc-missing]')) throw Error('Choose the missing image using Add image, or remove its placeholder before saving.');
+    if (editor.querySelector('img[data-wsc-loading]')) throw Error('The signature picture is still loading.');
+    checkPictures(editor);
     const signatureImages = [];
     const clean = cleanHtml(editor.innerHTML, (raw,target) => {
       target.setAttribute('src',window.wscSignatureImages.pack(raw,signatureImages));
@@ -132,6 +177,11 @@ window.wscRichSignature = (() => {
     selection.addRange(range);
     editor.dispatchEvent(new Event('input',{bubbles:true}));
   }
+  function isEmptySpacer(img) {
+    const tiny = size => /^(?:0|1)(?:px)?$/i.test(String(size || '').trim());
+    return (!img.alt || img.alt === 'Choose signature image') &&
+      tiny(img.style.width || img.getAttribute('width')) && tiny(img.style.height || img.getAttribute('height'));
+  }
   function bindPaste(editor, notice, options = {}) {
     const images = window.wscSignatureImages;
     const current = options.current || (() => editor.isContentEditable);
@@ -142,43 +192,62 @@ window.wscRichSignature = (() => {
       img.dataset.wscMissing = '';
       if (!img.alt) img.alt = 'Choose signature image';
     };
-    const pendingImages = new WeakMap();
     async function fill(target, source, key) {
+      const previous = pendingImages.get(target);
+      if (previous) previous.finish();
       const job = {};
+      job.done = new Promise(resolve => { job.finish = resolve; });
       pendingImages.set(target,job);
       target.dataset.wscLoading = '';
+      delete target.dataset.wscImageError;
       const active = () => valid(key,target) && pendingImages.get(target) === job;
+      // Replacing an existing picture also makes the draft savable immediately.
+      editor.dispatchEvent(new Event('input',{bubbles:true}));
       try {
         const url = await images.fit(typeof source === 'string' ? source : await images.fromFile(source));
         if (!active()) return;
-        delete target.dataset.wscLoading;
         target.src = url;
         delete target.dataset.wscMissing;
         editor.dispatchEvent(new Event('input',{bubbles:true}));
-        if (editor.querySelector('img[data-wsc-loading]')) throw Error('Wait for the image to finish loading before saving.');
-    if (editor.querySelector('img[data-wsc-missing]')) notice(missing);
       } catch (e) {
-        if (active()) notice(e.message || 'Could not load the image. Choose it again.');
+        if (active()) {
+          target.dataset.wscImageError = e.message || 'Could not load the selected file.';
+          notice(target.dataset.wscImageError);
+        }
       } finally {
         if (pendingImages.get(target) === job) {
           pendingImages.delete(target);
           delete target.dataset.wscLoading;
+          if (valid(key,target) && !editor.querySelector('img[data-wsc-loading]')) {
+            try { checkPictures(editor); } catch (e) { notice(e.message); }
+          }
         }
+        job.finish();
       }
     }
-    let picker, clickedImage;
+    let clickedImage;
+    function finishPicker(picker) {
+      if (!picker) return;
+      if (openPickers.get(editor) === picker) openPickers.delete(editor);
+      picker.finish();
+    }
     editor.addEventListener('click',event => { clickedImage = event.target.closest?.('img'); });
     options.button?.addEventListener('mousedown',event=>event.preventDefault());
     options.button?.addEventListener('click',() => {
       const key=current();
       if (!key || !editor.isContentEditable) return;
-      picker={key, range:editorRange(editor), target:editor.contains(clickedImage) ? clickedImage : editor.querySelector('img[data-wsc-missing]')};
+      finishPicker(openPickers.get(editor));
+      const picker={key, active:() => current() === key, range:editorRange(editor),
+        target:editor.contains(clickedImage) ? clickedImage : editor.querySelector(missingSelector)};
+      picker.done = new Promise(resolve => { picker.finish = resolve; });
+      openPickers.set(editor,picker);
       options.fileInput.value='';
       options.fileInput.click();
     });
+    options.fileInput?.addEventListener('cancel',() => finishPicker(openPickers.get(editor)));
     options.fileInput?.addEventListener('change',() => {
-      const request=picker;
-      picker=null;
+      const request=openPickers.get(editor);
+      finishPicker(request);
       const file=options.fileInput.files?.[0];
       if (!request || current()!==request.key || !editor.isContentEditable || !file) return;
       let target=request.target;
@@ -227,6 +296,7 @@ window.wscRichSignature = (() => {
               if (raw) assigned.set(raw,file);
             }
             if (file) tasks.push([target,file]);
+            else if (isEmptySpacer(target)) target.remove();
           }
           if (!fragment.querySelector('img')) for (const file of files) {
             const target=document.createElement('img'); mark(target); fragment.append(target);
@@ -234,11 +304,11 @@ window.wscRichSignature = (() => {
           }
         }
         insert(editor,fragment,editorRange(editor));
-        if (unresolved.length) notice(tasks.length ? 'Loading signature image…' : missing);
+        if (editor.querySelector('img[data-wsc-missing]')) notice(tasks.length ? 'Loading signature image…' : missing);
         for (const [target,source] of tasks) void fill(target,source,key);
       } catch (e) { notice(e.message || 'Could not paste this signature. Try copying just the signature block.'); }
     });
   }
   const serialize = editor => pack(editor).signatureHtml;
-  return {cleanHtml, plainText, restore, pack, serialize, bindPaste};
+  return {cleanHtml, plainText, restore, ready, isPreparing, missingCount, removeMissing, pack, serialize, bindPaste};
 })();
