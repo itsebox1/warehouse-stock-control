@@ -15,7 +15,7 @@
   <div class="wscp-app">
     <header class="wscp-header">
       <strong>Warehouse Stock Control</strong>
-      <span>Office Manager</span>
+      <span id="wscp-page-context">Back Orders</span>
     </header>
 
     <main class="wscp-main">
@@ -1574,6 +1574,7 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
 
   function showView(next, focus) {
     view = next;
+    ui('page-context').textContent = ui(next).querySelector('h1').textContent;
     for (const page of ['office', 'list', 'editor', 'reports', 'report-editor', 'report']) {
       ui(page).hidden = next !== page;
     }
@@ -2381,6 +2382,7 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
         draft.number = saved.number;
         draft.revision = saved.revision;
         ui('editor-title').textContent = 'Edit ' + orderId(saved.number);
+        ui('page-context').textContent = ui('editor-title').textContent;
         throw new Error('The earlier save was confirmed. Click Save and Close to save your latest changes.');
       }
       ui('filter').value = '';

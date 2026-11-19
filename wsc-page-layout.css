@@ -1,0 +1,86 @@
+/* Shared page frame, using the Back Orders colours and dimensions. */
+@media screen {
+  body:has([data-wsc-page]) {
+    margin: 0;
+    padding: clamp(8px, 2.5vw, 24px);
+    background: #f3f6fa;
+  }
+
+  [data-wsc-page]:not(.wsc-inline-report, .wsc-framed-page) {
+    --page-gutter: clamp(10px, 2.2vw, 20px);
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 1068px !important;
+    margin-inline: auto !important;
+    padding: 0 var(--page-gutter) 22px !important;
+    background: #f3f6fa;
+    color: #213146;
+    border: 1px solid #d4dde6;
+    border-radius: 13px;
+    min-width: 0;
+  }
+
+  :is(#loginScreen,#pinLockScreen)[data-wsc-page] { max-width: 620px !important; }
+  #wscAdminPanel > [data-wsc-page] { max-width: 580px !important; }
+  .wsc-page-bar {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px 13px;
+    min-height: 55px;
+    margin: 0 calc(0px - var(--page-gutter)) 17px;
+    padding: 13px var(--page-gutter);
+    color: #fff;
+    background: #294b70;
+    border-radius: 12px 12px 0 0;
+    text-align: left;
+    line-height: 1.4;
+  }
+  .wsc-page-bar strong { font: bold 16px/1.4 Arial, sans-serif; letter-spacing: .01em; }
+  .wsc-page-bar span { font: 12px/1.4 Arial, sans-serif; color: #dbeafa; overflow-wrap: anywhere; }
+  .wsc-inline-report > .wsc-page-bar, .wsc-framed-page > .wsc-page-bar { display: none; }
+  #welcomeScreen.wsc-framed-page { max-width: 1068px; width: 100%; margin-inline: auto; }
+  #wscBackOrdersFrame { height: calc(100dvh - 42px) !important; }
+  #welcomeScreen:not(.wsc-framed-page) { padding-bottom: 74px !important; }
+  #welcomeScreen > .wsc-page-bar { padding-right: 72px; }
+  #homePrivacyGlobe { position: absolute; top: clamp(8px, 2.5vw, 24px); right: max(calc((100vw - 1068px) / 2 + 14px), calc(clamp(8px, 2.5vw, 24px) + 14px)); width: 48px; height: 48px; }
+
+  [data-wsc-page] button[data-wsc-back] {
+    display: inline-block;
+    text-align: left;
+    width: auto !important;
+    max-width: 100%;
+    min-height: 36px;
+    margin: 0 0 8px;
+    padding: 4px 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    color: #294b70;
+    font: bold 16px/1.4 Arial, sans-serif;
+  }
+  [data-wsc-page] button[data-wsc-back]:hover { text-decoration: underline; }
+  [data-wsc-page] > h2, [data-wsc-home-view] > h2, #deliveryReviewScreen > div > h2 {
+    text-align: left !important;
+    margin: 4px 0 16px;
+    color: #213146;
+    line-height: 1.2;
+    font-size: clamp(22px, 3.6vw, 27px);
+  }
+  :is(#stockTakeSession,#stockCountSession,#wscQuickCheck,#reportsScreen > div:first-of-type,#deliveryInvoiceDetails) {
+    background: #fff;
+    border: 1px solid #d4dde6 !important;
+    border-radius: 10px;
+  }
+  #deliveryInvoiceDetails { padding: 14px; }
+  :where([data-wsc-page]) :is(input[type="text"],input[type="email"],input[type="search"],input[type="date"],input[type="number"],select,textarea) {
+    box-sizing: border-box;
+    max-width: 100%;
+    border: 1px solid #bccad6;
+    border-radius: 6px;
+    color: #213146;
+  }
+  #pinLockScreen > h2 {text-align: center !important;}
+}
+@media print { .wsc-page-bar { display: none !important; } }

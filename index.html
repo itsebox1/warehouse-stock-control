@@ -387,13 +387,16 @@ input[type="reset"]:disabled,
 #wscUserDialog, #wscMailboxDialog, #wscSignatureDialog {box-sizing:border-box;width:min(92vw,425px);padding:22px;border:0;border-radius:12px;color:#203247;box-shadow:0 10px 35px #0005;text-align:left}
 #wscUserDialog::backdrop, #wscMailboxDialog::backdrop, #wscSignatureDialog::backdrop {background:#0f223980}
 #wscUserDialog h2, #wscMailboxDialog h2, #wscSignatureDialog h2 {margin:0 0 6px;font-size:21px}
-#wscUserDialog p, #wscMailboxDialog p, #wscSignatureDialog p {margin:0 0 14px;line-height:1.45}
+#wscUserDialog p, #wscMailboxDialog p, #wscSignatureDialog > p, #wscSignatureHelp, #wscSignatureStatus {margin:0 0 14px;line-height:1.45}
 #wscMailboxAddress, #wscSignatureAddress {font-weight:bold}
 #wscMailboxForm label, #wscSignatureForm label {display:block;font-weight:bold}
 #wscMailboxPassword {box-sizing:border-box;width:100%;padding:10px;margin:6px 0 12px;border:1px solid #bac8d7;border-radius:6px;font-size:16px}
 #wscMailboxDialog button, #wscSignatureDialog button {width:auto;min-height:42px;margin:0 6px 8px 0;padding:8px 15px}
 #wscSignatureDialog {width:min(92vw,620px);max-height:85dvh;overflow:auto}
-#wscSignatureText {box-sizing:border-box;width:100%;min-height:120px;max-height:45dvh;padding:10px;margin:6px 0 10px;border:1px solid #bac8d7;border-radius:6px;font:inherit;font-size:16px;line-height:1.4;resize:vertical}
+#wscSignatureText {box-sizing:border-box;width:100%;min-height:120px;max-height:45dvh;padding:10px;margin:6px 0 10px;border:1px solid #bac8d7;border-radius:6px;font:16px Arial,sans-serif;line-height:normal;background:white;color:black;overflow:auto;overflow-wrap:break-word;resize:vertical}
+#wscSignatureText:focus {outline:2px solid #3279b6;outline-offset:1px}
+#wscSignatureText img {max-width:100%}
+#wscSignatureLabel {font-weight:bold}
 #wscSignatureStatus:empty {display:none}
 #wscMailboxClose, #wscMailboxDisconnect, #wscSignatureClose {background:white;color:#244b72;border:1px solid #bac8d7}
 /* WSC floating tools, independent of module navigation. */
@@ -418,6 +421,7 @@ input[type="reset"]:disabled,
 /* Keep the informational globe on Home only. Loading overlays remain unchanged. */
 .about-globe:not(#homePrivacyGlobe),#tradeShowReportGlobe {visibility:hidden!important;}
 </style>
+  <link rel="stylesheet" href="./wsc-page-layout.css?v=1">
 </head>
 
 <body>
@@ -430,7 +434,8 @@ input[type="reset"]:disabled,
   </div>
 </div>
   
-  <div id="loginScreen" style="display:none;">
+  <div id="loginScreen" data-wsc-page style="display:none;">
+  <header class="wsc-page-bar"><strong>Warehouse Stock Control</strong><span>Staff Sign In</span></header>
   <h2>Staff Sign In</h2>
 
   <input
@@ -535,7 +540,8 @@ input[type="reset"]:disabled,
 </style>
   
  <!-- WSC PIN LOCK SCREEN -->
-<div id="pinLockScreen" style="display:none; text-align:center; padding:40px 20px;">
+<div id="pinLockScreen" data-wsc-page style="display:none; text-align:center; padding:40px 20px;">
+  <header class="wsc-page-bar"><strong>Warehouse Stock Control</strong><span>PIN Lock</span></header>
 
   <h2>🔐 Warehouse Stock Control</h2>
 
@@ -586,7 +592,8 @@ input[type="reset"]:disabled,
 
 </div>
   
-  <div id="welcomeScreen" style="display:none; min-height:calc(100dvh - 48px); flex-direction:column; box-sizing:border-box;">
+  <div id="welcomeScreen" data-wsc-page style="display:none; min-height:calc(100dvh - 48px); flex-direction:column; box-sizing:border-box;">
+  <header class="wsc-page-bar"><strong>Warehouse Stock Control</strong><span id="wscHomePageTitle">Home</span></header>
 
   <a href="https://sites.google.com/view/warehouse-stock-control/home" target="_blank">
   <img src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
@@ -595,9 +602,7 @@ input[type="reset"]:disabled,
   </a> 
 
   <div id="wscHomeHeader" data-wsc-home-view="home">
-  <h2 style="text-align:center;">
-  Welcome to<br>Warehouse Stock Control<br>ITS Europe
-  </h2>
+  <h2>Welcome to ITS Europe</h2>
     
   <div id="updateStatus" hidden>
     <strong id="wscUpdateMessage" role="status"></strong>
@@ -641,9 +646,9 @@ input[type="reset"]:disabled,
     <h2 id="wscSignatureTitle">Email signature</h2>
     <p id="wscSignatureAddress"></p>
     <form id="wscSignatureForm" autocomplete="off">
-      <label for="wscSignatureText">Your signature</label>
-      <textarea id="wscSignatureText" rows="11" maxlength="5000" aria-describedby="wscSignatureHelp" disabled></textarea>
-      <p id="wscSignatureHelp">Clear the text and save to remove your personal signature.</p>
+      <div id="wscSignatureLabel">Your signature</div>
+      <div id="wscSignatureText" role="textbox" aria-multiline="true" aria-labelledby="wscSignatureLabel" aria-describedby="wscSignatureHelp" contenteditable="false" spellcheck="false"></div>
+      <p id="wscSignatureHelp">Paste your formatted email signature here. To remove it, clear the box and save.</p>
       <p id="wscSignatureStatus" role="status"></p>
       <button id="wscSignatureSave" type="submit" disabled>Save signature</button>
       <button id="wscSignatureClose" type="button">Close</button>
@@ -662,7 +667,7 @@ input[type="reset"]:disabled,
     <button type="button" id="wscMailboxClose">Close</button>
   </dialog>
   <section id="wscPostMenuScreen" data-wsc-home-view="post" aria-labelledby="wscPostMenuHeading" hidden>
-    <button type="button" onclick="wscCloseManager('post')" style="width:100%;">🏠 Home</button>
+    <button data-wsc-back type="button" onclick="wscCloseManager('post')" style="width:100%;">← Home</button>
     <h2 id="wscPostMenuHeading" tabindex="-1" style="text-align:center;">📮 Post Manager</h2>
     <div class="wsc-module-header wsc-manager-action" hidden>
       <button id="wscPostageQuotesButton" class="wsc-module-main" data-wsc-favourite="postage" data-wsc-area="POSTAGE_QUOTES" type="button" onclick="wscOpenPostageQuotes()">📮 Postage Quotes</button>
@@ -672,7 +677,7 @@ input[type="reset"]:disabled,
     </div>
   </section>
   <section id="wscOfficeManagerScreen" data-wsc-home-view="office" aria-labelledby="wscOfficeManagerHeading" hidden>
-    <button type="button" onclick="wscCloseManager('office')" style="width:100%;">🏠 Home</button>
+    <button data-wsc-back type="button" onclick="wscCloseManager('office')" style="width:100%;">← Home</button>
     <h2 id="wscOfficeManagerHeading" tabindex="-1" style="text-align:center;"><span class="wsc-office-icon" aria-hidden="true"></span>Office Manager</h2>
     <div class="wsc-module-header wsc-manager-action" hidden>
       <button id="wscBatchOrderButton" class="wsc-module-main" data-wsc-favourite="batch" data-wsc-area="BATCH_ORDERS" type="button" onclick="wscOpenBatchOrders()">📋 Batch Orders</button>
@@ -682,7 +687,7 @@ input[type="reset"]:disabled,
     </div>
   </section>
   <section id="wscStockManagerScreen" data-wsc-home-view="stock" aria-labelledby="wscStockManagerHeading" hidden>
-    <button type="button" onclick="wscCloseManager('stock')" style="width:100%;">🏠 Home</button>
+    <button data-wsc-back type="button" onclick="wscCloseManager('stock')" style="width:100%;">← Home</button>
     <h2 id="wscStockManagerHeading" tabindex="-1" style="text-align:center;">📦 Stock Manager</h2>
     <div class="wsc-module-header wsc-manager-action" hidden>
       <button id="wscDatesHomeButton" class="wsc-module-main" data-wsc-favourite="dates" data-wsc-area="DATES" type="button" onclick="wscOpenDates()">📅 Check Dates</button>
@@ -716,14 +721,14 @@ input[type="reset"]:disabled,
   </div><div class="wsc-module-count"></div><div class="wsc-module-detail" hidden id="wscOutstandingQBList"></div></div>
   </section>
   <section id="wscBatchOrderScreen" data-wsc-home-view="batch" hidden aria-label="Batch Orders">
-    <button id="wscBatchOrderHome" type="button" onclick="wscCloseBatchOrders()" style="width:100%;">🏠 Home</button>
+    <button data-wsc-back id="wscBatchOrderHome" type="button" onclick="wscCloseBatchOrders()" style="width:100%;">← Home</button>
     <iframe id="wscBatchOrderFrame" title="Batch order review" style="display:block;width:100%;height:calc(100dvh - 145px);min-height:480px;border:0;background:#f3f6fa;"></iframe>
   </section>
   <section id="wscBackOrdersScreen" data-wsc-home-view="back-orders" hidden aria-label="Back Orders" tabindex="-1">
     <iframe id="wscBackOrdersFrame" title="Back Orders and reports" referrerpolicy="no-referrer" allow="web-share" style="display:block;width:100%;height:calc(100dvh - 103px);min-height:480px;border:0;background:#f3f6fa;"></iframe>
   </section>
   <section id="wscPostageScreen" data-wsc-home-view="postage" hidden aria-labelledby="wscPostageHeading">
-    <button type="button" onclick="wscClosePostageQuotes()" style="width:100%;">🏠 Home</button>
+    <button data-wsc-back type="button" onclick="wscClosePostageQuotes()" style="width:100%;">← Home</button>
     <h2 id="wscPostageHeading" tabindex="-1" style="text-align:center;">📮 Postage Quotes</h2>
     <p class="pqp-notice">Choose Live Click &amp; Drop, enter the parcel details and request prices. Live prices need an eligible online-postage account; check VAT, dimensions and contents before quoting.</p>
     <p id="wscPQStepStatus" class="wizard-status" aria-live="polite">Step 1 of 5</p>
@@ -787,7 +792,7 @@ input[type="reset"]:disabled,
     <p class="pqp-footer">No orders or labels are created. Confirm the parcel and contents with Royal Mail.</p>
   </section>
   <section id="wscShopifyInvoiceScreen" data-wsc-home-view="shopify" hidden aria-labelledby="wscShopifyInvoiceHeading">
-    <button type="button" onclick="wscCloseShopifyInvoices()" style="width:100%">🏠 Home</button>
+    <button data-wsc-back type="button" onclick="wscCloseShopifyInvoices()" style="width:100%">← Home</button>
     <h2 id="wscShopifyInvoiceHeading" tabindex="-1" style="text-align:center">🧾 Shopify Invoices</h2>
     <div class="wsc-invoice-card">
       <label for="wscInvoiceSearch"><strong>Shopify order number</strong></label>
@@ -844,8 +849,9 @@ input[type="reset"]:disabled,
    
 </div>
 
-  <section id="wscDatesScreen" style="display:none; max-width:650px; margin:0 auto;">
-    <button type="button" onclick="wscDatesHome()" style="width:100%;">🏠 Home</button>
+  <section id="wscDatesScreen" data-wsc-page style="display:none; max-width:650px; margin:0 auto;">
+  <header class="wsc-page-bar"><strong>Warehouse Stock Control</strong><span>Check Dates</span></header>
+    <button data-wsc-back type="button" onclick="wscDatesHome()" style="width:100%;">← Home</button>
     <h2>📅 Check Dates</h2>
     <label for="wscDatesSku">Product SKU</label>
     <input id="wscDatesSku" type="text" placeholder="Enter SKU" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;margin:8px 0;">
@@ -857,8 +863,9 @@ input[type="reset"]:disabled,
     <p id="wscDatesMessage" role="status" aria-live="polite"></p>
     <div id="wscDatesResults"></div>
   </section>
-  <section id="wscDatesAmendScreen" style="display:none;max-width:650px;margin:0 auto;">
-    <button type="button" onclick="wscDatesCloseAmendments()" style="width:100%;">← Back to Check Dates</button>
+  <section id="wscDatesAmendScreen" data-wsc-page style="display:none;max-width:650px;margin:0 auto;">
+  <header class="wsc-page-bar"><strong>Warehouse Stock Control</strong><span>Check Dates – Amendments</span></header>
+    <button data-wsc-back type="button" onclick="wscDatesCloseAmendments()" style="width:100%;">← Back to Check Dates</button>
     <h2>✏️ Check Dates — Amendments</h2>
     <label for="wscDatesAmendSku">Product SKU</label>
     <input id="wscDatesAmendSku" type="text" placeholder="Enter SKU" autocomplete="off" style="width:100%;box-sizing:border-box;padding:12px;margin:8px 0;">
@@ -884,7 +891,8 @@ input[type="reset"]:disabled,
     </section>
   </section>
   <div id="wscAdminPanel" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:2500; overflow-y:auto; padding:20px; box-sizing:border-box;">
-    <section role="dialog" aria-modal="true" aria-label="Administrator settings" style="max-width:500px; margin:30px auto; background:white; color:#172b4d; border-radius:14px; padding:22px; box-shadow:0 8px 32px #0004;">
+    <section role="dialog" aria-modal="true" aria-label="Administrator settings" data-wsc-page style="max-width:500px; margin:30px auto; background:white; color:#172b4d; border-radius:14px; padding:22px; box-shadow:0 8px 32px #0004;">
+      <header class="wsc-page-bar"><strong>Warehouse Stock Control</strong><span>Administrator Settings</span></header>
       <button type="button" onclick="wscCloseAdmin()" style="float:right; width:auto; padding:7px 13px;">✕ Close</button>
       <h2>⚙️ Administrator Settings</h2>
       <p id="wscAdminStatus" role="status">Loading settings…</p>
@@ -942,10 +950,11 @@ input[type="reset"]:disabled,
     .wsc-admin-section-body {padding:12px;}
   </style>
   <!-- DL - Delivery Setup Screen -->
-<div id="deliverySetupScreen" style="display:none;">
+<div id="deliverySetupScreen" data-wsc-page style="display:none;">
+  <header class="wsc-page-bar"><strong>Warehouse Stock Control</strong><span>DL - Delivery</span></header>
 
-  <button type="button" onclick="showWelcomeScreen()">
-    🏠 Home
+  <button data-wsc-back type="button" onclick="showWelcomeScreen()">
+    ← Home
   </button>
 
   <h2 style="text-align:center;">🚚 DL - Delivery</h2>
@@ -1013,9 +1022,10 @@ input[type="reset"]:disabled,
 
 </div>
   <!-- DL - Delivery Review Screen -->
-<div id="deliveryReviewScreen" style="display:none;">
+<div id="deliveryReviewScreen" data-wsc-page style="display:none;">
+  <header class="wsc-page-bar"><strong>Warehouse Stock Control</strong><span>DL - Delivery Review</span></header>
 
-  <button type="button" onclick="showDeliverySetup()">
+  <button data-wsc-back type="button" onclick="showDeliverySetup()">
     ← Back to Delivery
   </button>
 
@@ -1133,14 +1143,15 @@ onclick="addDeliveryExtraProduct()">
 
 </div>
   <!-- TR - Trade Show Setup Screen -->
-<div id="tradeShowSetupScreen" style="display:none;">
+<div id="tradeShowSetupScreen" data-wsc-page style="display:none;">
+  <header class="wsc-page-bar"><strong>Warehouse Stock Control</strong><span>TR - Trade Show</span></header>
 
   <img src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
        id="tradeShowCreateGlobe" class="about-globe spinning"
        style="display:none; top:36px; right:18px;" alt="Creating Trade Show">
 
-  <button type="button" id="tradeShowSetupHomeButton" onclick="showWelcomeScreen()">
-    🏠 Home
+  <button data-wsc-back type="button" id="tradeShowSetupHomeButton" onclick="showWelcomeScreen()">
+    ← Home
   </button>
 
   <h2 style="text-align:center;">🎪 TR - Trade Show</h2>
@@ -1226,7 +1237,8 @@ function validateTradeShowFields() {
 </section>
 
 </div>
-<div id="stockApp" style="display:none;">
+<div id="stockApp" data-wsc-page style="display:none;">
+  <header class="wsc-page-bar"><strong>Warehouse Stock Control</strong><span id="wscStockPageTitle">ST - Warehouse Stock Take</span></header>
 
   <a href="https://sites.google.com/view/warehouse-stock-control/home" target="_blank">
     <img src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
@@ -1234,8 +1246,8 @@ function validateTradeShowFields() {
        alt="About Warehouse Stock Control">
 </a>
 
-  <button class="stock-home-button" onclick="showWelcomeScreen()">
-  🏠 Home
+  <button data-wsc-back class="stock-home-button" onclick="showWelcomeScreen()">
+  ← Home
 </button>
 
   <h2 id="stockPageHeading">ST - Warehouse Stock Take</h2>
@@ -1359,14 +1371,15 @@ function validateTradeShowFields() {
 </div> 
 
 <!-- TR - Trade Show Counting Screen -->
-<div id="tradeShowCountingScreen" style="display:none;">
+<div id="tradeShowCountingScreen" data-wsc-page style="display:none;">
+  <header class="wsc-page-bar"><strong>Warehouse Stock Control</strong><span id="wscTradeShowPageTitle">TR - Trade Show</span></header>
 
   <img src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
        id="tradeShowCountingGlobe" class="about-globe spinning"
        style="display:none; top:36px; right:18px;" alt="Loading Trade Show">
 
-  <button type="button" id="tradeShowCountingHomeButton" onclick="showWelcomeScreen()">
-    🏠 Home
+  <button data-wsc-back type="button" id="tradeShowCountingHomeButton" onclick="showWelcomeScreen()">
+    ← Home
   </button>
 
   <h2>🎪 TR - Trade Show</h2>
@@ -1455,10 +1468,11 @@ function validateTradeShowFields() {
 </div>
 
  <div id="tradeShowReportOriginalPosition"></div>
- <div id="tradeShowReportScreen" style="display:none;">
+ <div id="tradeShowReportScreen" data-wsc-page style="display:none;">
+  <header class="wsc-page-bar"><strong>Warehouse Stock Control</strong><span>TR - Trade Show Report</span></header>
 
   <div id="tradeShowReportTopBar" style="display:flex; align-items:center; gap:12px;">
-    <button type="button" id="tradeShowReportHomeButton" onclick="showWelcomeScreen()" style="flex:1;">🏠 Home</button>
+    <button data-wsc-back type="button" id="tradeShowReportHomeButton" onclick="showWelcomeScreen()" style="flex:1;">← Home</button>
     <img id="tradeShowReportGlobe" class="about-globe spinning" src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png" alt="Processing" style="display:none; width:48px; height:48px; object-fit:contain;" />
   </div>
   <h2>🎪 TR — Trade Show Report</h2>
@@ -1489,8 +1503,9 @@ function validateTradeShowFields() {
 
 </div> 
 <!-- Unified Reports selector: keep legacy ST/SC report engine behind this interface. -->
-<div id="reportsScreen" style="display:none;">
-  <button type="button" onclick="showWelcomeScreen()">🏠 Home</button>
+<div id="reportsScreen" data-wsc-page style="display:none;">
+  <header class="wsc-page-bar"><strong>Warehouse Stock Control</strong><span id="wscReportsPageTitle">Reports</span></header>
+  <button data-wsc-back type="button" onclick="showWelcomeScreen()">← Home</button>
   <div style="max-width:720px;margin:22px auto;padding:18px;border:1px solid #d5dce5;border-radius:12px;box-sizing:border-box;">
     <h2>📊 WSC Reports</h2>
     <label for="wscReportSelect"><strong>Select Report</strong></label>
@@ -1526,7 +1541,8 @@ function validateTradeShowFields() {
   </div>
 </div>
 
-<div id="reportOptionsScreen" style="display:none;">
+<div id="reportOptionsScreen" data-wsc-page style="display:none;">
+  <header class="wsc-page-bar"><strong>Warehouse Stock Control</strong><span id="wscReportOptionsPageTitle">Reports</span></header>
 
    <a href="https://sites.google.com/view/warehouse-stock-control/home" target="_blank">
     <img src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png"
@@ -1535,8 +1551,8 @@ function validateTradeShowFields() {
          alt="About Warehouse Stock Control">
   </a>
 
-  <button class="report-back-button" onclick="showWelcomeScreen()">
-    🏠 Home
+  <button data-wsc-back class="report-back-button" onclick="showWelcomeScreen()">
+    ← Home
   </button>
 
   <h2 id="reportOptionsTitle"></h2>
@@ -1720,10 +1736,11 @@ function validateTradeShowFields() {
 
 </div>
   
-<div id="reportDisplayScreen" style="display:none;">
+<div id="reportDisplayScreen" data-wsc-page style="display:none;">
+  <header class="wsc-page-bar"><strong>Warehouse Stock Control</strong><span id="wscReportDisplayPageTitle">Report</span></header>
 
-  <button onclick="showWelcomeScreen()">
-    🏠 Home
+  <button data-wsc-back onclick="showWelcomeScreen()">
+    ← Home
   </button>
 
   <h2 id="reportDisplayTitle"></h2>
@@ -1740,7 +1757,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.0.29";
+const WSC_VERSION = "1.0.30";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -3055,6 +3072,7 @@ async function confirmTradeShowReturns() {
   const reportScreen = document.getElementById("tradeShowReportScreen");
   const originalPosition = document.getElementById("tradeShowReportOriginalPosition");
   const setupScreen = document.getElementById("tradeShowSetupScreen");
+  reportScreen.classList.toggle('wsc-inline-report', inlineInSearch);
   if (inlineInSearch) {
     // Search-result View buttons place the shared detail panel inside the selected card.
     // Leave its position unchanged here so the selected card owns the dropdown.
@@ -3568,6 +3586,7 @@ async function wscStartWeeklyBOM(button) {
     const result=await wscBOMRequest({action:'getWeeklyBOMReport'});
     showReportsScreen();
     document.getElementById('wscReportSelect').value='BOM';wscReportsUpdate();
+    document.getElementById('wscReportsPageTitle').textContent='Weekly BOM';
     document.getElementById('wscReportSearchBy').value='number';wscReportsUpdateFields();
     document.getElementById('wscReportNumber').value=result.reportNumber.slice(4);
     await wscRunUnifiedReport();
@@ -5486,7 +5505,14 @@ const wscManagerMenus = {
   office: {button:'wscOfficeManagerButton', heading:'wscOfficeManagerHeading'}
 };
 
+const wscHomePageNames = {
+  home:'Home', stock:'Stock Manager', office:'Office Manager', post:'Post Manager',
+  postage:'Postage Quotes', shopify:'Shopify Invoices', batch:'Batch Orders', 'back-orders':'Back Orders'
+};
 function wscShowHomeView(view = 'home', focusId) {
+  const welcome = document.getElementById('welcomeScreen');
+  welcome.classList.toggle('wsc-framed-page', view === 'back-orders');
+  document.getElementById('wscHomePageTitle').textContent = wscHomePageNames[view];
   if (view !== 'shopify' && !document.getElementById('wscShopifyInvoiceScreen').hidden) {
     window.wscClearShopifyInvoices?.();
   }
@@ -6764,6 +6790,7 @@ function showReportsScreen() {
 }
 
 function wscReportsUpdate() {
+  document.getElementById('wscReportsPageTitle').textContent='Reports';
   const previousResults=document.getElementById('wscUnifiedResults'); if(previousResults) previousResults.replaceChildren();
   const type = document.getElementById('wscReportSelect').value;
   const select = document.getElementById('wscReportSearchBy');
@@ -7023,6 +7050,8 @@ function toggleNewStockCount() {
 }
 
 function showReportOptions(type) {
+  document.getElementById('wscReportOptionsPageTitle').textContent =
+    type === 'ST' ? 'ST - Warehouse Stock Take' : 'SC - Warehouse Stock Count';
   selectedReportType = type;
   const stStartSection = document.getElementById("stStartNewSection");
   if (stStartSection) stStartSection.style.display = "none";
@@ -10461,7 +10490,7 @@ window.wscOpenPostageQuotes=async()=>{
    if(!cachedPermission)await wscRefreshPermissions();
    if(wscPermissions?.functions?.BATCH_ORDERS!==true)throw new Error('Batch Orders access is disabled for this account.');
    const f=frame();if(!f)throw new Error('Batch Orders is unavailable.');
-   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=batch-qb-sales-1');batchUser=user;}
+   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=batch-layout-1');batchUser=user;}
    wscShowHomeView('batch', 'wscBatchOrderHome');
    tidyBatchNavigation();
    if(cachedPermission)void wscRefreshPermissions();
@@ -10800,6 +10829,7 @@ window.wscOpenPostageQuotes=async()=>{
   window.wscCloseQuickCheck = close;
 })();
 </script>
+<script src="./wsc-signature.js?v=1.0.30"></script>
 <script>
 /* A mailbox can be enrolled only by its signed-in, unlocked owner. */
 (() => {
@@ -10811,6 +10841,8 @@ window.wscOpenPostageQuotes=async()=>{
   const eligible = (email = signedInEmail()) => currentStaff(email) && wscPermissions.mailboxEligible === true;
   const sig = key => document.getElementById('wscSignature' + key);
   const signatureDialog = sig('Dialog');
+  const editor = sig('Text');
+  const richSignature = window.wscRichSignature;
   let signatureSession;
   let epoch = 0;
   let busy = false;
@@ -10824,7 +10856,8 @@ window.wscOpenPostageQuotes=async()=>{
   }
   function closeSignature() {
     signatureSession = null;
-    sig('Text').value = sig('Address').textContent = sig('Status').textContent = '';
+    editor.contentEditable = 'false';
+    editor.textContent = sig('Address').textContent = sig('Status').textContent = '';
     if (signatureDialog.open) signatureDialog.close();
   }
   window.wscCloseMailbox = () => {
@@ -10909,20 +10942,38 @@ window.wscOpenPostageQuotes=async()=>{
 
   async function updateSignature(session, saving) {
     const active = () => signatureSession === session && signatureDialog.open && eligible(session.email);
-    sig('Text').disabled = sig('Save').disabled = true;
+    let fields = {};
+    if (saving) {
+      const signature = editor.innerText.replace(/\r\n?/g, '\n');
+      if (signature.length > 5000) {
+        sig('Status').textContent = 'Shorten your signature to 5,000 characters before saving.';
+        return;
+      }
+      const signatureHtml = signature.trim() ? richSignature.serialize(editor) : '';
+      if (signatureHtml.length > 32000) {
+        sig('Status').textContent = 'The formatted signature is too large. Paste a smaller signature block.';
+        return;
+      }
+      fields = {signature, signatureHtml};
+    }
+    editor.contentEditable = 'false';
+    sig('Save').disabled = true;
     sig('Close').disabled = saving;
     sig('Status').textContent = saving ? 'Saving signature…' : 'Loading signature…';
     try {
       const result = await profileRequest(saving ? 'saveWSCEmailSignature' : 'getWSCEmailSignature',
-        saving ? {signature:sig('Text').value} : {}, session.email, active);
+        fields, session.email, active);
       if (!active()) return;
-      if (typeof result.signature !== 'string' || result.signature.length > sig('Text').maxLength) {
+      if (typeof result.signature !== 'string' || result.signature.length > 5000 ||
+          (result.signatureHtml != null && (typeof result.signatureHtml !== 'string' || result.signatureHtml.length > 32000)) ||
+          (saving && fields.signatureHtml && !result.signatureHtml)) {
         throw new Error('The email settings service returned an invalid signature.');
       }
-      sig('Text').value = result.signature;
-      sig('Text').disabled = false;
+      editor.replaceChildren(result.signatureHtml ? richSignature.cleanHtml(result.signatureHtml) :
+        richSignature.plainText(result.signature));
+      editor.contentEditable = 'true';
       sig('Status').textContent = saving ? (result.signature ? 'Signature saved.' : 'Personal signature removed.') : '';
-      sig('Text').focus();
+      editor.focus();
     } catch (error) {
       if (active()) sig('Status').textContent = saving
         ? 'The save could not be confirmed. Reopen Add Signature to check the saved text.'
@@ -10936,12 +10987,13 @@ window.wscOpenPostageQuotes=async()=>{
     if (!eligible(email) || signatureDialog.open) return;
     signatureSession = {email};
     sig('Address').textContent = email;
-    sig('Text').value = '';
+    editor.replaceChildren();
     signatureDialog.showModal();
     void updateSignature(signatureSession, false);
   });
-  sig('Text').addEventListener('input', () => {
-    if (!sig('Text').disabled) {
+  if (richSignature) richSignature.bindPaste(editor, message => { sig('Status').textContent = message; });
+  editor.addEventListener('input', () => {
+    if (editor.isContentEditable) {
       sig('Save').disabled = false;
       sig('Status').textContent = '';
     }
@@ -11047,6 +11099,33 @@ window.wscOpenPostageQuotes=async()=>{
   document.addEventListener('click',()=>queueMicrotask(refresh),true);
   window.addEventListener('pageshow',refresh);
   refresh();
+})();
+</script>
+<script>
+(() => {
+  const byId = id => document.getElementById(id);
+  const stockTitle = () => {
+    const label = byId('wscQuickCheck').hidden ? byId('stockPageHeading').textContent : 'Quick Check';
+    byId('wscStockPageTitle').textContent = label;
+  };
+  const stock = new MutationObserver(stockTitle);
+  stock.observe(byId('stockPageHeading'), {childList:true, characterData:true, subtree:true});
+  stock.observe(byId('wscQuickCheck'), {attributes:true, attributeFilter:['hidden']});
+  stockTitle();
+  const tradeTitle = () => {
+    byId('wscTradeShowPageTitle').textContent = byId('tradeShowReturnsSection').style.display !== 'none'
+      ? 'TR - Trade Show Returns' : byId('tradeShowReviewSection').style.display !== 'none'
+      ? 'TR - Trade Show Review' : 'TR - Trade Show';
+  };
+  const trade = new MutationObserver(tradeTitle);
+  for (const id of ['tradeShowReviewSection', 'tradeShowReturnsSection']) {
+    trade.observe(byId(id), {attributes:true, attributeFilter:['style']});
+  }
+  const report = () => {
+    const name = byId('reportDisplayTitle').textContent.trim();
+    byId('wscReportDisplayPageTitle').textContent = name || 'Report';
+  };
+  new MutationObserver(report).observe(byId('reportDisplayTitle'), {childList:true, characterData:true, subtree:true});
 })();
 </script>
 </body>
