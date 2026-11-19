@@ -127,7 +127,7 @@
         <h1 id="wscp-editor-title">New Back Order</h1>
         <form id="wscp-form">
           <div class="wscp-panel wscp-pad">
-            <h2 class="wscp-details-heading"><span>Order details</span><button type="button" id="wscp-details-toggle" class="wscp-details-toggle cursor-interaction" aria-expanded="true" aria-controls="wscp-details-body" aria-label="Collapse order details"><span aria-hidden="true">▼</span></button></h2>
+            <h2 class="wscp-details-heading"><span>Order details</span><button type="button" id="wscp-details-toggle" class="wscp-details-toggle cursor-interaction" aria-expanded="true" aria-controls="wscp-details-body" aria-label="Collapse order details"><span aria-hidden="true">▼</span></button><span id="wscp-details-company" class="wscp-details-company" hidden></span></h2>
             <div id="wscp-details-body">
             <div class="wscp-order-fields">
               <div class="wscp-field wscp-picker">
@@ -366,6 +366,8 @@
   #wsc-back-orders-preview .wscp-state-done { background: var(--wscp-ok-bg); color: var(--wscp-ok); }
   #wsc-back-orders-preview .wscp-pad { padding: 14px; margin-bottom: 12px; }
   #wsc-back-orders-preview .wscp-details-heading { display: flex; align-items: center; gap: 5px; }
+  #wsc-back-orders-preview .wscp-details-heading > :first-child, #wsc-back-orders-preview .wscp-details-toggle { flex-shrink: 0; }
+  #wsc-back-orders-preview .wscp-details-company { min-width: 0; overflow-wrap: anywhere; }
   #wsc-back-orders-preview .wscp-details-toggle { min-height: 32px; min-width: 36px; padding: 2px 7px; border: 0; background: transparent; color: var(--wscp-blue); }
   #wsc-back-orders-preview .wscp-details-heading:has(+ [hidden]) { margin-bottom: 0; }
   #wsc-back-orders-preview .wscp-email-action { padding-top: 27px; }
@@ -2002,6 +2004,7 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
       : '';
     ui('customer-id').hidden = !live;
     ui('customer-id').textContent = live ? 'QuickBooks Customer ID ' + live.id : '';
+    paintOrderDetailsCompany();
   }
 
   const wscCustomerLookup = bridge?.customers || window.wscQuickBooksCustomers;
@@ -2340,11 +2343,18 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
     ui('discard').showModal();
   }
 
+  function paintOrderDetailsCompany() {
+    const company = draft ? companyName(draft) : '';
+    ui('details-company').textContent = company;
+    ui('details-company').hidden = !ui('details-body').hidden || !company;
+  }
+
   function setOrderDetailsOpen(open) {
     ui('details-body').hidden = !open;
     ui('details-toggle').setAttribute('aria-expanded', String(open));
     ui('details-toggle').setAttribute('aria-label', open ? 'Collapse order details' : 'Expand order details');
     ui('details-toggle').firstElementChild.textContent = open ? '▼' : '▲';
+    paintOrderDetailsCompany();
     if (!open) customerPicker.reset({hasCustomer: !!draft?.customer});
   }
 
