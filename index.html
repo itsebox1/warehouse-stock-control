@@ -382,6 +382,17 @@ input[type="reset"]:disabled,
 #wscPostagePrint{display:none} @media print{body.wsc-postage-printing > *:not(#wscPostagePrint){display:none!important} body.wsc-postage-printing #wscPostagePrint{display:block!important;color:#182c45;font:13px/1.5 Arial,sans-serif} #wscPostagePrint table{border-collapse:collapse;width:100%;margin:20px 0} #wscPostagePrint td{padding:8px;border-bottom:1px solid #ddd} #wscPostagePrint td:first-child{width:42%;font-weight:bold}}
 </style>
 <style>
+#wscMailboxOpen {display:block;width:auto;min-height:42px;padding:8px 18px;margin:10px auto;background:white;color:#244b72;border:1px solid #bac8d7}
+#wscMailboxOpen[hidden], #wscMailboxDialog [hidden] {display:none!important}
+#wscMailboxDialog {box-sizing:border-box;width:min(92vw,425px);padding:22px;border:0;border-radius:12px;color:#203247;box-shadow:0 10px 35px #0005;text-align:left}
+#wscMailboxDialog::backdrop {background:#0f223980}
+#wscMailboxDialog h2 {margin:0 0 6px;font-size:21px}
+#wscMailboxDialog p {margin:0 0 14px;line-height:1.45}
+#wscMailboxAddress {font-weight:bold}
+#wscMailboxForm label {display:block;font-weight:bold}
+#wscMailboxPassword {box-sizing:border-box;width:100%;padding:10px;margin:6px 0 12px;border:1px solid #bac8d7;border-radius:6px;font-size:16px}
+#wscMailboxDialog button {width:auto;min-height:42px;margin:0 6px 8px 0;padding:8px 15px}
+#wscMailboxClose, #wscMailboxDisconnect {background:white;color:#244b72;border:1px solid #bac8d7}
 /* WSC floating tools, independent of module navigation. */
 .wsc-tool-fab[hidden] {display:none!important;}
 .wsc-tool-fab {position:fixed;bottom:16px;width:52px;height:52px;border-radius:50%;padding:0;margin:0;background:#164b84;color:#fff;box-shadow:0 2px 12px #0004;z-index:1200;font-size:22px;display:grid;place-items:center;cursor:pointer;}
@@ -611,11 +622,24 @@ input[type="reset"]:disabled,
     <p id="wscStockManagerSummary" role="status" aria-live="polite" hidden style="text-align:center;font-size:12px;margin:0 0 10px;"></p>
     <button id="wscPostButton" class="wsc-manager-entry" type="button" onclick="wscOpenManager('post')" hidden>📮 Post Manager</button>
     <button id="wscOfficeManagerButton" class="wsc-manager-entry" type="button" onclick="wscOpenManager('office')" hidden><span class="wsc-office-icon" aria-hidden="true"></span>Office Manager</button>
+    <button id="wscMailboxOpen" type="button" hidden>Email account</button>
     <section id="wscFavourites" aria-labelledby="wscFavouritesHeading" hidden>
       <h2 id="wscFavouritesHeading">Favourites</h2>
       <div id="wscFavouriteList"></div>
     </section>
   </nav>
+  <dialog id="wscMailboxDialog" aria-labelledby="wscMailboxTitle">
+    <h2 id="wscMailboxTitle">Email account</h2>
+    <p id="wscMailboxAddress"></p>
+    <p id="wscMailboxStatus" role="status"></p>
+    <form id="wscMailboxForm" autocomplete="off" hidden>
+      <label for="wscMailboxPassword">Mailbox password</label>
+      <input id="wscMailboxPassword" type="password" autocomplete="off" required maxlength="1024">
+      <button type="submit" id="wscMailboxConnect">Connect mailbox</button>
+    </form>
+    <button type="button" id="wscMailboxDisconnect" hidden>Disconnect mailbox</button>
+    <button type="button" id="wscMailboxClose">Close</button>
+  </dialog>
   <section id="wscPostMenuScreen" data-wsc-home-view="post" aria-labelledby="wscPostMenuHeading" hidden>
     <button type="button" onclick="wscCloseManager('post')" style="width:100%;">🏠 Home</button>
     <h2 id="wscPostMenuHeading" tabindex="-1" style="text-align:center;">📮 Post Manager</h2>
@@ -1695,7 +1719,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.0.23";
+const WSC_VERSION = "1.0.24";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -8015,6 +8039,7 @@ async function wscConfirmStockQBReviewResolved(number) {
 // End shared Live QuickBooks UI.
 
 function wscPaintPermissions(permissions) {
+  window.wscPaintMailbox?.();
   const cog = document.getElementById("wscAdminCog");
   const areas = permissions?.functions || {};
   if (areas.SC !== true) window.wscCloseQuickCheck?.();
@@ -8297,6 +8322,7 @@ function isPinSessionValid() {
 window.wscHasUnlockedSession = () => Boolean(auth.currentUser && !wscIdleDialog && isPinSessionValid());
   
   onAuthStateChanged(auth, (user) => {
+  window.wscCloseMailbox?.();
   window.wscCloseQuickCheck?.();
   if (!user || (wscPermissionEmail && wscPermissionEmail !== String(user.email || "").toLowerCase())) {
     wscPermissions = null;
@@ -8485,6 +8511,7 @@ function wscLockForInactivity() {
   if(wscIdleDialog || !auth.currentUser || !sessionStorage.getItem(PIN_SESSION_KEY))return;
   window.wscCloseQuickCheck?.();
   const refreshAllowed=wscIdleSafeToRefresh();
+  window.wscCloseMailbox?.();
   sessionStorage.removeItem(PIN_SESSION_KEY);
   const dialog=document.createElement('dialog');dialog.id='wscIdleDialog';
   dialog.style.cssText='position:fixed;inset:0;width:100vw;max-width:none;height:100dvh;max-height:none;margin:0;padding:0;border:0;background:white;';
@@ -10508,8 +10535,9 @@ window.wscOpenPostageQuotes=async()=>{
         return (await wscAdminRequest('wscBackOrders', {path, method, payload}, 23_000)).result;
       });
     },
-    emailPdf({recipient, orderNumber, filename, pdfBase64, requestId}) {
-      return withStaff(() => wscAdminRequest('emailBackOrderPdf', {recipient, orderNumber, filename, pdfBase64, requestId}, 60_000));
+    emailSender() { return withStaff(() => window.wscStaffMailSender()); },
+    emailPdf({recipient, orderNumber, filename, pdfBase64, requestId, expectedSender}) {
+      return withStaff(() => wscAdminRequest('emailBackOrderPdf', {recipient, orderNumber, filename, pdfBase64, requestId, expectedSender}, 60_000));
     },
     productIndex() {
       return withStaff(async () => {
@@ -10752,6 +10780,115 @@ window.wscOpenPostageQuotes=async()=>{
 })();
 </script>
 <script>
+/* A mailbox can be enrolled only by its signed-in, unlocked owner. */
+(() => {
+  const pilotEmail = 'tmerry@sensafe.com';
+  const id = key => document.getElementById('wscMailbox' + key);
+  const dialog = id('Dialog');
+  const signedInEmail = () => String(window.getCurrentStaffEmail?.() || '').trim().toLowerCase();
+  const eligible = () => signedInEmail() === pilotEmail && window.wscHasUnlockedSession?.() === true &&
+    wscPermissionEmail === pilotEmail && !!wscPermissions;
+  let epoch = 0;
+  let busy = false;
+
+  function close() {
+    epoch++;
+    busy = false;
+    id('Password').value = '';
+    id('Close').disabled = false;
+    if (dialog.open) dialog.close();
+  }
+  window.wscCloseMailbox = close;
+  window.wscPaintMailbox = () => {
+    id('Open').hidden = !eligible();
+    if (id('Open').hidden && dialog.open) close();
+  };
+
+  async function request(action, password, active = eligible) {
+    if (!active()) throw new Error('Unlock WSC using your account.');
+    const idToken = await window.getCurrentStaffToken();
+    if (!active()) throw new Error('Your WSC session changed.');
+    // Credential requests go only to the dedicated HTTPS handler. Never follow redirects.
+    const response = await fetch('https://warehouse-stock-reports.tmerry.workers.dev', {
+      method: 'POST', credentials: 'omit', redirect: 'error', cache: 'no-store',
+      referrerPolicy: 'no-referrer', headers: {'Content-Type': 'application/json'},
+      signal: AbortSignal.timeout?.(45_000),
+      body: JSON.stringify({action, idToken, ...(password === undefined ? {} : {password})})
+    });
+    const result = await response.json().catch(() => null);
+    if (!active()) throw new Error('Your WSC session changed.');
+    if (!response.ok || result?.success !== true || result.email !== pilotEmail ||
+        typeof result.connected !== 'boolean') {
+      throw new Error(result?.error || 'The mailbox service is unavailable.');
+    }
+    return result.connected;
+  }
+
+  window.wscStaffMailSender = async () => {
+    if (signedInEmail() !== pilotEmail) return 'itsebox@gmail.com';
+    return await request('wscMailboxStatus') ? pilotEmail : 'itsebox@gmail.com';
+  };
+
+  function paint(connected) {
+    id('Form').hidden = connected;
+    id('Disconnect').hidden = !connected;
+    id('Status').textContent = connected
+      ? 'Connected. WSC uses this address when you send email.'
+      : 'Connect once to use this mailbox when you send email from WSC.';
+  }
+  async function run(action, password) {
+    if (busy || !dialog.open || !eligible()) return;
+    const ticket = epoch;
+    const active = () => ticket === epoch && dialog.open && eligible();
+    busy = true;
+    id('Close').disabled = action !== 'wscMailboxStatus';
+    id('Connect').disabled = id('Disconnect').disabled = id('Password').disabled = true;
+    id('Status').textContent = action === 'wscMailboxStatus' ? 'Checking connection…' :
+      action === 'wscMailboxConnect' ? 'Checking your mailbox login over an encrypted connection…' : 'Disconnecting…';
+    try {
+      const connected = await request(action, password, active);
+      if (active()) paint(connected);
+    } catch (error) {
+      if (active()) {
+        id('Status').textContent = (error.name === 'TimeoutError' || error.name === 'TypeError'
+          ? 'The mailbox service could not be reached.' : error.message) +
+          (action === 'wscMailboxStatus' ? ' Close and reopen Email account to check again.' : '');
+      }
+    } finally {
+      if (active()) {
+        busy = false;
+        id('Close').disabled = false;
+        id('Connect').disabled = id('Disconnect').disabled = id('Password').disabled = false;
+      }
+    }
+  }
+
+  id('Open').addEventListener('click', () => {
+    if (!eligible() || dialog.open) return;
+    epoch++;
+    id('Address').textContent = pilotEmail;
+    id('Password').value = '';
+    id('Form').hidden = id('Disconnect').hidden = true;
+    dialog.showModal();
+    void run('wscMailboxStatus');
+  });
+  id('Form').addEventListener('submit', event => {
+    event.preventDefault();
+    if (!eligible() || busy || id('Form').hidden || !id('Form').reportValidity()) return;
+    const password = id('Password').value;
+    id('Password').value = '';
+    void run('wscMailboxConnect', password);
+  });
+  id('Disconnect').addEventListener('click', () => {
+    if (!eligible() || busy || id('Disconnect').hidden) return;
+    if (window.confirm('Disconnect your mailbox from WSC on all devices?')) void run('wscMailboxDisconnect');
+  });
+  id('Close').addEventListener('click', close);
+  dialog.addEventListener('cancel', event => { event.preventDefault(); if (!id('Close').disabled) close(); });
+  window.addEventListener('pagehide', close);
+})();
+</script>
+<script>
 /* WSC footer controls: the build value is the actual frontend WSC_VERSION. */
 (function () {
   const byId = id => document.getElementById(id);
@@ -10781,6 +10918,7 @@ window.wscOpenPostageQuotes=async()=>{
     const pin = byId('pinLockScreen');
     const onHome = !!email && welcome?.style.display !== 'none' && !homeView?.hidden && login?.style.display === 'none' && pin?.style.display === 'none';
     homeTools.hidden = !onHome;
+    window.wscPaintMailbox?.();
     byId('wscCurrencyFab').hidden = !email || login?.style.display !== 'none' || pin?.style.display !== 'none';
     if (onHome) userButton.textContent = initials(email);
     const globe = byId('homePrivacyGlobe');
