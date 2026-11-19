@@ -396,6 +396,7 @@ input[type="reset"]:disabled,
 #wscSignatureText {box-sizing:border-box;width:100%;min-height:120px;max-height:45dvh;padding:10px;margin:6px 0 10px;border:1px solid #bac8d7;border-radius:6px;font:16px Arial,sans-serif;line-height:normal;background:white;color:black;overflow:auto;overflow-wrap:break-word;resize:vertical}
 #wscSignatureText:focus {outline:2px solid #3279b6;outline-offset:1px}
 #wscSignatureText img {max-width:100%}
+#wscSignatureText img[data-wsc-missing] {display:inline-block;min-width:40px;min-height:24px;outline:1px dashed #54718b;background:#f3f6fa}
 #wscSignatureLabel {font-weight:bold}
 #wscSignatureSelect {width:100%;margin:5px 0 14px}
 #wscSignatureText[contenteditable="false"] {resize:none}
@@ -654,6 +655,8 @@ input[type="reset"]:disabled,
       </div>
       <div id="wscSignatureLabel">Your signature</div>
       <div id="wscSignatureText" role="textbox" aria-multiline="true" aria-labelledby="wscSignatureLabel" aria-describedby="wscSignatureHelp" contenteditable="false" spellcheck="false"></div>
+      <input id="wscSignatureImageFile" type="file" accept="image/png,image/jpeg,image/gif" hidden>
+      <button id="wscSignatureImage" type="button" hidden>Add image</button>
       <p id="wscSignatureHelp" hidden></p>
       <p id="wscSignatureStatus" role="status"></p>
       <button id="wscSignatureEdit" type="button" hidden>Edit</button>
@@ -1767,7 +1770,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.0.31";
+const WSC_VERSION = "1.0.32";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -10839,7 +10842,9 @@ window.wscOpenPostageQuotes=async()=>{
   window.wscCloseQuickCheck = close;
 })();
 </script>
-<script src="./wsc-signature.js?v=1.0.30"></script>
+<script src="./wsc-signature-rtf.js?v=1"></script>
+<script src="./wsc-signature-images.js?v=1"></script>
+<script src="./wsc-signature.js?v=1.0.32"></script>
 <script>
 /* A mailbox can be enrolled only by its signed-in, unlocked owner. */
 (() => {
@@ -10985,6 +10990,7 @@ window.wscOpenPostageQuotes=async()=>{
     sig('Open').textContent = result.signatures.length ? 'Signature' : 'Add Signature';
   }
   function renderSignature(session, mode, selectedId) {
+    session.imageDraft = {};
     session.mode = mode;
     session.selected = selectedId;
     const book = session.visit.book;
@@ -11011,6 +11017,7 @@ window.wscOpenPostageQuotes=async()=>{
     sig('Save').disabled = true;
     sig('Cancel').hidden = !editing || !book?.signatures.length;
     sig('Close').hidden = editing && !sig('Cancel').hidden;
+    sig('Image').hidden = !editing;
     sig('Help').hidden = !editing;
     sig('Help').textContent = mode === 'edit'
       ? 'To remove this signature, clear the box and save.'
@@ -11022,7 +11029,7 @@ window.wscOpenPostageQuotes=async()=>{
     if (editing) editor.setAttribute('aria-multiline', 'true');
     else editor.removeAttribute('aria-multiline');
     if ((preview || mode === 'edit') && selected) {
-      editor.replaceChildren(selected.signatureHtml ? richSignature.cleanHtml(selected.signatureHtml)
+      editor.replaceChildren(selected.signatureHtml ? richSignature.restore(selected.signatureHtml, selected.signatureImages)
         : richSignature.plainText(selected.signature));
     } else editor.replaceChildren();
     if (editing) editor.focus();
@@ -11036,12 +11043,16 @@ window.wscOpenPostageQuotes=async()=>{
       signature:'', signatureHtml:''};
     if (mode !== 'add') fields.signatureId = session.selected;
     if (mode !== 'activate') {
+      const img = editor.querySelector('img');
       fields.signature = editor.innerText.replace(/\r\n?/g, '\n');
+      if (!fields.signature.trim() && img) fields.signature = img.alt || '[Signature image]';
       if (fields.signature.length > 5000) {
         sig('Status').textContent = 'Shorten your signature to 5,000 characters before saving.';
         return;
       }
-      fields.signatureHtml = fields.signature.trim() ? richSignature.serialize(editor) : '';
+      try { Object.assign(fields,richSignature.pack(editor)); }
+      catch (error) { sig('Status').textContent = error.message; return; }
+      if (!fields.signature.trim()) fields.signatureHtml = '';
       if (fields.signatureHtml.length > 32000) {
         sig('Status').textContent = 'The formatted signature is too large. Paste a smaller signature block.';
         return;
@@ -11049,7 +11060,7 @@ window.wscOpenPostageQuotes=async()=>{
       if (mode === 'add' && !fields.signature.trim()) return;
     }
     session.pending = true;
-    const controls = [sig('Save'), sig('Close'), sig('Cancel'), sig('Edit'), sig('New'), sig('Use'), sig('Select')];
+    const controls = [sig('Save'), sig('Close'), sig('Cancel'), sig('Edit'), sig('New'), sig('Use'), sig('Select'), sig('Image')];
     controls.forEach(control => { control.disabled = true; });
     editor.contentEditable = 'false';
     sig('Status').textContent = 'Saving signature…';
@@ -11109,10 +11120,14 @@ window.wscOpenPostageQuotes=async()=>{
   sig('Use').addEventListener('click', () => {
     if (signatureSession?.mode === 'preview') void saveSignature(signatureSession, 'activate');
   });
-  if (richSignature) richSignature.bindPaste(editor, message => { sig('Status').textContent = message; });
+  if (richSignature) richSignature.bindPaste(editor, message => { sig('Status').textContent = message; }, {
+    button:sig('Image'), fileInput:sig('ImageFile'),
+    current:() => signatureActive(signatureSession) && !signatureSession.pending &&
+      ['edit','add'].includes(signatureSession.mode) ? signatureSession.imageDraft : null
+  });
   editor.addEventListener('input', () => {
     if (editor.isContentEditable && signatureActive(signatureSession)) {
-      sig('Save').disabled = signatureSession.mode === 'add' && !editor.innerText.trim();
+      sig('Save').disabled = signatureSession.mode === 'add' && !editor.innerText.trim() && !editor.querySelector('img');
       sig('Status').textContent = '';
     }
   });

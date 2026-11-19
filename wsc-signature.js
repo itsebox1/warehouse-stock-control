@@ -1,7 +1,7 @@
 // Build an email-safe fragment before any clipboard markup enters the live editor.
 window.wscRichSignature = (() => {
   const tags = new Set(('a b big blockquote br caption center code col colgroup del div em font h1 h2 h3 h4 h5 h6 hr i img ins li ol p pre s small span strike strong sub sup table tbody td tfoot th thead tr u ul').split(' '));
-  const discard = new Set(('audio base button canvas embed form iframe input link math meta noscript object picture script source style svg template textarea video').split(' '));
+  const discard = new Set(('audio base button canvas embed form iframe input link math meta noscript object script source style svg template textarea video').split(' '));
   const attributes = new Set('align bgcolor border cellpadding cellspacing color colspan dir face height lang rowspan size start title type valign width'.split(' '));
   const css = /^(?:background-color|border(?:-(?:top|right|bottom|left))?(?:-(?:color|style|width))?|border-(?:collapse|spacing|radius)|color|direction|display|font(?:-family|-size|-style|-variant|-weight)?|height|letter-spacing|line-height|list-style-type|overflow-wrap|word-break|(?:margin|padding)(?:-(?:top|right|bottom|left))?|(?:max-|min-)?(?:height|width)|table-layout|text-align|text-decoration(?:-color|-line|-style)?|text-indent|text-transform|vertical-align|white-space|word-spacing)$/;
   function copyStyles(target, style) {
@@ -14,8 +14,8 @@ window.wscRichSignature = (() => {
       target.style.setProperty(prop, value);
     }
   }
-  function cleanHtml(html) {
-    if (html.length > 1024 * 1024) throw new Error('Paste a smaller signature.');
+  function cleanHtml(html, resolveImage) {
+    if (html.length > 18 * 1024 * 1024 || (html.length > 1024 * 1024 && !/data:image\//i.test(html))) throw new Error('Paste a smaller signature.');
     const source = document.createElement('template');
     source.innerHTML = html;
     // Outlook and Word can supply class-based rules instead of inline formatting.
@@ -60,8 +60,11 @@ window.wscRichSignature = (() => {
           if (url && (tag === 'a' ? ['https:','http:','mailto:','tel:'] : ['https:']).includes(url.protocol)) {
             target.setAttribute(attr, url.href);
           } else if (tag === 'img') {
-            parent.append(document.createTextNode(node.getAttribute('alt') || ''));
-            return;
+            if (resolveImage) resolveImage(raw,target,node);
+            else {
+              parent.append(document.createTextNode(node.getAttribute('alt') || ''));
+              return;
+            }
           }
           if (tag === 'img' && node.hasAttribute('alt')) target.setAttribute('alt', node.alt);
         }
@@ -85,35 +88,157 @@ window.wscRichSignature = (() => {
     });
     return fragment;
   }
-  function serialize(editor) {
-    const clean = cleanHtml(editor.innerHTML);
-    const xml = new XMLSerializer();
-    return Array.from(clean.childNodes, node => xml.serializeToString(node)).join('')
-      .replace(/ xmlns="http:\/\/www\.w3\.org\/1999\/xhtml"/g, '');
+  function restore(html, images = []) {
+    return cleanHtml(html, (raw,target) => {
+      const image = images.find(a => raw === 'cid:'+a.cid);
+      if (image && /^image\/(png|jpeg|gif)$/.test(image.mimeType)) {
+        const url = 'data:'+image.mimeType+';base64,'+image.base64;
+        if (window.wscSignatureImages?.asset(url)) { target.src=url; return; }
+      }
+      target.dataset.wscMissing = '';
+      target.alt = 'Signature image';
+    });
   }
-  function bindPaste(editor, notice) {
+  function pack(editor) {
+    if (editor.querySelector('img[data-wsc-loading]')) throw Error('Wait for the image to finish loading before saving.');
+    if (editor.querySelector('img[data-wsc-missing]')) throw Error('Choose the missing image using Add image, or remove its placeholder before saving.');
+    const signatureImages = [];
+    const clean = cleanHtml(editor.innerHTML, (raw,target) => {
+      target.setAttribute('src',window.wscSignatureImages.pack(raw,signatureImages));
+    });
+    const xml = new XMLSerializer();
+    const signatureHtml = Array.from(clean.childNodes, node => xml.serializeToString(node)).join('')
+      .replace(/ xmlns="http:\/\/www\.w3\.org\/1999\/xhtml"/g, '');
+    return {signatureHtml,signatureImages};
+  }
+  function editorRange(editor) {
+    const selection = window.getSelection();
+    if (selection.rangeCount && editor.contains(selection.getRangeAt(0).commonAncestorContainer))
+      return selection.getRangeAt(0).cloneRange();
+    const range = document.createRange();
+    range.selectNodeContents(editor);
+    range.collapse(false);
+    return range;
+  }
+  function insert(editor,fragment,range) {
+    const last = fragment.lastChild;
+    if (!last) return;
+    range.deleteContents();
+    range.insertNode(fragment);
+    range.setStartAfter(last);
+    range.collapse(true);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    editor.dispatchEvent(new Event('input',{bubbles:true}));
+  }
+  function bindPaste(editor, notice, options = {}) {
+    const images = window.wscSignatureImages;
+    const current = options.current || (() => editor.isContentEditable);
+    const valid = (key,target) => key && current() === key && editor.isContentEditable && editor.contains(target);
+    const missing = 'The clipboard did not include this picture. Use Add image to choose the original file.';
+    const mark = img => {
+      img.removeAttribute('src');
+      img.dataset.wscMissing = '';
+      if (!img.alt) img.alt = 'Choose signature image';
+    };
+    const pendingImages = new WeakMap();
+    async function fill(target, source, key) {
+      const job = {};
+      pendingImages.set(target,job);
+      target.dataset.wscLoading = '';
+      const active = () => valid(key,target) && pendingImages.get(target) === job;
+      try {
+        const url = await images.fit(typeof source === 'string' ? source : await images.fromFile(source));
+        if (!active()) return;
+        delete target.dataset.wscLoading;
+        target.src = url;
+        delete target.dataset.wscMissing;
+        editor.dispatchEvent(new Event('input',{bubbles:true}));
+        if (editor.querySelector('img[data-wsc-loading]')) throw Error('Wait for the image to finish loading before saving.');
+    if (editor.querySelector('img[data-wsc-missing]')) notice(missing);
+      } catch (e) {
+        if (active()) notice(e.message || 'Could not load the image. Choose it again.');
+      } finally {
+        if (pendingImages.get(target) === job) {
+          pendingImages.delete(target);
+          delete target.dataset.wscLoading;
+        }
+      }
+    }
+    let picker, clickedImage;
+    editor.addEventListener('click',event => { clickedImage = event.target.closest?.('img'); });
+    options.button?.addEventListener('mousedown',event=>event.preventDefault());
+    options.button?.addEventListener('click',() => {
+      const key=current();
+      if (!key || !editor.isContentEditable) return;
+      picker={key, range:editorRange(editor), target:editor.contains(clickedImage) ? clickedImage : editor.querySelector('img[data-wsc-missing]')};
+      options.fileInput.value='';
+      options.fileInput.click();
+    });
+    options.fileInput?.addEventListener('change',() => {
+      const request=picker;
+      picker=null;
+      const file=options.fileInput.files?.[0];
+      if (!request || current()!==request.key || !editor.isContentEditable || !file) return;
+      let target=request.target;
+      if (!target || !editor.contains(target)) {
+        target=document.createElement('img'); mark(target);
+        const frag=document.createDocumentFragment(); frag.append(target);
+        insert(editor,frag,editor.contains(request.range.commonAncestorContainer) ? request.range : editorRange(editor));
+      }
+      clickedImage=null;
+      void fill(target,file,request.key);
+    });
     editor.addEventListener('drop', event => event.preventDefault());
     editor.addEventListener('paste', event => {
       event.preventDefault();
-      if (!editor.isContentEditable || !event.clipboardData) return;
-      const rich = event.clipboardData.getData('text/html');
+      const key = current(), clipboard = event.clipboardData;
+      if (!key || !editor.isContentEditable || !clipboard) return;
+      clickedImage = null;
       try {
-        const fragment = rich ? cleanHtml(rich) : plainText(event.clipboardData.getData('text/plain'));
-        const selection = window.getSelection();
-        const range = selection.rangeCount && editor.contains(selection.getRangeAt(0).commonAncestorContainer)
-          ? selection.getRangeAt(0) : document.createRange();
-        if (!editor.contains(range.commonAncestorContainer)) { range.selectNodeContents(editor); range.collapse(false); }
-        const last = fragment.lastChild;
-        if (!last) return;
-        range.deleteContents();
-        range.insertNode(fragment);
-        range.setStartAfter(last);
-        range.collapse(true);
-        selection.removeAllRanges();
-        selection.addRange(range);
-        editor.dispatchEvent(new Event('input', {bubbles:true}));
-      } catch { notice('Could not paste this signature. Try copying just the signature block.'); }
+        const rich = clipboard.getData('text/html');
+        const tasks = [], unresolved = [];
+        const fragment = rich ? cleanHtml(rich,(raw,target) => {
+          const embedded = images?.asset(raw);
+          if (embedded && images.bytes(embedded.base64) <= images.maxBytes) target.setAttribute('src',raw);
+          else {
+            mark(target);
+            if (embedded) tasks.push([target,raw]);
+            else unresolved.push({raw,target});
+          }
+        }) : plainText(clipboard.getData('text/plain'));
+        if (images) {
+          let files=images.readFiles(clipboard);
+          if (!files.length && window.wscSignatureRtfPictures)
+            files=window.wscSignatureRtfPictures(clipboard.getData('text/rtf') || clipboard.getData('application/rtf') || '');
+          // Outlook Web sometimes pastes an authenticated image URL alongside its actual bytes.
+          const imgs = fragment.querySelectorAll('img');
+          if (imgs.length === 1 && files.length === 1 && /^https:/i.test(imgs[0].getAttribute('src') || '')) {
+            tasks.push([imgs[0], files.shift()]);
+          }
+          const assigned = new Map();
+          for (const {raw,target} of unresolved) {
+            let file = raw && assigned.get(raw);
+            if (!file && files.length) {
+              const name=raw.split(/[\\/]/).pop().replace(/^cid:/i,'').split('@')[0].toLowerCase();
+              const i = files.findIndex(f=>f.name.toLowerCase()===name);
+              file = files.splice(i<0?0:i,1)[0];
+              if (raw) assigned.set(raw,file);
+            }
+            if (file) tasks.push([target,file]);
+          }
+          if (!fragment.querySelector('img')) for (const file of files) {
+            const target=document.createElement('img'); mark(target); fragment.append(target);
+            tasks.push([target,file]);
+          }
+        }
+        insert(editor,fragment,editorRange(editor));
+        if (unresolved.length) notice(tasks.length ? 'Loading signature image…' : missing);
+        for (const [target,source] of tasks) void fill(target,source,key);
+      } catch (e) { notice(e.message || 'Could not paste this signature. Try copying just the signature block.'); }
     });
   }
-  return {cleanHtml, plainText, serialize, bindPaste};
+  const serialize = editor => pack(editor).signatureHtml;
+  return {cleanHtml, plainText, restore, pack, serialize, bindPaste};
 })();
