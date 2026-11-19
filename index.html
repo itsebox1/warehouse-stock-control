@@ -383,7 +383,7 @@ input[type="reset"]:disabled,
 </style>
 <style>
 #wscUserDialog button {width:auto;min-height:42px;padding:8px 15px;margin:0 6px 0 0}
-#wscMailboxOpen[hidden], #wscSignatureOpen[hidden], #wscMailboxDialog [hidden] {display:none!important}
+#wscMailboxOpen[hidden], #wscSignatureOpen[hidden], #wscMailboxDialog [hidden], #wscSignatureDialog [hidden] {display:none!important}
 #wscUserDialog, #wscMailboxDialog, #wscSignatureDialog {box-sizing:border-box;width:min(92vw,425px);padding:22px;border:0;border-radius:12px;color:#203247;box-shadow:0 10px 35px #0005;text-align:left}
 #wscUserDialog::backdrop, #wscMailboxDialog::backdrop, #wscSignatureDialog::backdrop {background:#0f223980}
 #wscUserDialog h2, #wscMailboxDialog h2, #wscSignatureDialog h2 {margin:0 0 6px;font-size:21px}
@@ -397,6 +397,8 @@ input[type="reset"]:disabled,
 #wscSignatureText:focus {outline:2px solid #3279b6;outline-offset:1px}
 #wscSignatureText img {max-width:100%}
 #wscSignatureLabel {font-weight:bold}
+#wscSignatureSelect {width:100%;margin:5px 0 14px}
+#wscSignatureText[contenteditable="false"] {resize:none}
 #wscSignatureStatus:empty {display:none}
 #wscMailboxClose, #wscMailboxDisconnect, #wscSignatureClose {background:white;color:#244b72;border:1px solid #bac8d7}
 /* WSC floating tools, independent of module navigation. */
@@ -646,11 +648,19 @@ input[type="reset"]:disabled,
     <h2 id="wscSignatureTitle">Email signature</h2>
     <p id="wscSignatureAddress"></p>
     <form id="wscSignatureForm" autocomplete="off">
+      <div id="wscSignatureChoices" hidden>
+        <label for="wscSignatureSelect">Saved signatures</label>
+        <select id="wscSignatureSelect"></select>
+      </div>
       <div id="wscSignatureLabel">Your signature</div>
       <div id="wscSignatureText" role="textbox" aria-multiline="true" aria-labelledby="wscSignatureLabel" aria-describedby="wscSignatureHelp" contenteditable="false" spellcheck="false"></div>
-      <p id="wscSignatureHelp">Paste your formatted email signature here. To remove it, clear the box and save.</p>
+      <p id="wscSignatureHelp" hidden></p>
       <p id="wscSignatureStatus" role="status"></p>
-      <button id="wscSignatureSave" type="submit" disabled>Save signature</button>
+      <button id="wscSignatureEdit" type="button" hidden>Edit</button>
+      <button id="wscSignatureNew" type="button" hidden>Add new</button>
+      <button id="wscSignatureUse" type="button" hidden>Use this signature</button>
+      <button id="wscSignatureSave" type="submit" hidden disabled>Save signature</button>
+      <button id="wscSignatureCancel" type="button" hidden>Cancel</button>
       <button id="wscSignatureClose" type="button">Close</button>
     </form>
   </dialog>
@@ -1757,7 +1767,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.0.30";
+const WSC_VERSION = "1.0.31";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -10843,6 +10853,8 @@ window.wscOpenPostageQuotes=async()=>{
   const signatureDialog = sig('Dialog');
   const editor = sig('Text');
   const richSignature = window.wscRichSignature;
+  const profile = document.getElementById('wscUserDialog');
+  let signatureVisit;
   let signatureSession;
   let epoch = 0;
   let busy = false;
@@ -10858,17 +10870,22 @@ window.wscOpenPostageQuotes=async()=>{
     signatureSession = null;
     editor.contentEditable = 'false';
     editor.textContent = sig('Address').textContent = sig('Status').textContent = '';
+    sig('Select').replaceChildren();
     if (signatureDialog.open) signatureDialog.close();
   }
   window.wscCloseMailbox = () => {
     closeSignature();
     close();
-    const profile = document.getElementById('wscUserDialog');
+    signatureVisit = null;
     if (profile.open) profile.close();
   };
   window.wscPaintMailbox = () => {
-    sig('Open').hidden = id('Open').hidden = !eligible();
-    if (signatureDialog.open && !eligible(signatureSession?.email)) closeSignature();
+    const email = signedInEmail();
+    const allowed = eligible(email);
+    sig('Open').hidden = id('Open').hidden = !allowed;
+    if (!allowed || !profile.open || signatureVisit?.email !== email) signatureVisit = null;
+    if (allowed && profile.open && !signatureVisit) startSignatureVisit(email);
+    if (signatureDialog.open && (!eligible(signatureSession?.visit.email) || signatureSession?.visit !== signatureVisit)) closeSignature();
     if (dialog.open && !eligible(id('Address').textContent)) close();
   };
 
@@ -10940,77 +10957,177 @@ window.wscOpenPostageQuotes=async()=>{
     }
   }
 
-  async function updateSignature(session, saving) {
-    const active = () => signatureSession === session && signatureDialog.open && eligible(session.email);
-    let fields = {};
-    if (saving) {
-      const signature = editor.innerText.replace(/\r\n?/g, '\n');
-      if (signature.length > 5000) {
+  function validateSignatures(result) {
+    const list = result.signatures;
+    if (!Array.isArray(list) || typeof result.signatureRevision !== 'string' ||
+        typeof result.activeSignatureId !== 'string' ||
+        list.some(entry => !entry || typeof entry.id !== 'string' || !entry.id ||
+          typeof entry.signature !== 'string' || entry.signature.length > 5000 ||
+          typeof entry.signatureHtml !== 'string' || entry.signatureHtml.length > 32000) ||
+        new Set(list.map(entry => entry.id)).size !== list.length ||
+        (list.length ? !list.some(entry => entry.id === result.activeSignatureId) : result.activeSignatureId !== '')) {
+      throw new Error('Could not read the saved signatures.');
+    }
+    return result;
+  }
+  function startSignatureVisit(email) {
+    const visit = signatureVisit = {email};
+    sig('Open').textContent = 'Signature';
+    const active = () => signatureVisit === visit && profile.open && eligible(email);
+    visit.ready = profileRequest('getWSCEmailSignature', {}, email, active).then(validateSignatures)
+      .then(result => {
+        if (active()) setSignatureBook(visit, result);
+      }).catch(() => { visit.failed = true; });
+    return visit;
+  }
+  function setSignatureBook(visit, result) {
+    visit.book = result;
+    sig('Open').textContent = result.signatures.length ? 'Signature' : 'Add Signature';
+  }
+  function renderSignature(session, mode, selectedId) {
+    session.mode = mode;
+    session.selected = selectedId;
+    const book = session.visit.book;
+    const selected = book?.signatures.find(entry => entry.id === selectedId);
+    const preview = mode === 'preview';
+    const editing = mode === 'edit' || mode === 'add';
+    const multiple = (book?.signatures.length || 0) > 1;
+    sig('Title').textContent = preview ? 'Signature' : mode === 'edit' ? 'Edit signature' :
+      mode === 'add' ? 'Add signature' : 'Signature';
+    sig('Label').textContent = preview ? 'Saved signature' : 'Your signature';
+    sig('Choices').hidden = !preview || !multiple;
+    if (preview && multiple) {
+      const choices = book.signatures.map((entry, index) => {
+        const sample = entry.signature.trim().replace(/\s+/g, ' ').slice(0, 52);
+        const active = entry.id === book.activeSignatureId ? ' (in use)' : '';
+        return new Option('Signature ' + (index + 1) + active + ' — ' + sample, entry.id);
+      });
+      sig('Select').replaceChildren(...choices);
+      sig('Select').value = selectedId;
+    }
+    sig('Edit').hidden = sig('New').hidden = !preview;
+    sig('Use').hidden = !preview || selectedId === book?.activeSignatureId;
+    sig('Save').hidden = !editing;
+    sig('Save').disabled = true;
+    sig('Cancel').hidden = !editing || !book?.signatures.length;
+    sig('Close').hidden = editing && !sig('Cancel').hidden;
+    sig('Help').hidden = !editing;
+    sig('Help').textContent = mode === 'edit'
+      ? 'To remove this signature, clear the box and save.'
+      : 'The new signature will be used for outgoing emails when you save it.';
+    sig('Status').textContent = '';
+    editor.hidden = sig('Label').hidden = !preview && !editing;
+    editor.contentEditable = String(editing);
+    editor.setAttribute('role', editing ? 'textbox' : 'region');
+    if (editing) editor.setAttribute('aria-multiline', 'true');
+    else editor.removeAttribute('aria-multiline');
+    if ((preview || mode === 'edit') && selected) {
+      editor.replaceChildren(selected.signatureHtml ? richSignature.cleanHtml(selected.signatureHtml)
+        : richSignature.plainText(selected.signature));
+    } else editor.replaceChildren();
+    if (editing) editor.focus();
+  }
+  const signatureActive = session => !!session && signatureSession === session && signatureDialog.open &&
+    signatureVisit === session.visit && eligible(session.visit.email);
+  async function saveSignature(session, mode) {
+    if (!signatureActive(session) || session.pending) return;
+    const visit = session.visit;
+    const fields = {signatureMode:mode, signatureRevision:visit.book.signatureRevision,
+      signature:'', signatureHtml:''};
+    if (mode !== 'add') fields.signatureId = session.selected;
+    if (mode !== 'activate') {
+      fields.signature = editor.innerText.replace(/\r\n?/g, '\n');
+      if (fields.signature.length > 5000) {
         sig('Status').textContent = 'Shorten your signature to 5,000 characters before saving.';
         return;
       }
-      const signatureHtml = signature.trim() ? richSignature.serialize(editor) : '';
-      if (signatureHtml.length > 32000) {
+      fields.signatureHtml = fields.signature.trim() ? richSignature.serialize(editor) : '';
+      if (fields.signatureHtml.length > 32000) {
         sig('Status').textContent = 'The formatted signature is too large. Paste a smaller signature block.';
         return;
       }
-      fields = {signature, signatureHtml};
+      if (mode === 'add' && !fields.signature.trim()) return;
     }
+    session.pending = true;
+    const controls = [sig('Save'), sig('Close'), sig('Cancel'), sig('Edit'), sig('New'), sig('Use'), sig('Select')];
+    controls.forEach(control => { control.disabled = true; });
     editor.contentEditable = 'false';
-    sig('Save').disabled = true;
-    sig('Close').disabled = saving;
-    sig('Status').textContent = saving ? 'Saving signature…' : 'Loading signature…';
+    sig('Status').textContent = 'Saving signature…';
     try {
-      const result = await profileRequest(saving ? 'saveWSCEmailSignature' : 'getWSCEmailSignature',
-        fields, session.email, active);
-      if (!active()) return;
-      if (typeof result.signature !== 'string' || result.signature.length > 5000 ||
-          (result.signatureHtml != null && (typeof result.signatureHtml !== 'string' || result.signatureHtml.length > 32000)) ||
-          (saving && fields.signatureHtml && !result.signatureHtml)) {
-        throw new Error('The email settings service returned an invalid signature.');
+      const result = validateSignatures(await profileRequest('saveWSCEmailSignature', fields, visit.email,
+        () => signatureActive(session)));
+      if (!signatureActive(session)) return;
+      setSignatureBook(visit, result);
+      const selected = mode === 'edit' && result.signatures.some(entry => entry.id === session.selected)
+        ? session.selected : result.activeSignatureId;
+      renderSignature(session, selected ? 'preview' : 'add', selected);
+      sig('Status').textContent = mode === 'activate' ? 'This signature is now in use.' :
+        fields.signature.trim() ? 'Signature saved.' : 'Signature removed.';
+    } catch {
+      if (signatureActive(session)) {
+        visit.failed = true;
+        renderSignature(session, 'error', '');
+        sig('Status').textContent = 'The change could not be confirmed. Close and reopen Signature to check the saved versions.';
       }
-      editor.replaceChildren(result.signatureHtml ? richSignature.cleanHtml(result.signatureHtml) :
-        richSignature.plainText(result.signature));
-      editor.contentEditable = 'true';
-      sig('Status').textContent = saving ? (result.signature ? 'Signature saved.' : 'Personal signature removed.') : '';
-      editor.focus();
-    } catch (error) {
-      if (active()) sig('Status').textContent = saving
-        ? 'The save could not be confirmed. Reopen Add Signature to check the saved text.'
-        : 'Could not load your signature. Close and reopen Add Signature to try again.';
     } finally {
-      if (active()) sig('Close').disabled = false;
+      session.pending = false;
+      if (signatureActive(session)) {
+        controls.forEach(control => { control.disabled = false; });
+        sig('Save').disabled = true;
+      }
     }
   }
-  sig('Open').addEventListener('click', () => {
+  sig('Open').addEventListener('click', async () => {
     const email = signedInEmail();
-    if (!eligible(email) || signatureDialog.open) return;
-    signatureSession = {email};
+    if (!eligible(email) || !profile.open || signatureDialog.open) return;
+    const visit = signatureVisit?.email === email && !signatureVisit.failed ? signatureVisit : startSignatureVisit(email);
+    const session = signatureSession = {visit};
     sig('Address').textContent = email;
-    editor.replaceChildren();
+    for (const key of ['Close','Cancel','Edit','New','Use','Select']) sig(key).disabled = false;
+    renderSignature(session, 'loading', '');
+    sig('Status').textContent = 'Loading signature…';
     signatureDialog.showModal();
-    void updateSignature(signatureSession, false);
+    await visit.ready;
+    if (!signatureActive(session)) return;
+    if (visit.failed || !visit.book) {
+      sig('Status').textContent = 'Could not load your signatures. Close and reopen Signature to try again.';
+      return;
+    }
+    const id = visit.book.activeSignatureId;
+    renderSignature(session, id ? 'preview' : 'add', id);
+  });
+  sig('Select').addEventListener('change', () => {
+    if (signatureActive(signatureSession) && !signatureSession.pending)
+      renderSignature(signatureSession, 'preview', sig('Select').value);
+  });
+  for (const [key, mode] of [['Edit','edit'], ['New','add'], ['Cancel','preview']]) {
+    sig(key).addEventListener('click', () => {
+      if (signatureActive(signatureSession) && !signatureSession.pending)
+        renderSignature(signatureSession, mode, signatureSession.selected);
+    });
+  }
+  sig('Use').addEventListener('click', () => {
+    if (signatureSession?.mode === 'preview') void saveSignature(signatureSession, 'activate');
   });
   if (richSignature) richSignature.bindPaste(editor, message => { sig('Status').textContent = message; });
   editor.addEventListener('input', () => {
-    if (editor.isContentEditable) {
-      sig('Save').disabled = false;
+    if (editor.isContentEditable && signatureActive(signatureSession)) {
+      sig('Save').disabled = signatureSession.mode === 'add' && !editor.innerText.trim();
       sig('Status').textContent = '';
     }
   });
   sig('Form').addEventListener('submit', event => {
     event.preventDefault();
-    if (signatureSession && signatureDialog.open && eligible(signatureSession.email) &&
-        !sig('Save').disabled && sig('Form').reportValidity()) {
-      void updateSignature(signatureSession, true);
-    }
+    if (signatureActive(signatureSession) && ['edit','add'].includes(signatureSession.mode) &&
+        !sig('Save').disabled) void saveSignature(signatureSession, signatureSession.mode);
   });
   sig('Close').addEventListener('click', closeSignature);
   signatureDialog.addEventListener('cancel', event => {
     event.preventDefault();
-    if (!sig('Close').disabled) closeSignature();
+    if (!signatureSession?.pending) closeSignature();
   });
-  window.addEventListener('pagehide', closeSignature);
+  profile.addEventListener('close', () => { if (!profile.open) signatureVisit = null; });
+  window.addEventListener('pagehide', () => { signatureVisit = null; closeSignature(); });
 
   id('Open').addEventListener('click', () => {
     if (!eligible() || dialog.open) return;
@@ -11085,8 +11202,8 @@ window.wscOpenPostageQuotes=async()=>{
     if (!email || homeTools.hidden || profile.open || !window.wscHasUnlockedSession?.()) return;
     byId('wscUserName').textContent = signedInName(email);
     byId('wscUserEmail').textContent = email;
-    window.wscPaintMailbox?.();
     profile.showModal();
+    window.wscPaintMailbox?.();
   });
   byId('wscUserClose').addEventListener('click', () => profile.close());
   byId('wscBuildFab').addEventListener('click',()=>{
