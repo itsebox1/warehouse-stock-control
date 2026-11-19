@@ -383,16 +383,19 @@ input[type="reset"]:disabled,
 </style>
 <style>
 #wscUserDialog button {width:auto;min-height:42px;padding:8px 15px;margin:0 6px 0 0}
-#wscMailboxOpen[hidden], #wscMailboxDialog [hidden] {display:none!important}
-#wscUserDialog, #wscMailboxDialog {box-sizing:border-box;width:min(92vw,425px);padding:22px;border:0;border-radius:12px;color:#203247;box-shadow:0 10px 35px #0005;text-align:left}
-#wscUserDialog::backdrop, #wscMailboxDialog::backdrop {background:#0f223980}
-#wscUserDialog h2, #wscMailboxDialog h2 {margin:0 0 6px;font-size:21px}
-#wscUserDialog p, #wscMailboxDialog p {margin:0 0 14px;line-height:1.45}
-#wscMailboxAddress {font-weight:bold}
-#wscMailboxForm label {display:block;font-weight:bold}
+#wscMailboxOpen[hidden], #wscSignatureOpen[hidden], #wscMailboxDialog [hidden] {display:none!important}
+#wscUserDialog, #wscMailboxDialog, #wscSignatureDialog {box-sizing:border-box;width:min(92vw,425px);padding:22px;border:0;border-radius:12px;color:#203247;box-shadow:0 10px 35px #0005;text-align:left}
+#wscUserDialog::backdrop, #wscMailboxDialog::backdrop, #wscSignatureDialog::backdrop {background:#0f223980}
+#wscUserDialog h2, #wscMailboxDialog h2, #wscSignatureDialog h2 {margin:0 0 6px;font-size:21px}
+#wscUserDialog p, #wscMailboxDialog p, #wscSignatureDialog p {margin:0 0 14px;line-height:1.45}
+#wscMailboxAddress, #wscSignatureAddress {font-weight:bold}
+#wscMailboxForm label, #wscSignatureForm label {display:block;font-weight:bold}
 #wscMailboxPassword {box-sizing:border-box;width:100%;padding:10px;margin:6px 0 12px;border:1px solid #bac8d7;border-radius:6px;font-size:16px}
-#wscMailboxDialog button {width:auto;min-height:42px;margin:0 6px 8px 0;padding:8px 15px}
-#wscMailboxClose, #wscMailboxDisconnect {background:white;color:#244b72;border:1px solid #bac8d7}
+#wscMailboxDialog button, #wscSignatureDialog button {width:auto;min-height:42px;margin:0 6px 8px 0;padding:8px 15px}
+#wscSignatureDialog {width:min(92vw,620px);max-height:85dvh;overflow:auto}
+#wscSignatureText {box-sizing:border-box;width:100%;min-height:120px;max-height:45dvh;padding:10px;margin:6px 0 10px;border:1px solid #bac8d7;border-radius:6px;font:inherit;font-size:16px;line-height:1.4;resize:vertical}
+#wscSignatureStatus:empty {display:none}
+#wscMailboxClose, #wscMailboxDisconnect, #wscSignatureClose {background:white;color:#244b72;border:1px solid #bac8d7}
 /* WSC floating tools, independent of module navigation. */
 .wsc-tool-fab[hidden] {display:none!important;}
 .wsc-tool-fab {position:fixed;bottom:16px;width:52px;height:52px;border-radius:50%;padding:0;margin:0;background:#164b84;color:#fff;box-shadow:0 2px 12px #0004;z-index:1200;font-size:22px;display:grid;place-items:center;cursor:pointer;}
@@ -631,7 +634,20 @@ input[type="reset"]:disabled,
     <h2 id="wscUserTitle">Signed-in user</h2>
     <p><strong id="wscUserName"></strong><br><span id="wscUserEmail"></span></p>
     <button id="wscMailboxOpen" type="button" aria-haspopup="dialog" aria-controls="wscMailboxDialog" hidden>Email account</button>
+    <button id="wscSignatureOpen" type="button" aria-haspopup="dialog" aria-controls="wscSignatureDialog" hidden>Add Signature</button>
     <button id="wscUserClose" type="button">Close</button>
+  </dialog>
+  <dialog id="wscSignatureDialog" aria-labelledby="wscSignatureTitle">
+    <h2 id="wscSignatureTitle">Email signature</h2>
+    <p id="wscSignatureAddress"></p>
+    <form id="wscSignatureForm" autocomplete="off">
+      <label for="wscSignatureText">Your signature</label>
+      <textarea id="wscSignatureText" rows="11" maxlength="5000" aria-describedby="wscSignatureHelp" disabled></textarea>
+      <p id="wscSignatureHelp">Clear the text and save to remove your personal signature.</p>
+      <p id="wscSignatureStatus" role="status"></p>
+      <button id="wscSignatureSave" type="submit" disabled>Save signature</button>
+      <button id="wscSignatureClose" type="button">Close</button>
+    </form>
   </dialog>
   <dialog id="wscMailboxDialog" aria-labelledby="wscMailboxTitle">
     <h2 id="wscMailboxTitle">Email account</h2>
@@ -1724,7 +1740,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.0.28";
+const WSC_VERSION = "1.0.29";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -10793,6 +10809,9 @@ window.wscOpenPostageQuotes=async()=>{
   const currentStaff = email => !!email && signedInEmail() === email && window.wscHasUnlockedSession?.() === true &&
     wscPermissionEmail === email && wscPermissions?.email === email;
   const eligible = (email = signedInEmail()) => currentStaff(email) && wscPermissions.mailboxEligible === true;
+  const sig = key => document.getElementById('wscSignature' + key);
+  const signatureDialog = sig('Dialog');
+  let signatureSession;
   let epoch = 0;
   let busy = false;
 
@@ -10803,17 +10822,24 @@ window.wscOpenPostageQuotes=async()=>{
     id('Close').disabled = false;
     if (dialog.open) dialog.close();
   }
+  function closeSignature() {
+    signatureSession = null;
+    sig('Text').value = sig('Address').textContent = sig('Status').textContent = '';
+    if (signatureDialog.open) signatureDialog.close();
+  }
   window.wscCloseMailbox = () => {
+    closeSignature();
     close();
     const profile = document.getElementById('wscUserDialog');
     if (profile.open) profile.close();
   };
   window.wscPaintMailbox = () => {
-    id('Open').hidden = !eligible();
+    sig('Open').hidden = id('Open').hidden = !eligible();
+    if (signatureDialog.open && !eligible(signatureSession?.email)) closeSignature();
     if (dialog.open && !eligible(id('Address').textContent)) close();
   };
 
-  async function request(action, password, email, active = () => eligible(email)) {
+  async function profileRequest(action, fields, email, active) {
     if (!active()) throw new Error('Unlock WSC using your account.');
     const idToken = await window.getCurrentStaffToken();
     if (!active()) throw new Error('Your WSC session changed.');
@@ -10822,14 +10848,18 @@ window.wscOpenPostageQuotes=async()=>{
       method: 'POST', credentials: 'omit', redirect: 'error', cache: 'no-store',
       referrerPolicy: 'no-referrer', headers: {'Content-Type': 'application/json'},
       signal: AbortSignal.timeout?.(45_000),
-      body: JSON.stringify({action, idToken, ...(password === undefined ? {} : {password})})
+      body: JSON.stringify({action, idToken, ...fields})
     });
     const result = await response.json().catch(() => null);
     if (!active()) throw new Error('Your WSC session changed.');
-    if (!response.ok || result?.success !== true || result.email !== email ||
-        typeof result.connected !== 'boolean') {
-      throw new Error(result?.error || 'The mailbox service is unavailable.');
+    if (!response.ok || result?.success !== true || result.email !== email) {
+      throw new Error(result?.error || 'The email settings service is unavailable.');
     }
+    return result;
+  }
+  async function request(action, password, email, active = () => eligible(email)) {
+    const result = await profileRequest(action, password === undefined ? {} : {password}, email, active);
+    if (typeof result.connected !== 'boolean') throw new Error('Could not confirm the mailbox status.');
     return result.connected;
   }
 
@@ -10876,6 +10906,59 @@ window.wscOpenPostageQuotes=async()=>{
       }
     }
   }
+
+  async function updateSignature(session, saving) {
+    const active = () => signatureSession === session && signatureDialog.open && eligible(session.email);
+    sig('Text').disabled = sig('Save').disabled = true;
+    sig('Close').disabled = saving;
+    sig('Status').textContent = saving ? 'Saving signature…' : 'Loading signature…';
+    try {
+      const result = await profileRequest(saving ? 'saveWSCEmailSignature' : 'getWSCEmailSignature',
+        saving ? {signature:sig('Text').value} : {}, session.email, active);
+      if (!active()) return;
+      if (typeof result.signature !== 'string' || result.signature.length > sig('Text').maxLength) {
+        throw new Error('The email settings service returned an invalid signature.');
+      }
+      sig('Text').value = result.signature;
+      sig('Text').disabled = false;
+      sig('Status').textContent = saving ? (result.signature ? 'Signature saved.' : 'Personal signature removed.') : '';
+      sig('Text').focus();
+    } catch (error) {
+      if (active()) sig('Status').textContent = saving
+        ? 'The save could not be confirmed. Reopen Add Signature to check the saved text.'
+        : 'Could not load your signature. Close and reopen Add Signature to try again.';
+    } finally {
+      if (active()) sig('Close').disabled = false;
+    }
+  }
+  sig('Open').addEventListener('click', () => {
+    const email = signedInEmail();
+    if (!eligible(email) || signatureDialog.open) return;
+    signatureSession = {email};
+    sig('Address').textContent = email;
+    sig('Text').value = '';
+    signatureDialog.showModal();
+    void updateSignature(signatureSession, false);
+  });
+  sig('Text').addEventListener('input', () => {
+    if (!sig('Text').disabled) {
+      sig('Save').disabled = false;
+      sig('Status').textContent = '';
+    }
+  });
+  sig('Form').addEventListener('submit', event => {
+    event.preventDefault();
+    if (signatureSession && signatureDialog.open && eligible(signatureSession.email) &&
+        !sig('Save').disabled && sig('Form').reportValidity()) {
+      void updateSignature(signatureSession, true);
+    }
+  });
+  sig('Close').addEventListener('click', closeSignature);
+  signatureDialog.addEventListener('cancel', event => {
+    event.preventDefault();
+    if (!sig('Close').disabled) closeSignature();
+  });
+  window.addEventListener('pagehide', closeSignature);
 
   id('Open').addEventListener('click', () => {
     if (!eligible() || dialog.open) return;
