@@ -414,8 +414,8 @@
   #wsc-back-orders-preview .wscp-lines { display: grid; gap: 8px; margin-bottom: 12px; }
   #wsc-back-orders-preview .wscp-line {
     display: grid; align-items: end; gap: 8px;
-    grid-template-columns: minmax(135px, 1.85fr) minmax(140px, 1.15fr)
-      minmax(86px, .65fr) minmax(78px, .6fr) minmax(105px, .8fr) auto;
+    grid-template-columns: minmax(135px, 1.85fr) clamp(70px, calc(11.4% - 14px), 112px)
+      minmax(82px, .65fr) minmax(75px, .6fr) minmax(100px, .8fr) minmax(136px, .95fr) auto;
     padding: 9px; border: 1px solid var(--wscp-line); border-radius: 7px;
   }
   #wsc-back-orders-preview .wscp-item { align-self: center; min-width: 0; overflow-wrap: anywhere; }
@@ -438,6 +438,7 @@
     #wsc-back-orders-preview .wscp-list-sort { display: flex; flex: 1 0 100%; align-items: center; gap: 8px; }
     #wsc-back-orders-preview .wscp-order-date { display: none; }
     #wsc-back-orders-preview .wscp-line { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    #wsc-back-orders-preview .wscp-line-reference input { width: 50%; }
     #wsc-back-orders-preview .wscp-item { grid-column: span 2; }
     #wsc-back-orders-preview .wscp-remove { grid-column: -2 / -1; justify-self: end; }
   }
@@ -2082,7 +2083,7 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
       productStatus.textContent = 'A back order can have up to ' + productLineLimit + ' product lines.';
       return;
     }
-    draft.lines.push({sku: item.sku, name: item.name, reference: '', backordered: 1, price: ''});
+    draft.lines.push({sku: item.sku, name: item.name, reference: '', backordered: 1, price: '', backorderDate: ''});
     dirty = true;
     productInput.value = '';
     productStatus.textContent = '';
@@ -2197,11 +2198,11 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
         const wrapper = element('label', label, 'wscp-field');
         const input = element('input');
         Object.assign(input, settings);
-        input.value = line[key];
+        input.value = line[key] ?? '';
         input.addEventListener('input', () => {
           line[key] = input.value;
           dirty = true;
-          if (key !== 'reference') updateOrderAmounts();
+          if (key === 'backordered' || key === 'price') updateOrderAmounts();
         });
         wrapper.append(input);
         return wrapper;
@@ -2218,7 +2219,7 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
       row.append(name, reference,
         field('Backordered Qty', 'backordered', {type: 'number', min: '0', max: '999999999', step: '1', required: true, inputMode: 'numeric'}),
         field('Unit Price', 'price', {type: 'number', min: '0', max: '999999999', step: '0.01', inputMode: 'decimal'}),
-        amountLabel, remove);
+        amountLabel, field('Backorder Date', 'backorderDate', {type: 'date', min: '0001-01-01', max: '9999-12-31'}), remove);
       return row;
     });
     ui('lines').replaceChildren(...lines);
