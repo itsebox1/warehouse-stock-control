@@ -659,7 +659,7 @@ input[type="reset"]:disabled,
     <iframe id="wscBatchOrderFrame" title="Batch order review" style="display:block;width:100%;height:calc(100dvh - 145px);min-height:480px;border:0;background:#f3f6fa;"></iframe>
   </section>
   <section id="wscBackOrdersScreen" data-wsc-home-view="back-orders" hidden aria-label="Back Orders" tabindex="-1">
-    <iframe id="wscBackOrdersFrame" title="Back Orders and reports" referrerpolicy="no-referrer" style="display:block;width:100%;height:calc(100dvh - 103px);min-height:480px;border:0;background:#f3f6fa;"></iframe>
+    <iframe id="wscBackOrdersFrame" title="Back Orders and reports" referrerpolicy="no-referrer" allow="web-share" style="display:block;width:100%;height:calc(100dvh - 103px);min-height:480px;border:0;background:#f3f6fa;"></iframe>
   </section>
   <section id="wscPostageScreen" data-wsc-home-view="postage" hidden aria-labelledby="wscPostageHeading">
     <button type="button" onclick="wscClosePostageQuotes()" style="width:100%;">🏠 Home</button>
@@ -1679,7 +1679,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.0.17";
+const WSC_VERSION = "1.0.18";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
