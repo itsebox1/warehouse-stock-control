@@ -154,6 +154,17 @@
     width: 100%;
 }
 
+#updateStatus {
+    max-width: 700px;
+    margin: 14px auto;
+    padding: 12px 16px;
+    border: 1px solid #c18a19;
+    border-radius: 8px;
+    color: #493309;
+    background: #fff2ce;
+}
+#updateStatus:not([hidden]) { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
+#updateStatus button { width: auto; min-height: 44px; margin: 0; padding: 8px 16px; }
 #quarterlyStockTakeAlert {
     max-width: 700px;
     margin: 20px auto 40px auto;
@@ -574,6 +585,11 @@ input[type="reset"]:disabled,
   Welcome to<br>Warehouse Stock Control<br>ITS Europe
   </h2>
     
+  <div id="updateStatus" hidden>
+    <strong id="wscUpdateMessage" role="status"></strong>
+    <button type="button" id="wscUpdateButton">Update now</button>
+  </div>
+
    <div id="quarterlyStockTakeAlert" class="upToDate">✓ Stock Take up to date</div>
 
 <div class="count-type-selector" style="display:none;">
@@ -778,7 +794,7 @@ input[type="reset"]:disabled,
     </div>
   </div>
 
-    <div id="updateStatus" style="display:none; text-align:left; margin-top:30px; margin-bottom:10px;" aria-live="polite"></div>
+
    <p id="welcomeUser" hidden>Checking sign-in...</p>
    
 </div>
@@ -1679,7 +1695,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.0.20";
+const WSC_VERSION = "1.0.21";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -5437,6 +5453,7 @@ function wscShowHomeView(view = 'home', focusId) {
   document.querySelectorAll('[data-wsc-home-view]').forEach(screen => {
     screen.hidden = screen.dataset.wscHomeView !== view;
   });
+  if (view === 'home') void checkForWSCUpdate();
   if (focusId) {
     window.scrollTo(0,0);
     const target = document.getElementById(focusId);
@@ -8165,6 +8182,68 @@ async function wscSaveSwitch(input,settingType,area,staffEmail){
   }catch(e){input.checked=!enabled;input.disabled=false;status.textContent="Not saved: "+e.message; if(settingType === "QB") wscRenderAdminQB();}
 }
 
+function isNewerWSCVersion(remote, current) {
+  const r = remote.split(".").map(Number);
+  const c = current.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    if (r[i] > c[i]) return true;
+    if (r[i] < c[i]) return false;
+  }
+  return false;
+}
+
+let wscVersionCheckPending = false;
+async function checkForWSCUpdate() {
+  if (wscVersionCheckPending) return;
+  wscVersionCheckPending = true;
+  const status = document.getElementById("updateStatus");
+  const message = document.getElementById("wscUpdateMessage");
+  const button = document.getElementById("wscUpdateButton");
+  try {
+    const response = await fetch("./version.txt?nocache=" + Date.now(), {cache: "no-store"});
+    if (!response.ok) throw new Error("Version check failed");
+    const latest = (await response.text()).trim();
+    if (!/^\d+\.\d+\.\d+$/.test(latest)) throw new Error("Invalid version format");
+    if (isNewerWSCVersion(latest, WSC_VERSION)) {
+      if (status.hidden || button.dataset.version !== latest) {
+        button.dataset.version = latest;
+        status.hidden = false;
+        message.textContent = "WSC update available (v" + latest + ")";
+      }
+    } else {
+      status.hidden = true;
+    }
+  } catch (error) {
+    console.log("WSC update check failed:", error);
+  } finally {
+    wscVersionCheckPending = false;
+  }
+}
+
+window.updateWSC = function(latestVersion) {
+  showITSSplash();
+  // A new URL forces a fresh document in Safari and installed PWAs.
+  // Existing session/authentication is retained; stock data is not cleared.
+  const url = new URL(window.location.href);
+  url.searchParams.set("wsc_version", latestVersion || Date.now().toString());
+  window.location.replace(url.toString());
+};
+
+document.getElementById("wscUpdateButton").addEventListener("click", event => {
+  const latest = event.currentTarget.dataset.version;
+  if (latest) window.updateWSC(latest);
+});
+
+checkForWSCUpdate();
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) void checkForWSCUpdate();
+});
+window.setInterval(() => {
+  if (!document.hidden && document.getElementById("wscHomeHeader").getClientRects().length) {
+    void checkForWSCUpdate();
+  }
+}, 60000);
+
 </script>
   
 <script type="module">
@@ -8891,64 +8970,6 @@ async function getQuickBooksCommitStatusForST(reportNumber) {
   return await getQuickBooksCommitStatus(reportNumber);
 }
   
-function isNewerWSCVersion(remote, current) {
-  const r = remote.split(".").map(Number);
-  const c = current.split(".").map(Number);
-  for (let i = 0; i < 3; i++) {
-    if (r[i] > c[i]) return true;
-    if (r[i] < c[i]) return false;
-  }
-  return false;
-}
-
-async function checkForWSCUpdate() {
-  const status = document.getElementById("updateStatus");
-  if (!status) return;
-  try {
-    const response = await fetch("./version.txt?nocache=" + Date.now(), {
-      cache: "no-store"
-    });
-    if (!response.ok) throw new Error("Version check failed");
-    const latestVersion = (await response.text()).trim();
-    if (!/^\d+\.\d+\.\d+$/.test(latestVersion)) {
-      throw new Error("Invalid version format");
-    }
-    // Only alert for a genuinely newer deployment, never an older version marker.
-    if (!isNewerWSCVersion(latestVersion, WSC_VERSION)) {
-      status.replaceChildren();
-      status.style.display = "none";
-      return;
-    }
-    status.replaceChildren();
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = "🔄 Update Available (v" + latestVersion + ")";
-    button.addEventListener("click", () => window.updateWSC(latestVersion));
-    status.appendChild(button);
-    status.style.display = "block";
-  } catch (error) {
-    console.log("WSC update check failed:", error);
-    // Do not display a misleading update prompt when the version check fails.
-    status.replaceChildren();
-    status.style.display = "none";
-  }
-}
-
-window.updateWSC = function(latestVersion) {
-  showITSSplash();
-  // A new URL forces a fresh document in Safari and installed PWAs.
-  // Existing session/authentication is retained; stock data is not cleared.
-  const url = new URL(window.location.href);
-  url.searchParams.set("wsc_version", latestVersion || Date.now().toString());
-  window.location.replace(url.toString());
-};
-
-checkForWSCUpdate();
-// Recheck when staff return to the app after a deployment.
-document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) checkForWSCUpdate();
-});
-
 // Trade Show counting uses its own globe, not the Stock screen's globe.
 window.startTradeShowCountingLoading = function() {
   const globe = document.getElementById("tradeShowCountingGlobe");
