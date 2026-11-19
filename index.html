@@ -1724,7 +1724,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.0.27";
+const WSC_VERSION = "1.0.28";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -10787,12 +10787,12 @@ window.wscOpenPostageQuotes=async()=>{
 <script>
 /* A mailbox can be enrolled only by its signed-in, unlocked owner. */
 (() => {
-  const pilotEmail = 'tmerry@sensafe.com';
   const id = key => document.getElementById('wscMailbox' + key);
   const dialog = id('Dialog');
   const signedInEmail = () => String(window.getCurrentStaffEmail?.() || '').trim().toLowerCase();
-  const eligible = () => signedInEmail() === pilotEmail && window.wscHasUnlockedSession?.() === true &&
-    wscPermissionEmail === pilotEmail && !!wscPermissions;
+  const currentStaff = email => !!email && signedInEmail() === email && window.wscHasUnlockedSession?.() === true &&
+    wscPermissionEmail === email && wscPermissions?.email === email;
+  const eligible = (email = signedInEmail()) => currentStaff(email) && wscPermissions.mailboxEligible === true;
   let epoch = 0;
   let busy = false;
 
@@ -10810,10 +10810,10 @@ window.wscOpenPostageQuotes=async()=>{
   };
   window.wscPaintMailbox = () => {
     id('Open').hidden = !eligible();
-    if (id('Open').hidden && dialog.open) close();
+    if (dialog.open && !eligible(id('Address').textContent)) close();
   };
 
-  async function request(action, password, active = eligible) {
+  async function request(action, password, email, active = () => eligible(email)) {
     if (!active()) throw new Error('Unlock WSC using your account.');
     const idToken = await window.getCurrentStaffToken();
     if (!active()) throw new Error('Your WSC session changed.');
@@ -10826,7 +10826,7 @@ window.wscOpenPostageQuotes=async()=>{
     });
     const result = await response.json().catch(() => null);
     if (!active()) throw new Error('Your WSC session changed.');
-    if (!response.ok || result?.success !== true || result.email !== pilotEmail ||
+    if (!response.ok || result?.success !== true || result.email !== email ||
         typeof result.connected !== 'boolean') {
       throw new Error(result?.error || 'The mailbox service is unavailable.');
     }
@@ -10834,8 +10834,12 @@ window.wscOpenPostageQuotes=async()=>{
   }
 
   window.wscStaffMailSender = async () => {
-    if (signedInEmail() !== pilotEmail) return 'itsebox@gmail.com';
-    return await request('wscMailboxStatus') ? pilotEmail : 'itsebox@gmail.com';
+    const email = signedInEmail();
+    if (!currentStaff(email) || typeof wscPermissions.mailboxEligible !== 'boolean') {
+      throw new Error('Reopen WSC to check the sending account.');
+    }
+    if (!wscPermissions.mailboxEligible) return 'itsebox@gmail.com';
+    return await request('wscMailboxStatus', undefined, email) ? email : 'itsebox@gmail.com';
   };
 
   function paint(connected) {
@@ -10846,16 +10850,17 @@ window.wscOpenPostageQuotes=async()=>{
       : 'Connect once to use this mailbox when you send email from WSC.';
   }
   async function run(action, password) {
-    if (busy || !dialog.open || !eligible()) return;
+    const email = id('Address').textContent;
+    if (busy || !dialog.open || !eligible(email)) return;
     const ticket = epoch;
-    const active = () => ticket === epoch && dialog.open && eligible();
+    const active = () => ticket === epoch && dialog.open && eligible(email);
     busy = true;
     id('Close').disabled = action !== 'wscMailboxStatus';
     id('Connect').disabled = id('Disconnect').disabled = id('Password').disabled = true;
     id('Status').textContent = action === 'wscMailboxStatus' ? 'Checking connection…' :
       action === 'wscMailboxConnect' ? 'Checking your mailbox login over an encrypted connection…' : 'Disconnecting…';
     try {
-      const connected = await request(action, password, active);
+      const connected = await request(action, password, email, active);
       if (active()) paint(connected);
     } catch (error) {
       if (active()) {
@@ -10875,7 +10880,7 @@ window.wscOpenPostageQuotes=async()=>{
   id('Open').addEventListener('click', () => {
     if (!eligible() || dialog.open) return;
     epoch++;
-    id('Address').textContent = pilotEmail;
+    id('Address').textContent = signedInEmail();
     id('Password').value = '';
     id('Form').hidden = id('Disconnect').hidden = true;
     dialog.showModal();
