@@ -172,7 +172,7 @@
   </div>
  </div>
 </form>
-<section id="batchReview" hidden><div class="card"><h2>📋 Batch review</h2><p class="muted">Review the drafts prepared in this WSC session.</p><div id="invoicePreview" class="invoice-preview" role="region" aria-label="Illustrative invoice preview" hidden></div><h3>Orders in this batch</h3><div id="batchList"></div><div class="totals"><div class="total-row strong"><span>Available preview totals</span><span id="batchTotal">—</span></div><small>Invoice VAT is not calculated. Orders without complete prices or charges are not included.</small></div><div class="actions"><button class="soft" id="more" type="button">＋ Add another order</button><button class="primary" type="button" disabled aria-describedby="disabledHelp">Create in QuickBooks</button></div><p id="disabledHelp" class="muted">QuickBooks invoice and pro forma creation is unavailable.</p></div></section>
+<section id="batchReview" hidden><div class="card"><h2>📋 Batch review</h2><p class="muted">Review the drafts prepared in this WSC session.</p><div id="invoicePreview" class="invoice-preview" role="region" aria-label="Illustrative invoice preview" hidden></div><h3>Orders in this batch</h3><div id="batchList"></div><div class="totals"><div class="total-row strong"><span>Available preview totals</span><span id="batchTotal">—</span></div><small>Invoice VAT is not calculated. Orders without complete prices or charges are not included.</small></div><div class="actions"><button class="soft" id="more" type="button">＋ Add another order</button></div></div></section>
 
 <p id="batchPreviewFooter" class="footer">WSC workflow preview · Files are read locally · No QuickBooks connection</p>
 </main>
@@ -997,8 +997,12 @@ function renderCustomerMatches(){
 function paintCustomerLookup(){
  const status=$('qbCustomerStatus'),box=$('qbCustomerAddress'),list=$('qbCustomerMatches'),retry=$('qbCustomerRetry'),input=$('customer'),refresh=$('qbCustomerRefresh');
  if(refresh)refresh.hidden=!customerBridge()||exampleInputSource();
- const footer=$('batchPreviewFooter');if(footer)footer.textContent=customerBridge()?'WSC Batch Orders · Private customer list · QuickBooks read-only · Invoice creation disabled':'WSC workflow preview · Files are read locally · No QuickBooks connection';
- const notice=$('previewNotice');if(notice&&customerBridge())notice.textContent='Batch Orders uses the live WSC product catalogue and checks the selected customer and delivery address in QuickBooks. Uploaded prices are kept in this browser. Confirm and complete opens a batch of WSC drafts. QuickBooks creation is unavailable.';
+ const bridge=customerBridge();
+ const canCreate=typeof bridge?.salesDocument==='function';
+ const footer=$('batchPreviewFooter');
+ if(footer)footer.textContent=canCreate?'WSC Batch Orders · QuickBooks invoices and pro formas':bridge?'WSC Batch Orders · Customer lookup only':'WSC workflow preview · No QuickBooks connection';
+ const notice=$('previewNotice');
+ if(notice&&bridge)notice.textContent=canCreate?'Select a customer and check the delivery address. Uploaded prices are saved in this browser. Choose Confirm and complete to review the order, then create the invoice or pro forma in QuickBooks.':'Customer lookup is available. Reopen Batch Orders in the updated WSC app to create a QuickBooks document.';
  list.hidden=true;list.replaceChildren();input.setAttribute('aria-expanded','false');input.removeAttribute('aria-activedescendant');box.replaceChildren();retry.hidden=true;retry.textContent='Try customer lookup again';
  if(customerState.status==='error'){status.textContent=customerState.error||customerLookupError();retry.hidden=false;return;}
  if(!input.value.trim()&&!customerState.matches.length){
