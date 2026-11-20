@@ -77,7 +77,7 @@
   const summary = /^(?:sub\s*total|grand\s*total|order\s*total|total|vat|terms|invoice|purchase\s+order|order\s+(?:date|number|no\.?|reference)|date)\b/i;
 
   function quantity(value) {
-    if (!/^(?:\d+|\d{1,3}(?:,\d{3})+)$/.test(value)) return '';
+    if (!/^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.0+)?$/.test(value)) return '';
     const count = Number(value.replace(/,/g, ''));
     return Number.isSafeInteger(count) && count > 0 ? String(count) : '';
   }
@@ -96,6 +96,8 @@
   }
 
   function productRows(text, products) {
+    const purchaseOrder = purchaseOrderRows(textRows(text), products);
+    if (purchaseOrder.handled) return purchaseOrder.rows;
     const catalog = new Map((products || []).filter(product => product?.sku).map(product => [skuKey(product.sku), product.sku]));
     const keys = [...catalog.keys()].sort((a, b) => b.length - a.length);
     const lines = String(text || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
@@ -151,5 +153,179 @@
     return rows;
   }
 
-  root.WSCBatchOCR = Object.freeze({readPage, productRows});
+  // A customer's PO can put their own item number on the quantity row and
+  // our number underneath it. Keep that block together until the next item.
+  const supplierPart = /\b(?:your|supplier(?:['’]s)?|vendor(?:['’]s)?|ITS(?:\s+Europe)?)\s+(?:sku|(?:part|item|product|stock)(?:\s*(?:number|no\.?|code|#))?)(?=\s|[:#=]|$)\s*[:#=]?\s*/i;
+  const supplierHeading = /^(?:your|supplier(?:['’]s)?|vendor(?:['’]s)?|ITS(?:\s+Europe)?)\s+(?:sku|(?:part|item|product|stock)(?:\s*(?:number|no\.?|code|#))?)\s*[:.]?$/i;
+  const itemHeading = /^(?:(?:your|supplier(?:['’]s)?|vendor(?:['’]s)?|ITS(?:\s+Europe)?)\s+)?(?:sku|(?:item|product|stock|part)(?:\s+(?:sku|code|number|no\.?))?)\s*[:.]?$/i;
+  const itemCode = /^[A-Z0-9][A-Z0-9._/-]*$/i;
+  const tableEnd = /^(?:sub\s*total|grand\s*total|order\s*total|total\b|vat\b|terms\b|important\s+notice|please\b|payment\s+terms|order\s+date|delivery\s+date)/i;
+
+  function textRows(text) {
+    return String(text || '').split(/\r?\n/).map(line => line.trim()).filter(Boolean).map(line =>
+      line.split(/\s*(?:\t|\|)\s*| {2,}/).map((text, index) => ({text, x:index * 200, end:index * 200 + 100})));
+  }
+
+  function columnText(cells, headers, index) {
+    const header = headers[index];
+    const left = index ? (headers[index - 1].end + header.x) / 2 : -Infinity;
+    const right = index + 1 < headers.length ? (header.end + headers[index + 1].x) / 2 : Infinity;
+    return cells.filter(cell => (cell.x + cell.end) / 2 >= left && (cell.x + cell.end) / 2 < right)
+      .map(cell => cell.text).join(' ').trim();
+  }
+
+  function purchaseOrderRows(pageRows, products) {
+    const join = cells => cells.map(cell => cell.text).join(' ').trim();
+    if (!pageRows.some(cells => supplierPart.test(join(cells)))) return {handled:false, rows:[], notes:[]};
+    const catalog = new Map((products || []).filter(p => p?.sku).map(p => [skuKey(p.sku), p.sku]));
+    const rows = [], notes = [];
+    let headers = null, skuIndex = -1, qtyIndex = -1, pending = null, flatTable = false;
+    const finish = () => {
+      if (!pending) return;
+      const key = skuKey(pending.sku);
+      if (key && (pending.explicit || catalog.has(key))) {
+        rows.push({sku:catalog.get(key) || pending.sku, quantity:pending.ambiguous ? '' : pending.quantity});
+        if (!catalog.has(key)) notes.push('Check Your Part No '+pending.sku+'; it was not found in the WSC catalogue.');
+        if (pending.ambiguous) notes.push('More than one supplier part number was found for an order line. Check its SKU and quantity.');
+      }
+      pending = null;
+    };
+    for (let index = 0; index < pageRows.length; index++) {
+      const cells = pageRows[index], text = join(cells);
+      if (tableEnd.test(text)) { finish(); headers = null; flatTable = false; continue; }
+      const skuColumns = cells.map((cell, i) => itemHeading.test(cell.text.trim()) ? i : -1).filter(i => i >= 0);
+      const q = cells.findIndex(cell => qtyHeading.test(cell.text.trim()));
+      if (skuColumns.length && q >= 0) {
+        finish(); headers = cells; qtyIndex = q;
+        skuIndex = skuColumns.find(i => supplierHeading.test(cells[i].text.trim())) ?? skuColumns[0];
+        continue;
+      }
+      if (/^(?:item|product|stock|part|sku)\b/i.test(text) && /\b(?:qty\.?|quantity)\b/i.test(text) && /\b(?:price|amount|total)\b/i.test(text)) {
+        finish(); flatTable = true; continue;
+      }
+      const label = supplierPart.exec(text);
+      if (!headers && !flatTable && !label) {
+        const labelled = explicit.exec(text), after = countAfter.exec(text), before = countBefore.exec(text);
+        const code = labelled?.[1] || after?.[1] || before?.[2];
+        const count = labelled?.[2] || after?.[2] || before?.[1];
+        if (code && catalog.has(skuKey(code))) {
+          finish(); rows.push({sku:catalog.get(skuKey(code)), quantity:quantity(count)}); continue;
+        }
+      }
+      const remainder = label ? text.slice(label.index + label[0].length).trim() : '';
+      const labelledQty = /\b(?:qty\.?|quantity)\s*[:#=]?\s*([\d,.]+)(?=\s|$)/i.exec(text);
+      let explicitSku = '';
+      if (label) {
+        const candidates = [...catalog.keys()].sort((a, b) => b.length - a.length);
+        const upper = skuKey(remainder);
+        const known = candidates.find(key => upper === key || upper.startsWith(key + ' ') || upper.startsWith(key + ','));
+        explicitSku = known ? catalog.get(known) : (/^([A-Z0-9][A-Z0-9._/-]*)(?=\s|$)/i.exec(remainder)?.[1] || '');
+        if (!explicitSku && !remainder) {
+          const next = pageRows[index + 1];
+          const value = next && join(next);
+          if (value && itemCode.test(value) && /\d/.test(value)) { explicitSku = value; index++; }
+        }
+        if (!/\d/.test(explicitSku)) explicitSku = '';
+      }
+      let sku = '', count = '';
+      if (headers) {
+        sku = columnText(cells, headers, skuIndex);
+        count = quantity(columnText(cells, headers, qtyIndex));
+      } else if (flatTable) {
+        sku = /^([A-Z0-9][A-Z0-9._/-]*)\b/i.exec(text)?.[1] || '';
+        // Anchor to the money columns; digits in descriptions (e.g. PK.30)
+        // must never become ordered quantities.
+        count = quantity(/\s(\d[\d,]*(?:\.0+)?)\s+[£€$]?[\d,]+\.\d{2}\s+[£€$]?[\d,]+\.\d{2}\s*$/.exec(text)?.[1] || '');
+      }
+      const startsItem = itemCode.test(sku) && /\d/.test(sku) && !label;
+      if (startsItem) {
+        if (pending?.orphan && pending.explicit && !pending.quantity) { pending.quantity = count; pending.orphan = false; }
+        else { finish(); pending = {sku, quantity:count, explicit:false}; }
+        if (supplierHeading.test(headers?.[skuIndex]?.text || '')) pending.explicit = true;
+      }
+      if (label) {
+        if (!pending) pending = {sku:'', quantity:'', explicit:false, orphan:true};
+        if (explicitSku) {
+          if (pending.explicit && skuKey(pending.sku) !== skuKey(explicitSku)) pending.ambiguous = true;
+          pending.sku = explicitSku; pending.explicit = true;
+        } else {
+          // An unreadable explicit number must not fall back to the buyer's code.
+          pending.sku = ''; pending.explicit = true;
+          notes.push('A Your Part No value could not be read. Check this product line manually.');
+        }
+        if (labelledQty || count) pending.quantity = quantity(labelledQty?.[1] || count);
+      } else if (pending && !startsItem && labelledQty && !pending.quantity) {
+        pending.quantity = quantity(labelledQty[1]);
+      }
+    }
+    finish();
+    return {handled:true, rows, notes:[...new Set(notes)]};
+  }
+
+  const deliveryLabel = /^(?:(?:delivery|shipping|ship[ -]?to)\s+address|(?:ship|deliver(?:y)?)\s+to|delivery\s+details)(?:\s*[:#]\s*|\s{2,}|$)(.*)$/i;
+  const partyLabel = /^(?:supplier|vendor|seller|customer|buyer|purchaser|sold\s+to|bill\s+to|invoice\s+to|company)(?:\s+(?:name|address|details))?(?:\s*[:#]\s*|$)/i;
+  const metadata = /^(?:purchase\s+order|order\s+(?:no\.?|number|date)|delivery\s+date|supplier\s+(?:no\.?|number|contact)|payment\s+terms|page|item\s+(?:no\.?|description)|qty\.?|quantity|important\s+notice)\b/i;
+  const ukPostcode = /\b(?:GIR\s?0AA|[A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2})\b/i;
+
+  function deliveryAddresses(pages) {
+    const found = [];
+    for (const rows of pages || []) {
+      for (let i = 0; i < rows.length; i++) {
+        for (const [j, cell] of rows[i].entries()) {
+          const match = deliveryLabel.exec(cell.text.trim());
+          if (!match) continue;
+          const lines = [], next = rows[i][j + 1];
+          const left = cell.x - 15;
+          const right = next && (partyLabel.test(next.text) || metadata.test(next.text)) ? next.x - 15 : Infinity;
+          if (match[1]) lines.push(match[1].trim());
+          if (!match[1] && next && next.x - cell.end < 70 && !partyLabel.test(next.text) && !metadata.test(next.text)) lines.push(next.text.trim());
+          for (const row of rows.slice(i + 1, i + 13)) {
+            const first = row.find(part => part.x >= left && part.x <= cell.x + 70 && part.x < right);
+            if (!first) continue;
+            if (deliveryLabel.test(first.text) || partyLabel.test(first.text) || metadata.test(first.text) || tableEnd.test(first.text)) break;
+            let value = first.text.trim(), end = first.end;
+            for (const part of row.slice(row.indexOf(first) + 1)) {
+              if (part.x >= right || part.x - end > 65 || metadata.test(part.text) || partyLabel.test(part.text)) break;
+              value += ' ' + part.text.trim(); end = part.end;
+            }
+            if (!value || /@|https?:\/\/|\b(?:telephone|phone|fax)\b/i.test(value)) break;
+            lines.push(value);
+            if (/^(?:united\s+kingdom|uk|great\s+britain|england|scotland|wales|northern\s+ireland|ireland|france|germany|united\s+states|usa)$/i.test(value)) break;
+          }
+          if (lines.length < 2) continue;
+          const postcodeLine = lines.findIndex(line => ukPostcode.test(line));
+          const postcode = postcodeLine < 0 ? '' : lines[postcodeLine].match(ukPostcode)[0].toUpperCase().replace(/\s/g, '').replace(/(.{3})$/, ' $1');
+          const countryLine = lines.findIndex(line => /^(?:united\s+kingdom|uk|great\s+britain|england|scotland|wales|northern\s+ireland|ireland|france|germany|united\s+states|usa)$/i.test(line));
+          const address = {lines:lines.filter((_, k) => k !== countryLine).map(line => postcode ? line.replace(ukPostcode, '').trim().replace(/,$/, '') : line).filter(Boolean), city:'', region:'', postcode, country:countryLine >= 0 ? lines[countryLine] : postcode ? 'United Kingdom' : ''};
+          const first = lines[0];
+          const company = /[\p{L}]/u.test(first) && !/^\d|^(?:unit|building|warehouse|floor|suite|c\/o|attn|attention)\b/i.test(first) && !ukPostcode.test(first) ? first : '';
+          const entry = {company, address};
+          if (!found.some(old => JSON.stringify(old.address) === JSON.stringify(address))) found.push(entry);
+        }
+      }
+    }
+    return found;
+  }
+
+  function purchaseOrderReferences(pages) {
+    const values = [];
+    const labelled = /\b(?:purchase\s+order(?:\s+(?:number|no\.?|ref(?:erence)?))?|p\.?\s*o\.?(?:\s+(?:number|no\.?|ref(?:erence)?))?)\s*[:#]\s*([A-Z0-9][A-Z0-9._/-]*)(?=\s|$)/i;
+    const heading = /^(?:purchase\s+order\s+(?:number|no\.?|ref(?:erence)?)|p\.?\s*o\.?(?:\s+(?:number|no\.?|ref(?:erence)?))?)\s*[:#]?\s*$/i;
+    for (const rows of pages || []) {
+      for (const [index, cells] of rows.entries()) {
+        const inline = labelled.exec(cells.map(cell => cell.text).join(' '));
+        if (inline) { values.push(inline[1]); continue; }
+        for (const [column, cell] of cells.entries()) {
+          if (!heading.test(cell.text.trim())) continue;
+          const next = cells.slice(column + 1).find(part => part.text.trim() !== ':');
+          const below = rows[index + 1]?.find(part => Math.abs(part.x - cell.x) < 50);
+          const value = (next?.text || below?.text || '').trim().replace(/^[:#]\s*/, '');
+          if (itemCode.test(value) && /\d/.test(value)) values.push(value);
+        }
+      }
+    }
+    return [...new Set(values)];
+  }
+
+  root.WSCBatchOCR = Object.freeze({readPage, productRows, purchaseOrderRows, deliveryAddresses, purchaseOrderReferences, textRows});
 })(typeof window === 'undefined' ? globalThis : window);

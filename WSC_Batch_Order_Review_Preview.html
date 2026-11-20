@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="./wsc-buttons.css?v=1.0.5">
 <script src="./wsc-buttons.js?v=1.0.5" defer></script>
 <script src="./wsc-packing.js?v=20261112-parcels"></script>
-<script src="./wsc-batch-ocr.js?v=1.0.9"></script>
+<script src="./wsc-batch-ocr.js?v=1.1.13"></script>
 <style>
 :root{font-family:Arial,Helvetica,sans-serif;color:#213146;background:#f3f6fa;font-size:16px;line-height:1.45}*{box-sizing:border-box}body{margin:0;padding:22px 16px 56px}main{max-width:1020px;margin:auto}h1,h2,h3,p{margin-top:0}h1{text-align:center;font-size:1.65rem;margin:24px 0 8px}h2{font-size:1.18rem;margin-bottom:4px}h3{font-size:1rem;margin:0 0 8px}label{font-weight:600;font-size:.9rem}small,.muted{color:#546779;font-size:.84rem}.hint{margin:2px 0 10px}button,input,textarea{font:inherit}button{cursor:pointer;border:0;border-radius:7px;padding:12px 16px;font-weight:600}button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #70b7fa;outline-offset:2px}button:disabled{opacity:.5;cursor:not-allowed}.home,.primary{background:#294b70;color:white}.home{width:100%;text-align:center}.soft{background:#e8eef5;color:#294b70;border:1px solid #bfcddb}.minor{background:#f6f8fb;color:#294b70;border:1px solid #c4d2df}.danger{background:#fff5f2;color:#923b2a;border:1px solid #e3c6bb}.example{background:#fff;color:#294b70;border:1px solid #9bb1c7}.notice{background:#fff8df;border-left:4px solid #d2a443;padding:12px 14px;margin:22px 0 15px;border-radius:4px;color:#594619;font-size:.9rem}.card{background:white;border:1px solid #d4dde6;border-radius:10px;margin:14px 0;padding:20px}.header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap}.number{display:inline-block;background:#e5edf5;color:#2d5377;border-radius:7px;padding:4px 7px;font-size:.82rem;margin-right:8px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.field{display:flex;flex-direction:column;gap:5px;min-width:0}.field input,.field textarea,.field select,.item input{border:1px solid #bccad6;border-radius:6px;padding:10px;width:100%;min-width:0;background:#fff;color:#213146}.field input[type=file]{padding:8px;font-size:.88rem}.field textarea{min-height:78px;resize:vertical}.section-title{display:flex;align-items:center;margin-bottom:11px}.type-row{display:flex;gap:10px;flex-wrap:wrap}.choice,.charge{border:1px solid #c8d4df;border-radius:8px;padding:12px;background:#f9fbfd}.choice{display:flex;align-items:center;gap:9px;min-width:150px}.choice input,.charge input[type=checkbox]{width:20px;height:20px;accent-color:#2c628f}.charge{margin:10px 0}.charge-title{display:flex;align-items:center;gap:10px}.charge p{margin:4px 0 0 30px}.charge .field{margin:12px 0 0 30px;max-width:240px}.item{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;align-items:end;margin-bottom:10px}.item .sku,.item .description{grid-column:span 2}.item label{font-size:.78rem}.item input{padding:9px}.item button{padding:10px 12px}.totals{background:#edf3f9;border-radius:7px;padding:12px 14px;margin-top:14px}.total-row{display:flex;justify-content:space-between;gap:12px;margin:4px 0}.total-row.strong{font-weight:bold;border-top:1px solid #c8d4df;padding-top:10px;margin-top:8px}.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:20px 0}.actions button{min-height:52px}.message{color:#9a3825;font-weight:600;min-height:1.4em}.message:empty{display:none}.status{display:inline-block;background:#e6f0fa;color:#285378;border-radius:50px;padding:4px 10px;font-size:.82rem;font-weight:600}.order{border:1px solid #d2dde7;border-radius:8px;padding:14px;margin:10px 0}.order-title{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}.order p{margin:3px 0}.order-buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.footer{text-align:center;font-size:.78rem;color:#697989;margin-top:24px}[hidden]{display:none!important}@media(max-width:650px){body{padding:14px 12px 45px}.card{padding:15px}.grid{grid-template-columns:1fr}.item{grid-template-columns:1fr 1fr}.item .sku{grid-column:1 / -1}.item button{grid-column:1 / -1}.actions{grid-template-columns:1fr}h1{font-size:1.4rem}}
 
@@ -106,6 +106,11 @@
  <p id="qbCustomerStatus" class="muted" role="status" aria-live="polite"></p>
  <div id="qbCustomerAddress"></div><button id="qbCustomerRetry" class="minor" type="button" hidden>Try customer lookup again</button> <button id="qbCustomerRefresh" class="minor" type="button" hidden>Refresh customer list</button>
 </div>
+   <div id="importedDeliveryPanel" class="qb-customer-panel" hidden>
+    <div class="field"><label for="importedDeliveryChoice">Delivery address found in the order</label><select id="importedDeliveryChoice"></select></div>
+    <div id="importedDeliveryAddress"></div>
+    <p class="muted">Check this against the purchase order. A delivery recipient can differ from the customer being billed. The selected address is used for this order and its postage.</p>
+   </div>
    <div class="price-panel" aria-labelledby="priceSourceTitle">
     <h3 id="priceSourceTitle">Customer prices</h3>
     <p id="priceSourceStatus" role="status" aria-live="polite"></p>
@@ -523,6 +528,13 @@ function pdfProductRows(pages, catalogue, source, notes){
   }
   let columns = null;
   for(const rows of pages){
+    const purchaseOrder=window.WSCBatchOCR.purchaseOrderRows(rows,[...catalogue.values()].map(sku=>({sku})));
+    if(purchaseOrder.handled){
+      items.push(...purchaseOrder.rows.map(row=>({...row,price:'',band:'',source,priorOrderNote:''})));
+      notes.push(...purchaseOrder.notes);
+      columns=null;
+      continue;
+    }
     for(const cells of rows){
       const text = cells.map(cell => cell.text).join(' ');
       if(/^(?:sub\s*total|grand\s*total|order\s*total|total(?:\s|$)|vat\s+total|terms\s+and\s+conditions)\b/i.test(text)){
@@ -575,10 +587,16 @@ function pdfProductRows(pages, catalogue, source, notes){
   return items;
 }
 function recognise(documents, products = window.WSCCatalog.products){
-  const customers={label:[],signature:[],sender:[],'pdf-header':[]},orders=[],items=[],notes=[];
+  const customers={label:[],signature:[],sender:[],delivery:[],'pdf-header':[]},orders=[],items=[],notes=[],deliveryAddresses=[];
   const catalogue = new Map(products.map(product => [skuKey(product.sku),product.sku]));
   for(const {label,text:rawText,pages,sender,ocrText=[]} of documents){
     const text=normaliseOrderText(rawText);
+    const addressPages=pages?.length?pages:[window.WSCBatchOCR.textRows(text)];
+    orders.push(...window.WSCBatchOCR.purchaseOrderReferences([...addressPages,...ocrText.map(value=>window.WSCBatchOCR.textRows(normaliseOrderText(value)))]));
+    for(const entry of window.WSCBatchOCR.deliveryAddresses([...addressPages,...ocrText.map(value=>window.WSCBatchOCR.textRows(normaliseOrderText(value)))])){
+      if(!deliveryAddresses.some(old=>JSON.stringify(old.address)===JSON.stringify(entry.address)))deliveryAddresses.push(entry);
+      if(entry.company&&!/\b(?:ITS\s+Europe|Industrial\s+Test\s+Systems)\b/i.test(entry.company))customers.delivery.push(entry.company);
+    }
     if(pages){
       const evidence=pdfCustomerEvidence(pages);
       customers.label.push(...evidence.labels);
@@ -594,7 +612,9 @@ function recognise(documents, products = window.WSCCatalog.products){
       const scannedText=normaliseOrderText(rawPage);
       customers.label.push(...customerValues(scannedText));
       customers['pdf-header'].push(...scannedText.split(/\r?\n/).slice(0,18).map(customerName).filter(Boolean));
-      const rows=window.WSCBatchOCR.productRows(scannedText,products);
+      const purchaseOrder=window.WSCBatchOCR.purchaseOrderRows(window.WSCBatchOCR.textRows(scannedText),products);
+      const rows=purchaseOrder.handled?purchaseOrder.rows:window.WSCBatchOCR.productRows(scannedText,products);
+      notes.push(...purchaseOrder.notes);
       items.push(...rows.map(row=>({...row,price:'',band:'',source:label,priorOrderNote:''})));
     }
     orders.push(...lineValues(text,/^(?:purchase\s+order(?:\s+(?:number|no\.?))?|p\.?\s*o\.?(?:\s+(?:number|no\.?))?)\s*[:#]\s*([A-Z0-9][A-Z0-9._\/-]*)\s*$/i));
@@ -603,6 +623,12 @@ function recognise(documents, products = window.WSCCatalog.products){
       items.push(...pdfProductRows(pages,catalogue,label,productNotes));
       if(!ocrText.length)notes.push(...productNotes);
       else notes.push(...productNotes.filter(note=>!note.startsWith('No verified product lines')));
+      continue;
+    }
+    const purchaseOrder=window.WSCBatchOCR.purchaseOrderRows(window.WSCBatchOCR.textRows(text),products);
+    if(purchaseOrder.handled){
+      items.push(...purchaseOrder.rows.map(row=>({...row,price:'',band:'',source:label,priorOrderNote:''})));
+      notes.push(...purchaseOrder.notes);
       continue;
     }
     const lines=text.split(/\r?\n/);let table=null;
@@ -646,14 +672,16 @@ function recognise(documents, products = window.WSCCatalog.products){
       items.push({sku,quantity,price:'',band:'',source:label,priorOrderNote:priorOrderNote(line)});
     }
   }
-  const cs=unique(customers.label.length?customers.label:customers.signature),ps=unique(orders);
+  const cs=unique(customers.label.length?customers.label:customers.signature.length?customers.signature:customers.delivery),ps=unique(orders);
   const customerCandidates=Object.entries(customers).flatMap(([kind,names])=>unique(names).map(name=>({kind,name})));
   if(cs.length>1)notes.push('Different customer names were found; choose the correct customer.');
   if(ps.length>1)notes.push('Different purchase order numbers were found; choose the correct number.');
+  if(!customers.label.length&&!customers.signature.length&&customers.delivery.length)notes.push('Customer suggested from the delivery company. Check the QuickBooks customer before confirming.');
+  if(deliveryAddresses.length>1)notes.push('Different delivery addresses were found. Choose the address for this order.');
   const checkedItems=reconcileItems(items,notes);
   if(!checkedItems.length)notes.push('Products not identified; enter them manually.');
   else if(checkedItems.some(x=>!x.quantity))notes.push('Check and enter any missing quantities.');
-  return {customer:cs.length===1?cs[0]:'',customerCandidates,po:ps.length===1?ps[0]:'',items:checkedItems,notes};
+  return {customer:cs.length===1?cs[0]:'',customerCandidates,po:ps.length===1?ps[0]:'',items:checkedItems,notes,deliveryAddresses};
 }
 function readFile(file,mode){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onerror=()=>reject(new Error('Could not read the file.'));reader.onload=()=>resolve(reader.result);if(mode==='buffer')reader.readAsArrayBuffer(file);else reader.readAsText(file);});}
 let pdfEnginePromise;
@@ -866,7 +894,7 @@ function addItem(values={}){
 }
 function getItems(){return [...items.children].map(row=>({sku:row.querySelector('.sku input').value.trim(),quantity:row.querySelector('.quantity input').value.trim(),priorOrderNote:row.dataset.priorOrderNote||'',priorOrderDecision:row.querySelector('.prior-review select')?.value||'',matchSelection:row.dataset.matchSelection||'',matchMode:row.dataset.matchMode||'',matchBook:row.dataset.matchBook||'',matchInput:row.dataset.matchInput||'',matchPriceApproval:row.dataset.matchPriceApproval||'',matchManualPrice:row.dataset.matchManualPrice||''}));}
 function includedItems(){return getItems().filter(row=>!row.priorOrderNote||row.priorOrderDecision==='include');}
-function detailsSignature(){return JSON.stringify([$('customer').value.trim(),getItems(),priceChoice,priceBook?.storedAt||'',priceBook?.bulkPriceTrigger,customerSnapshot()]);}
+function detailsSignature(){return JSON.stringify([$('customer').value.trim(),getItems(),priceChoice,priceBook?.storedAt||'',priceBook?.bulkPriceTrigger,customerSnapshot(),importedDelivery,$('importedDeliveryChoice').value]);}
 // Customer names are loaded from the authenticated private WSC index once per
 // signed-in user. A chosen customer is then verified in QuickBooks, read only.
 let customerIndexEntries=null,customerIndexOwner='',customerIndexPromise=null,customerIndexGeneration=0;
@@ -883,20 +911,39 @@ function customerImportKey(value){
  return customerExactKey(value).replace(/\blimited\b/g,'ltd').replace(/&/g,'and').replace(/[^\p{L}\p{N}]/gu,'');
 }
 function matchImportedCustomer(entries,candidates){
- for(const kind of ['label','signature','sender','pdf-header']){
+ for(const kind of ['label','signature','sender','delivery','pdf-header']){
   const names=new Set(candidates.filter(candidate=>candidate.kind===kind).map(candidate=>customerImportKey(candidate.name)).filter(name=>name.length>=3));
   if(!names.size)continue;
   const matches=entries.filter(entry=>names.has(customerImportKey(entry.displayName))||names.has(customerImportKey(entry.companyName)));
-  if(kind==='label'||matches.length){
+  if(kind==='label'||kind==='delivery'||matches.length){
    const [first]=matches;
    const firstNames=first?[customerImportKey(first.displayName),customerImportKey(first.companyName)]:[];
-   const chosen=matches.length===1&&(kind!=='label'||[...names].every(name=>firstNames.includes(name)))?first:null;
+   const chosen=matches.length===1&&(!['label','delivery'].includes(kind)||[...names].every(name=>firstNames.includes(name)))?first:null;
    return {chosen,matches};
   }
  }
  return {chosen:null,matches:[]};
 }
 function addressLines(address){if(!address)return [];return [...(Array.isArray(address.lines)?address.lines:[]),address.city,address.region,address.postcode,address.country].map(x=>String(x||'').trim()).filter(Boolean);}
+let importedDelivery=[];
+function chosenOrderAddress(){const value=$('importedDeliveryChoice').value;return /^\d+$/.test(value)?importedDelivery[Number(value)]?.address||null:null;}
+function paintImportedDelivery(){
+ const box=$('importedDeliveryAddress');box.replaceChildren();
+ const address=$('importedDeliveryChoice').value===''?null:chosenOrderAddress();
+ if(address)for(const line of addressLines(address))box.append(make('div',line));
+ else box.append(make('p',$('importedDeliveryChoice').value==='quickbooks'?'Use the delivery address saved for the selected QuickBooks customer.':'Choose the delivery address before confirming.','muted'));
+}
+function setImportedDelivery(entries,selection){
+ importedDelivery=Array.isArray(entries)?entries:[];
+ const select=$('importedDeliveryChoice');select.replaceChildren();
+ $('importedDeliveryPanel').hidden=!importedDelivery.length;
+ if(importedDelivery.length>1)option(select,'','Choose a delivery address');
+ importedDelivery.forEach((entry,index)=>option(select,index,'Order address'+(importedDelivery.length>1?' '+(index+1):'')+(entry.company?' — '+entry.company:'')));
+ option(select,'quickbooks','Use saved QuickBooks delivery address');
+ const valid=selection==='quickbooks'||importedDelivery.some((_,index)=>String(index)===String(selection));
+ select.value=valid?String(selection):importedDelivery.length===1?'0':importedDelivery.length?'':'quickbooks';
+ paintImportedDelivery();
+}
 function customerFingerprint(name,company){let h=2166136261,s=String(name)+'\u0000'+String(company);for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return(h>>>0).toString(16).padStart(8,'0');}
 function resetCustomerIndex(){customerIndexGeneration++;customerIndexEntries=null;customerIndexOwner='';customerIndexPromise=null;}
 function ensureCustomerIndex(){
@@ -974,7 +1021,7 @@ function paintCustomerLookup(){
   const addDetail=(label,value)=>{if(value)box.append(make('div',label+': '+String(value)));};
   addDetail('QuickBooks customer ID',c.id);addDetail('Company',c.companyName);addDetail('Contact',c.contactName);addDetail('Email',c.email);addDetail('Telephone',c.phone);addDetail('Mobile',c.mobile);
   function addAddress(label,address,missing){box.append(make('strong',label));const lines=addressLines(address);if(lines.length)for(const line of lines)box.append(make('div',line));else box.append(make('p',missing,'muted'));}
-  addAddress('Delivery address',c.shippingAddress,'No delivery address is saved for this customer in QuickBooks.');
+  addAddress('Saved QuickBooks delivery address',c.shippingAddress,'No delivery address is saved for this customer in QuickBooks.');
   addAddress('Billing address',c.billingAddress,'No billing address is saved for this customer in QuickBooks.');
   return;
  }
@@ -1020,7 +1067,7 @@ function resolveCustomer(chosen,expectedId=''){
  }).catch(error=>{if(serial===customerLookupSerial&&$('customer').value.trim()===chosen.displayName){customerState.status='error';customerState.error=customerLookupError(error);customerState.selected=null;paintCustomerLookup();invalidate();update();}});
 }
 function chooseQBCustomer(index){const chosen=customerState.matches[index];if(chosen)resolveCustomer(chosen);}
-function customerSnapshot(){const c=customerState.selected;return c?{id:c.id,displayName:c.displayName,companyName:c.companyName||'',contactName:c.contactName||'',email:c.email||'',phone:c.phone||'',mobile:c.mobile||'',shippingAddress:c.shippingAddress||null,billingAddress:c.billingAddress||null}:null;}
+function customerSnapshot(){const c=customerState.selected;return c?{id:c.id,displayName:c.displayName,companyName:c.companyName||'',contactName:c.contactName||'',email:c.email||'',phone:c.phone||'',mobile:c.mobile||'',shippingAddress:chosenOrderAddress()||c.shippingAddress||null,billingAddress:c.billingAddress||null}:null;}
 function customerGuard(){
  if(isExample()||!customerBridge())return '';
  if(!customerStaff())return 'Sign in to WSC to check the QuickBooks customer.';
@@ -1147,7 +1194,7 @@ function postAddBox(parcel = {}) {
 function postOpenParcelDetails() {
  const signature = detailsSignature();
  if(postParcelSignature !== signature){
-  const ship = examplePricing ? {country:'GBR',postcode:'SW1A 1AA'} : customerSnapshot()?.shippingAddress;
+  const ship = examplePricing ? {country:'GBR',postcode:'SW1A 1AA'} : chosenOrderAddress()||customerSnapshot()?.shippingAddress;
   const postcode = String(ship?.postcode || '').trim();
   const givenCountry = String(ship?.country || '').trim();
   const namedCountry = postPacking.countryCode(givenCountry);
@@ -1157,7 +1204,7 @@ function postOpenParcelDetails() {
   $('postCountry').value = country;
   $('postCode').value = postcode;
   $('postAddressNote').hidden = examplePricing || !country || country === namedCountry;
-  $('postAddressNote').textContent = 'Country filled from the QuickBooks delivery postcode.';
+  $('postAddressNote').textContent = 'Country filled from the selected delivery postcode.';
   if(country && !postServiceTouched && !postPacking.isUK(country)) $('postService').value = 'international';
   $('postVat').value = '';
   $('postVatFields').hidden = true;
@@ -1394,7 +1441,7 @@ function update(){
  $('sumTotal').textContent=goods!==null&&bank!==null&&post!==null&&fee!==null?money(goods+bank+post+fee):'—';$('batchCount').textContent=orders.length+' '+(orders.length===1?'order':'orders')+' in batch';
 }
 function invalidate(){if(confirmedSignature!==null&&detailsSignature()!==confirmedSignature){clearPostForChangedOrder();confirmedSignature=null;examplePricing=false;manualFee=false;$('confirmedArea').hidden=true;$('detailError').textContent='The order details changed. Please confirm them again.';}}
-function reset(){form.reset();showSelectedOrderPhoto();clearPostForChangedOrder();postServiceTouched=false;items.replaceChildren();addItem();clearCustomerLookup();editing=null;exampleSource=false;savedSources=[];lastSourceSignature=null;confirmedSignature=null;examplePricing=false;manualFee=false;purchaseOrder='';priceCustomer='';priceChoice='';priceBook=null;priceTables=[];priceUploadCustomer='';priceLoadId++;clearPostLive();$('priceMapper').hidden=true;$('priceError').textContent='';$('sourceInfo').textContent='';$('uploadError').textContent='';$('extractStatus').textContent='';$('recognitionNotes').textContent='';$('detailError').textContent='';$('error').textContent='';$('confirmedArea').hidden=true;showPriceStatus();setStep(1);update();}
+function reset(){form.reset();setImportedDelivery([]);showSelectedOrderPhoto();clearPostForChangedOrder();postServiceTouched=false;items.replaceChildren();addItem();clearCustomerLookup();editing=null;exampleSource=false;savedSources=[];lastSourceSignature=null;confirmedSignature=null;examplePricing=false;manualFee=false;purchaseOrder='';priceCustomer='';priceChoice='';priceBook=null;priceTables=[];priceUploadCustomer='';priceLoadId++;clearPostLive();$('priceMapper').hidden=true;$('priceError').textContent='';$('sourceInfo').textContent='';$('uploadError').textContent='';$('extractStatus').textContent='';$('recognitionNotes').textContent='';$('detailError').textContent='';$('error').textContent='';$('confirmedArea').hidden=true;showPriceStatus();setStep(1);update();}
 function inputSources(){return [...savedSources,...['emailFile','pdfFile','orderPhoto'].flatMap(id=>{const file=$(id).files?.[0];return file?[file.name]:[];}),...($('emailText').value.trim()?['Pasted email text']:[]),...(exampleSource?['Example order']:[])];}
 function sourceSignature(){const fileInfo=id=>{const file=$(id).files?.[0];return file?[file.name,file.size,file.lastModified]:null;};return JSON.stringify([fileInfo('emailFile'),fileInfo('pdfFile'),fileInfo('orderPhoto'),photoSource,$('emailText').value,savedSources]);}
 let photoSource='',requestedPhotoSource='';
@@ -1461,6 +1508,7 @@ async function readOrder(){
   if(sourceSignature()!==signature){$('uploadError').textContent='The selected files or text changed. Press Next to read the current order.';return;}
   reviewCatalogue=products;
   const found=WSCOrderExtract.recognise(docs,products);
+  setImportedDelivery(found.deliveryAddresses);
   $('customer').value=found.customer;clearCustomerLookup();refreshCustomerPrice(true);
   purchaseOrder=found.po;items.replaceChildren();if(found.items.length)found.items.forEach(addItem);else addItem();
   confirmedSignature=null;examplePricing=false;manualFee=false;$('confirmedArea').hidden=true;$('bank').checked=false;$('postage').checked=false;$('bankAmount').value='';$('postPacking').value='0';$('postMarkup').value='10';clearPostLive();
@@ -1472,7 +1520,7 @@ function exampleInputSource(){
  return noFiles&&(newExample||editedExample);
 }
 function isExample(){return exampleInputSource()&&$('customer').value.trim()==='Example Customer'&&includedItems().every(row=>row.sku==='480011');}
-function validateDetails(){const rows=getItems();if(!$('customer').value.trim())return 'Enter the customer.';if(rows.some(row=>row.priorOrderNote&&!row.priorOrderDecision))return 'Choose whether to include or exclude each item marked as already ordered.';const included=includedItems();if(!included.length)return 'Include at least one product in the new order.';if(included.some(row=>!row.sku||!/^\d+$/.test(row.quantity)||Number(row.quantity)<=0||!Number.isSafeInteger(Number(row.quantity))))return 'Enter each included product SKU and a whole-number quantity greater than zero.';const unresolved=included.find(row=>row.matchMode==='choose'&&!row.matchSelection);if(unresolved)return 'Choose which product to use for SKU '+unresolved.sku+'.';const unapproved=included.find(row=>matchedEntry(row)?.substitution&&row.matchPriceApproval!=='yes'&&manualPricePence(row.matchManualPrice)===null);if(unapproved)return 'Confirm the base SKU price or enter a valid unit price (including £0.00) for '+matchedEntry(unapproved).sku+'.';return '';}
+function validateDetails(){if(importedDelivery.length&&$('importedDeliveryChoice').value==='')return 'Choose the delivery address for this order.';const rows=getItems();if(!$('customer').value.trim())return 'Enter the customer.';if(rows.some(row=>row.priorOrderNote&&!row.priorOrderDecision))return 'Choose whether to include or exclude each item marked as already ordered.';const included=includedItems();if(!included.length)return 'Include at least one product in the new order.';if(included.some(row=>!row.sku||!/^\d+$/.test(row.quantity)||Number(row.quantity)<=0||!Number.isSafeInteger(Number(row.quantity))))return 'Enter each included product SKU and a whole-number quantity greater than zero.';const unresolved=included.find(row=>row.matchMode==='choose'&&!row.matchSelection);if(unresolved)return 'Choose which product to use for SKU '+unresolved.sku+'.';const unapproved=included.find(row=>matchedEntry(row)?.substitution&&row.matchPriceApproval!=='yes'&&manualPricePence(row.matchManualPrice)===null);if(unapproved)return 'Confirm the base SKU price or enter a valid unit price (including £0.00) for '+matchedEntry(unapproved).sku+'.';return '';}
 function confirmDetails(){
  const error=validateDetails()||customerGuard();$('detailError').textContent=error;if(error)return;
  if(!priceChoice&&isExample()){priceChoice='example';showPriceStatus();}
@@ -1496,7 +1544,7 @@ function save(finish){
  const complete=goods!==null&&bank!==null&&post!==null&&fee!==null;
  const selected=includedItems().map(row=>{const entry=matchedEntry(row);return {...row,originalSku:row.sku,sku:entry?entry.sku:row.sku,productName:entry?entry.name:'',sheetProductName:entry?entry.sheetName:'',sheetRow:entry?entry.row:null,priceSourceSku:entry?entry.priceSku:'',priceSubstitutionConfirmed:!!entry?.substitution&&row.matchPriceApproval==='yes',unitPrice:priceFor(row),lineAmount:lineTotal(row)};});
  const postState={packing:$('postPacking').value,markup:$('postMarkup').value,service:$('postService').value};
- const order={customer:$('customer').value.trim(),customerQB:customerSnapshot(),items:selected,sourceRows:getItems(),po:purchaseOrder,sources:inputSources(),type:document.querySelector('[name=documentType]:checked').value,example:examplePricing,priceChoice,priceBook,bankOn:$('bank').checked,bankInput:$('bankAmount').value,postOn:$('postage').checked,postState,postQuote,feeOn:$('smallFee').checked,feeManual:manualFee,goods,bank,post,fee,total:complete?goods+bank+post+fee:null};
+ const order={customer:$('customer').value.trim(),customerQB:customerSnapshot(),deliveryAddress:chosenOrderAddress()||customerSnapshot()?.shippingAddress||null,importedDelivery,deliveryChoice:$('importedDeliveryChoice').value,items:selected,sourceRows:getItems(),po:purchaseOrder,sources:inputSources(),type:document.querySelector('[name=documentType]:checked').value,example:examplePricing,priceChoice,priceBook,bankOn:$('bank').checked,bankInput:$('bankAmount').value,postOn:$('postage').checked,postState,postQuote,feeOn:$('smallFee').checked,feeManual:manualFee,goods,bank,post,fee,total:complete?goods+bank+post+fee:null};
  const savedIndex=editing===null?orders.length:editing;if(editing===null)orders.push(order);else orders[editing]=order;reset();if(finish){invoicePreviewIndex=savedIndex;showBatch();}else window.scrollTo({top:0,behavior:'smooth'});
 }
 function showBatch(){
@@ -1522,7 +1570,7 @@ function renderInvoicePreview(index){
  top.append(company,contact,brand);host.append(top);
  const address=make('div','','invoice-blue invoice-addresses'),billing=make('div'),shipping=make('div');
  billing.append(make('strong','Bill to'),make('div',o.customerQB?.displayName||o.customer));const billLines=addressLines(o.customerQB?.billingAddress);if(billLines.length)billLines.forEach(line=>billing.append(make('div',line)));else billing.append(make('div','Billing address not available','invoice-missing'));
- shipping.append(make('strong','Ship to'));const shipLines=addressLines(o.customerQB?.shippingAddress);if(shipLines.length)shipLines.forEach(line=>shipping.append(make('div',line)));else shipping.append(make('div','Delivery address not available','invoice-missing'));address.append(billing,shipping);host.append(address);
+ shipping.append(make('strong','Ship to'));const shipLines=addressLines(o.deliveryAddress||o.customerQB?.shippingAddress);if(shipLines.length)shipLines.forEach(line=>shipping.append(make('div',line)));else shipping.append(make('div','Delivery address not available','invoice-missing'));address.append(billing,shipping);host.append(address);
  const meta=make('div','','invoice-blue invoice-meta'),shippingInfo=make('div'),details=make('div'),extra=make('div');
  shippingInfo.append(make('strong','Shipping info'),make('div',o.postOn?(o.postQuote?.service||o.postQuote?.category||'Royal Mail'):'Not selected'));
  if(o.postOn&&o.postQuote?.estimated)shippingInfo.append(make('div',o.postQuote.boxes+(o.postQuote.boxes===1?' estimated box':' estimated boxes'),'invoice-missing'));
@@ -1545,7 +1593,7 @@ function renderInvoicePreview(index){
 }
 
 function editOrder(index){
- const o=orders[index];form.hidden=false;$('batchReview').hidden=true;$('exampleButton').hidden=!!customerBridge();reset();editing=index;exampleSource=o.example;savedSources=o.sources;purchaseOrder=o.po;$('sourceInfo').textContent='Previously selected: '+savedSources.join(', ');$('customer').value=o.customer;priceCustomer=WSCPriceSheets.key(o.customer);priceChoice=o.priceChoice;priceBook=o.priceBook;showPriceStatus();items.replaceChildren();(o.sourceRows||o.items).forEach(addItem);
+ const o=orders[index];form.hidden=false;$('batchReview').hidden=true;$('exampleButton').hidden=!!customerBridge();reset();editing=index;exampleSource=o.example;savedSources=o.sources;purchaseOrder=o.po;setImportedDelivery(o.importedDelivery,o.deliveryChoice);$('sourceInfo').textContent='Previously selected: '+savedSources.join(', ');$('customer').value=o.customer;priceCustomer=WSCPriceSheets.key(o.customer);priceChoice=o.priceChoice;priceBook=o.priceBook;showPriceStatus();items.replaceChildren();(o.sourceRows||o.items).forEach(addItem);
  document.querySelectorAll('[name=documentType]').forEach(r=>r.checked=r.value===o.type);$('bank').checked=o.bankOn;$('bankAmount').value=o.bankInput;$('postage').checked=o.postOn;
  const ps=o.postState||{};for(const [id,key] of [['postPacking','packing'],['postMarkup','markup'],['postService','service']])if(ps[key]!==undefined)$(id).value=ps[key];
  postServiceTouched=!!ps.service;
@@ -1638,6 +1686,7 @@ function handleChange(event){
  if(event.target===$('customer')){refreshCustomerPrice();scheduleCustomerLookup();}if(event.target.matches('.sku input'))matchForRow(event.target.closest('.item'));
  if(event.target.id==='postage'&&!$('postage').checked)clearPostLive();
  if(event.target.id==='postService')postServiceTouched=true;
+ if(event.target.id==='importedDeliveryChoice'){paintImportedDelivery();clearPostForChangedOrder();}
  if(event.target.matches('.post-box input'))postManualPacking=true;
  if(event.target.id==='postCountry'||event.target.id==='postCode')$('postAddressNote').hidden=true;
  if(event.target.id==='postService'||event.target.closest('#postParcelDetails'))clearPostLive();
