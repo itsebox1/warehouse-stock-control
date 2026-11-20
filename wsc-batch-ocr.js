@@ -174,9 +174,59 @@
       .map(cell => cell.text).join(' ').trim();
   }
 
+  function catalogueTableRows(pageRows, products) {
+    const catalog = new Map((products || []).filter(p => p?.sku).map(p => [skuKey(p.sku), p.sku]));
+    const rows = [], notes = [];
+    let qtyCell, pending;
+    for (let i = 0; i < pageRows.length; i++) {
+      const cells = pageRows[i];
+      const heading = cells.find(cell => qtyHeading.test(cell.text.trim()));
+      if (heading) {
+        const nearby = pageRows.slice(Math.max(0, i - 2), i + 3).flat();
+        if (nearby.some(cell => /^(?:ref(?:erence)?\.?|article|material|catalogue|description|product description|item description)$/i.test(cell.text.trim()))) {
+          qtyCell = heading;
+          pending = null;
+          continue;
+        }
+      }
+      if (!qtyCell) continue;
+      if (cells.some(cell => /^(?:grand total|total ht|subtotal|order total|total payable)\b/i.test(cell.text)) || /^total\b/i.test(cells[0]?.text || '')) {
+        qtyCell = pending = null;
+        continue;
+      }
+      const counts = [], matches = new Set();
+      for (const cell of cells) {
+        const value = cell.text.trim();
+        const center = (cell.x + cell.end) / 2;
+        if (center >= qtyCell.x - 4 && center <= qtyCell.end + 4 && quantity(value)) {
+          counts.push(quantity(value));
+          continue;
+        }
+        for (const token of [value, ...(value.match(/[\w./-]+/g) || [])]) {
+          const sku = catalog.get(skuKey(token));
+          if (sku) matches.add(sku);
+        }
+      }
+      if (matches.size) {
+        pending = null;
+        if (matches.size > 1) {
+          notes.push('Several catalogue codes appear on one line. Check the products and quantities.');
+          continue;
+        }
+        pending = {sku:[...matches][0], quantity:''};
+        rows.push(pending);
+      }
+      if (pending && counts.length === 1) {
+        pending.quantity = counts[0];
+        pending = null;
+      }
+    }
+    return {handled:rows.length > 0, rows, notes};
+  }
+
   function purchaseOrderRows(pageRows, products) {
     const join = cells => cells.map(cell => cell.text).join(' ').trim();
-    if (!pageRows.some(cells => supplierPart.test(join(cells)))) return {handled:false, rows:[], notes:[]};
+    if (!pageRows.some(cells => supplierPart.test(join(cells)))) return catalogueTableRows(pageRows, products);
     const catalog = new Map((products || []).filter(p => p?.sku).map(p => [skuKey(p.sku), p.sku]));
     const rows = [], notes = [];
     let headers = null, skuIndex = -1, qtyIndex = -1, pending = null, flatTable = false;
