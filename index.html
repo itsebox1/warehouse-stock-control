@@ -1773,7 +1773,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.1.13";
+const WSC_VERSION = "1.1.14";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -10506,7 +10506,7 @@ window.wscOpenPostageQuotes=async()=>{
    if(!cachedPermission)await wscRefreshPermissions();
    if(wscPermissions?.functions?.BATCH_ORDERS!==true)throw new Error('Batch Orders access is disabled for this account.');
    const f=frame();if(!f)throw new Error('Batch Orders is unavailable.');
-   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=1.1.13');batchUser=user;}
+   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=1.1.14');batchUser=user;}
    wscShowHomeView('batch', 'wscBatchOrderHome');
    tidyBatchNavigation();
    if(cachedPermission)void wscRefreshPermissions();
