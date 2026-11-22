@@ -422,6 +422,10 @@ input[type="reset"]:disabled,
 #wscCurrencyDialog input,#wscCurrencyDialog select {box-sizing:border-box;width:100%;padding:11px;min-height:44px;font-size:16px;border:1px solid #bac8d7;border-radius:7px;}
 #wscCurrencyDialog .conversion {padding:12px;margin-top:16px;background:#f4f7fa;border-radius:8px;font-weight:bold;}
 #wscCurrencyDialog .wsc-rate-retry {width:auto;margin:4px 0 0;padding:8px 14px;}
+#wscCurrencyDialog .wsc-currency-other {margin-top:14px;padding:14px;background:#f4f7fa;border-radius:8px;}
+#wscCurrencyDialog .wsc-currency-actions {display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+#wscCurrencyDialog .wsc-currency-actions button {width:auto;margin:0;min-height:44px;padding:10px 14px;}
+#wscCurrencyDialog .wsc-currency-matches button {display:block;width:100%;margin:8px 0 0;text-align:left;}
 @media(max-width:540px){#wscCurrencyDialog .grid.three{grid-template-columns:1fr}#wscHomeInfoTools{gap:7px}#wscHomeInfoTools .wsc-tool-fab{width:40px;height:40px}}
 /* Keep the informational globe on Home only. Loading overlays remain unchanged. */
 .about-globe:not(#homePrivacyGlobe),#tradeShowReportGlobe {visibility:hidden!important;}
@@ -846,7 +850,25 @@ input[type="reset"]:disabled,
         <div><label for="wscPQConvertAmount">Amount</label><input id="wscPQConvertAmount" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal"></div>
         <div><label for="wscPQConvertUplift">Add percentage</label><input id="wscPQConvertUplift" type="number" min="0" step="0.1" value="0" inputmode="decimal"></div>
         <div><label for="wscPQConvertFrom">From</label><select id="wscPQConvertFrom"><option value="GBP">GBP — Pound</option><option value="EUR">EUR — Euro</option><option value="USD">USD — US Dollar</option></select></div>
-        <div><label for="wscPQConvertTo">To</label><select id="wscPQConvertTo"><option value="EUR">EUR — Euro</option><option value="GBP">GBP — Pound</option><option value="USD">USD — US Dollar</option></select></div>
+        <div><label for="wscPQConvertTo">To</label><select id="wscPQConvertTo"><option value="EUR">EUR — Euro</option><option value="GBP">GBP — Pound</option><option value="USD">USD — US Dollar</option><option value="__other__">Other…</option></select></div>
+      </div>
+      <div id="wscPQConvertCountryPanel" class="wsc-currency-other" hidden>
+        <label for="wscPQConvertCountry">Country</label>
+        <input id="wscPQConvertCountry" type="text" list="wscPQConvertCountries" maxlength="100" autocomplete="off" placeholder="For example, Japan" aria-describedby="wscPQConvertCountryStatus">
+        <datalist id="wscPQConvertCountries"></datalist>
+        <div class="wsc-currency-actions">
+          <button id="wscPQConvertCountryFind" type="button">Find currency</button>
+          <button id="wscPQConvertCountryCancel" type="button">Cancel</button>
+        </div>
+        <p id="wscPQConvertCountryStatus" class="hint" role="status" aria-live="polite"></p>
+        <div id="wscPQConvertCountryMatches" class="wsc-currency-matches"></div>
+        <div id="wscPQConvertCountryConfirm" hidden>
+          <p id="wscPQConvertCountryQuestion"></p>
+          <div class="wsc-currency-actions">
+            <button id="wscPQConvertCountryKeep" type="button">Yes, keep it</button>
+            <button id="wscPQConvertCountryNo" type="button">No</button>
+          </div>
+        </div>
       </div>
       <p id="wscPQConvertFxStatus" class="hint" role="status"></p>
       <button id="wscPQConvertFxRetry" class="wsc-rate-retry" type="button" hidden>Retry exchange rate</button>
@@ -1773,7 +1795,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.1.14";
+const WSC_VERSION = "1.1.15";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -9767,6 +9789,496 @@ const referenceDateFormat = new Intl.DateTimeFormat('en-GB', {day: 'numeric', mo
 let referenceRates = null;
 let referenceRateState = 'idle';
 
+// Current tender currencies from Unicode CLDR 49, checked 22 November 2026.
+// Source: unicode-org/cldr-json, supplemental/currencyData.json and English territories.json.
+/*
+UNICODE LICENSE V3
+COPYRIGHT AND PERMISSION NOTICE
+Copyright © 2015-2024 Unicode, Inc.
+
+NOTICE TO USER: Carefully read the following legal agreement. BY
+DOWNLOADING, INSTALLING, COPYING OR OTHERWISE USING DATA FILES, AND/OR
+SOFTWARE, YOU UNEQUIVOCALLY ACCEPT, AND AGREE TO BE BOUND BY, ALL OF THE
+TERMS AND CONDITIONS OF THIS AGREEMENT. IF YOU DO NOT AGREE, DO NOT
+DOWNLOAD, INSTALL, COPY, DISTRIBUTE OR USE THE DATA FILES OR SOFTWARE.
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of data files and any associated documentation (the "Data Files") or
+software and any associated documentation (the "Software") to deal in the
+Data Files or Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, and/or sell
+copies of the Data Files or Software, and to permit persons to whom the
+Data Files or Software are furnished to do so, provided that either (a)
+this copyright and permission notice appear with all copies of the Data
+Files or Software, or (b) this copyright and permission notice appear in
+associated Documentation.
+
+THE DATA FILES AND SOFTWARE ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
+THIRD PARTY RIGHTS.
+
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR HOLDERS INCLUDED IN THIS NOTICE
+BE LIABLE FOR ANY CLAIM, OR ANY SPECIAL INDIRECT OR CONSEQUENTIAL DAMAGES,
+OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS,
+WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
+ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THE DATA
+FILES OR SOFTWARE.
+
+Except as contained in this notice, the name of a copyright holder shall
+not be used in advertising or otherwise to promote the sale, use or other
+dealings in these Data Files or Software without prior written
+authorization of the copyright holder.
+
+SPDX-License-Identifier: Unicode-3.0
+*/
+const currencyCountries = [
+  ["AC", "Ascension Island", ["SHP"]],
+  ["AD", "Andorra", ["EUR"]],
+  ["AE", "United Arab Emirates", ["AED"]],
+  ["AF", "Afghanistan", ["AFN"]],
+  ["AG", "Antigua & Barbuda", ["XCD"]],
+  ["AI", "Anguilla", ["XCD"]],
+  ["AL", "Albania", ["ALL"]],
+  ["AM", "Armenia", ["AMD"]],
+  ["AO", "Angola", ["AOA"]],
+  ["AR", "Argentina", ["ARS"]],
+  ["AS", "American Samoa", ["USD"]],
+  ["AT", "Austria", ["EUR"]],
+  ["AU", "Australia", ["AUD"]],
+  ["AW", "Aruba", ["AWG"]],
+  ["AX", "Åland Islands", ["EUR"]],
+  ["AZ", "Azerbaijan", ["AZN"]],
+  ["BA", "Bosnia & Herzegovina", ["BAM"]],
+  ["BB", "Barbados", ["BBD"]],
+  ["BD", "Bangladesh", ["BDT"]],
+  ["BE", "Belgium", ["EUR"]],
+  ["BF", "Burkina Faso", ["XOF"]],
+  ["BG", "Bulgaria", ["EUR"]],
+  ["BH", "Bahrain", ["BHD"]],
+  ["BI", "Burundi", ["BIF"]],
+  ["BJ", "Benin", ["XOF"]],
+  ["BL", "St. Barthélemy", ["EUR"]],
+  ["BM", "Bermuda", ["BMD"]],
+  ["BN", "Brunei", ["BND"]],
+  ["BO", "Bolivia", ["BOB"]],
+  ["BQ", "Caribbean Netherlands", ["USD"]],
+  ["BR", "Brazil", ["BRL"]],
+  ["BS", "Bahamas", ["BSD"]],
+  ["BT", "Bhutan", ["BTN", "INR"]],
+  ["BV", "Bouvet Island", ["NOK"]],
+  ["BW", "Botswana", ["BWP"]],
+  ["BY", "Belarus", ["BYN"]],
+  ["BZ", "Belize", ["BZD"]],
+  ["CA", "Canada", ["CAD"]],
+  ["CC", "Cocos (Keeling) Islands", ["AUD"]],
+  ["CD", "Congo - Kinshasa", ["CDF"]],
+  ["CF", "Central African Republic", ["XAF"]],
+  ["CG", "Congo - Brazzaville", ["XAF"]],
+  ["CH", "Switzerland", ["CHF"]],
+  ["CI", "Côte d’Ivoire", ["XOF"]],
+  ["CK", "Cook Islands", ["NZD"]],
+  ["CL", "Chile", ["CLP"]],
+  ["CM", "Cameroon", ["XAF"]],
+  ["CN", "China", ["CNY"]],
+  ["CO", "Colombia", ["COP"]],
+  ["CR", "Costa Rica", ["CRC"]],
+  ["CU", "Cuba", ["CUP"]],
+  ["CV", "Cape Verde", ["CVE"]],
+  ["CW", "Curaçao", ["XCG"]],
+  ["CX", "Christmas Island", ["AUD"]],
+  ["CY", "Cyprus", ["EUR"]],
+  ["CZ", "Czechia", ["CZK"]],
+  ["DE", "Germany", ["EUR"]],
+  ["DG", "Diego Garcia", ["USD"]],
+  ["DJ", "Djibouti", ["DJF"]],
+  ["DK", "Denmark", ["DKK"]],
+  ["DM", "Dominica", ["XCD"]],
+  ["DO", "Dominican Republic", ["DOP"]],
+  ["DZ", "Algeria", ["DZD"]],
+  ["EA", "Ceuta & Melilla", ["EUR"]],
+  ["EC", "Ecuador", ["USD"]],
+  ["EE", "Estonia", ["EUR"]],
+  ["EG", "Egypt", ["EGP"]],
+  ["EH", "Western Sahara", ["MAD"]],
+  ["ER", "Eritrea", ["ERN"]],
+  ["ES", "Spain", ["EUR"]],
+  ["ET", "Ethiopia", ["ETB"]],
+  ["FI", "Finland", ["EUR"]],
+  ["FJ", "Fiji", ["FJD"]],
+  ["FK", "Falkland Islands", ["FKP"]],
+  ["FM", "Micronesia", ["USD"]],
+  ["FO", "Faroe Islands", ["DKK"]],
+  ["FR", "France", ["EUR"]],
+  ["GA", "Gabon", ["XAF"]],
+  ["GB", "United Kingdom", ["GBP"]],
+  ["GD", "Grenada", ["XCD"]],
+  ["GE", "Georgia", ["GEL"]],
+  ["GF", "French Guiana", ["EUR"]],
+  ["GG", "Guernsey", ["GBP"]],
+  ["GH", "Ghana", ["GHS"]],
+  ["GI", "Gibraltar", ["GIP"]],
+  ["GL", "Greenland", ["DKK"]],
+  ["GM", "Gambia", ["GMD"]],
+  ["GN", "Guinea", ["GNF"]],
+  ["GP", "Guadeloupe", ["EUR"]],
+  ["GQ", "Equatorial Guinea", ["XAF"]],
+  ["GR", "Greece", ["EUR"]],
+  ["GS", "South Georgia & South Sandwich Islands", ["GBP"]],
+  ["GT", "Guatemala", ["GTQ"]],
+  ["GU", "Guam", ["USD"]],
+  ["GW", "Guinea-Bissau", ["XOF"]],
+  ["GY", "Guyana", ["GYD"]],
+  ["HK", "Hong Kong SAR China", ["HKD"]],
+  ["HM", "Heard Island & McDonald Islands", ["AUD"]],
+  ["HN", "Honduras", ["HNL"]],
+  ["HR", "Croatia", ["EUR"]],
+  ["HT", "Haiti", ["HTG", "USD"]],
+  ["HU", "Hungary", ["HUF"]],
+  ["IC", "Canary Islands", ["EUR"]],
+  ["ID", "Indonesia", ["IDR"]],
+  ["IE", "Ireland", ["EUR"]],
+  ["IL", "Israel", ["ILS"]],
+  ["IM", "Isle of Man", ["GBP"]],
+  ["IN", "India", ["INR"]],
+  ["IO", "British Indian Ocean Territory", ["USD"]],
+  ["IQ", "Iraq", ["IQD"]],
+  ["IR", "Iran", ["IRR"]],
+  ["IS", "Iceland", ["ISK"]],
+  ["IT", "Italy", ["EUR"]],
+  ["JE", "Jersey", ["GBP"]],
+  ["JM", "Jamaica", ["JMD"]],
+  ["JO", "Jordan", ["JOD"]],
+  ["JP", "Japan", ["JPY"]],
+  ["KE", "Kenya", ["KES"]],
+  ["KG", "Kyrgyzstan", ["KGS"]],
+  ["KH", "Cambodia", ["KHR"]],
+  ["KI", "Kiribati", ["AUD"]],
+  ["KM", "Comoros", ["KMF"]],
+  ["KN", "St. Kitts & Nevis", ["XCD"]],
+  ["KP", "North Korea", ["KPW"]],
+  ["KR", "South Korea", ["KRW"]],
+  ["KW", "Kuwait", ["KWD"]],
+  ["KY", "Cayman Islands", ["KYD"]],
+  ["KZ", "Kazakhstan", ["KZT"]],
+  ["LA", "Laos", ["LAK"]],
+  ["LB", "Lebanon", ["LBP"]],
+  ["LC", "St. Lucia", ["XCD"]],
+  ["LI", "Liechtenstein", ["CHF"]],
+  ["LK", "Sri Lanka", ["LKR"]],
+  ["LR", "Liberia", ["LRD"]],
+  ["LS", "Lesotho", ["ZAR", "LSL"]],
+  ["LT", "Lithuania", ["EUR"]],
+  ["LU", "Luxembourg", ["EUR"]],
+  ["LV", "Latvia", ["EUR"]],
+  ["LY", "Libya", ["LYD"]],
+  ["MA", "Morocco", ["MAD"]],
+  ["MC", "Monaco", ["EUR"]],
+  ["MD", "Moldova", ["MDL"]],
+  ["ME", "Montenegro", ["EUR"]],
+  ["MF", "St. Martin", ["EUR"]],
+  ["MG", "Madagascar", ["MGA"]],
+  ["MH", "Marshall Islands", ["USD"]],
+  ["MK", "North Macedonia", ["MKD"]],
+  ["ML", "Mali", ["XOF"]],
+  ["MM", "Myanmar (Burma)", ["MMK"]],
+  ["MN", "Mongolia", ["MNT"]],
+  ["MO", "Macao SAR China", ["MOP"]],
+  ["MP", "Northern Mariana Islands", ["USD"]],
+  ["MQ", "Martinique", ["EUR"]],
+  ["MR", "Mauritania", ["MRU"]],
+  ["MS", "Montserrat", ["XCD"]],
+  ["MT", "Malta", ["EUR"]],
+  ["MU", "Mauritius", ["MUR"]],
+  ["MV", "Maldives", ["MVR"]],
+  ["MW", "Malawi", ["MWK"]],
+  ["MX", "Mexico", ["MXN"]],
+  ["MY", "Malaysia", ["MYR"]],
+  ["MZ", "Mozambique", ["MZN"]],
+  ["NA", "Namibia", ["NAD", "ZAR"]],
+  ["NC", "New Caledonia", ["XPF"]],
+  ["NE", "Niger", ["XOF"]],
+  ["NF", "Norfolk Island", ["AUD"]],
+  ["NG", "Nigeria", ["NGN"]],
+  ["NI", "Nicaragua", ["NIO"]],
+  ["NL", "Netherlands", ["EUR"]],
+  ["NO", "Norway", ["NOK"]],
+  ["NP", "Nepal", ["NPR"]],
+  ["NR", "Nauru", ["AUD"]],
+  ["NU", "Niue", ["NZD"]],
+  ["NZ", "New Zealand", ["NZD"]],
+  ["OM", "Oman", ["OMR"]],
+  ["PA", "Panama", ["PAB", "USD"]],
+  ["PE", "Peru", ["PEN"]],
+  ["PF", "French Polynesia", ["XPF"]],
+  ["PG", "Papua New Guinea", ["PGK"]],
+  ["PH", "Philippines", ["PHP"]],
+  ["PK", "Pakistan", ["PKR"]],
+  ["PL", "Poland", ["PLN"]],
+  ["PM", "St. Pierre & Miquelon", ["EUR"]],
+  ["PN", "Pitcairn Islands", ["NZD"]],
+  ["PR", "Puerto Rico", ["USD"]],
+  ["PS", "Palestinian Territories", ["ILS", "JOD"]],
+  ["PT", "Portugal", ["EUR"]],
+  ["PW", "Palau", ["USD"]],
+  ["PY", "Paraguay", ["PYG"]],
+  ["QA", "Qatar", ["QAR"]],
+  ["RE", "Réunion", ["EUR"]],
+  ["RO", "Romania", ["RON"]],
+  ["RS", "Serbia", ["RSD"]],
+  ["RU", "Russia", ["RUB"]],
+  ["RW", "Rwanda", ["RWF"]],
+  ["SA", "Saudi Arabia", ["SAR"]],
+  ["SB", "Solomon Islands", ["SBD"]],
+  ["SC", "Seychelles", ["SCR"]],
+  ["SD", "Sudan", ["SDG"]],
+  ["SE", "Sweden", ["SEK"]],
+  ["SG", "Singapore", ["SGD"]],
+  ["SH", "St. Helena, Ascension & Tristan da Cunha", ["SHP"]],
+  ["SI", "Slovenia", ["EUR"]],
+  ["SJ", "Svalbard & Jan Mayen", ["NOK"]],
+  ["SK", "Slovakia", ["EUR"]],
+  ["SL", "Sierra Leone", ["SLE"]],
+  ["SM", "San Marino", ["EUR"]],
+  ["SN", "Senegal", ["XOF"]],
+  ["SO", "Somalia", ["SOS"]],
+  ["SR", "Suriname", ["SRD"]],
+  ["SS", "South Sudan", ["SSP"]],
+  ["ST", "São Tomé & Príncipe", ["STN"]],
+  ["SV", "El Salvador", ["USD"]],
+  ["SX", "Sint Maarten", ["XCG"]],
+  ["SY", "Syria", ["SYP"]],
+  ["SZ", "Eswatini", ["SZL"]],
+  ["TA", "Tristan da Cunha", ["GBP"]],
+  ["TC", "Turks & Caicos Islands", ["USD"]],
+  ["TD", "Chad", ["XAF"]],
+  ["TF", "French Southern and Antarctic Lands", ["EUR"]],
+  ["TG", "Togo", ["XOF"]],
+  ["TH", "Thailand", ["THB"]],
+  ["TJ", "Tajikistan", ["TJS"]],
+  ["TK", "Tokelau", ["NZD"]],
+  ["TL", "Timor-Leste", ["USD"]],
+  ["TM", "Turkmenistan", ["TMT"]],
+  ["TN", "Tunisia", ["TND"]],
+  ["TO", "Tonga", ["TOP"]],
+  ["TR", "Türkiye", ["TRY"]],
+  ["TT", "Trinidad & Tobago", ["TTD"]],
+  ["TV", "Tuvalu", ["AUD"]],
+  ["TW", "Taiwan", ["TWD"]],
+  ["TZ", "Tanzania", ["TZS"]],
+  ["UA", "Ukraine", ["UAH"]],
+  ["UG", "Uganda", ["UGX"]],
+  ["UM", "U.S. Outlying Islands", ["USD"]],
+  ["US", "United States", ["USD"]],
+  ["UY", "Uruguay", ["UYU"]],
+  ["UZ", "Uzbekistan", ["UZS"]],
+  ["VA", "Vatican City", ["EUR"]],
+  ["VC", "St. Vincent & Grenadines", ["XCD"]],
+  ["VE", "Venezuela", ["VES"]],
+  ["VG", "British Virgin Islands", ["USD"]],
+  ["VI", "U.S. Virgin Islands", ["USD"]],
+  ["VN", "Vietnam", ["VND"]],
+  ["VU", "Vanuatu", ["VUV"]],
+  ["WF", "Wallis & Futuna", ["XPF"]],
+  ["WS", "Samoa", ["WST"]],
+  ["XK", "Kosovo", ["EUR"]],
+  ["YE", "Yemen", ["YER"]],
+  ["YT", "Mayotte", ["EUR"]],
+  ["ZA", "South Africa", ["ZAR"]],
+  ["ZM", "Zambia", ["ZMW"]],
+  ["ZW", "Zimbabwe", ["ZWG", "USD"]]
+].map(([region, name, currencies]) => ({region, name, currencies}));
+const currencyCountryAliases = {
+  GB: ['UK', 'U.K.', 'Britain', 'Great Britain', 'England', 'Scotland', 'Wales', 'Northern Ireland'],
+  US: ['USA', 'U.S.A.', 'America', 'United States of America'],
+  AE: ['UAE', 'U.A.E.', 'Dubai', 'Abu Dhabi'],
+  CZ: ['Czech Republic'], NL: ['Holland'], TR: ['Turkey', 'Türkiye'],
+  KR: ['Republic of Korea'], KP: ['North Korea', 'DPRK'], RU: ['Russian Federation'],
+  CI: ['Ivory Coast'], CD: ['DR Congo', 'DRC', 'Democratic Republic of the Congo'],
+  CG: ['Republic of the Congo'], VA: ['Vatican', 'Holy See'],
+  VN: ['Viet Nam'], LA: ['Lao PDR'], PS: ['Palestine'], SZ: ['Swaziland']
+};
+const converterDefaultCurrencies = ['EUR', 'GBP', 'USD'];
+const converterKnownCurrencies = new Set(currencyCountries.flatMap(country => country.currencies));
+const converterStorageKey = 'wscCurrencyConverterV1';
+const converterPairRates = new Map();
+const currencyDisplayNames = new Intl.DisplayNames(['en-GB'], {type: 'currency'});
+const regionDisplayNames = new Intl.DisplayNames(['en-GB'], {type: 'region'});
+let keptConverterCurrencies = [], previousConverterTo = $('convertTo').value, pendingConverterCurrency = null;
+
+function normaliseCurrencyCountry(value) {
+  return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function converterCurrencyLabel(code) {
+  return code + ' — ' + currencyDisplayNames.of(code);
+}
+
+function addConverterCurrency(code) {
+  if (!Array.from($('convertTo').options).some(option => option.value === code)) {
+    const option = document.createElement('option');
+    option.value = code;
+    option.textContent = converterCurrencyLabel(code);
+    $('convertTo').insertBefore(option, $('convertTo').querySelector('[value="__other__"]'));
+  }
+}
+
+function restoreConverterCurrencies() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(converterStorageKey) || 'null');
+    if (!saved || !Array.isArray(saved.currencies)) return;
+    keptConverterCurrencies = [...new Set(saved.currencies.filter(code => converterKnownCurrencies.has(code) && !converterDefaultCurrencies.includes(code)))];
+    keptConverterCurrencies.forEach(addConverterCurrency);
+    if (converterDefaultCurrencies.includes(saved.to) || keptConverterCurrencies.includes(saved.to)) {
+      $('convertTo').value = saved.to;
+      previousConverterTo = saved.to;
+    }
+  } catch { /* The original converter remains available if saved settings cannot be read. */ }
+}
+
+function clearCurrencyCountryResult() {
+  pendingConverterCurrency = null;
+  $('convertCountryMatches').replaceChildren();
+  $('convertCountryConfirm').hidden = true;
+  $('convertCountryStatus').textContent = '';
+}
+
+function closeCurrencyCountryLookup() {
+  clearCurrencyCountryResult();
+  $('convertCountryPanel').hidden = true;
+  $('convertCountry').value = '';
+}
+
+function openCurrencyCountryLookup() {
+  closeCurrencyCountryLookup();
+  if (!$('convertCountries').children.length) {
+    for (const country of currencyCountries) {
+      const option = document.createElement('option');
+      option.value = country.name;
+      $('convertCountries').append(option);
+    }
+  }
+  $('convertCountryPanel').hidden = false;
+  $('convertCountry').focus();
+}
+
+function confirmConverterCurrency(country, code) {
+  $('convertCountryMatches').replaceChildren();
+  pendingConverterCurrency = code;
+  $('convertCountryStatus').textContent = country.name + ': ' + converterCurrencyLabel(code);
+  $('convertCountryQuestion').textContent = 'Would you like to keep ' + code + ' in your To list?';
+  $('convertCountryConfirm').hidden = false;
+}
+
+function chooseCurrencyCountry(country) {
+  clearCurrencyCountryResult();
+  $('convertCountry').value = country.name;
+  if (country.currencies.length === 1) {
+    confirmConverterCurrency(country, country.currencies[0]);
+    return;
+  }
+  $('convertCountryStatus').textContent = country.name + ' uses more than one currency. Choose the one to keep.';
+  for (const code of country.currencies) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = converterCurrencyLabel(code);
+    button.addEventListener('click', () => confirmConverterCurrency(country, code));
+    $('convertCountryMatches').append(button);
+  }
+}
+
+function findCurrencyCountry() {
+  clearCurrencyCountryResult();
+  const query = normaliseCurrencyCountry($('convertCountry').value);
+  if (!query) {
+    $('convertCountryStatus').textContent = 'Enter a country name.';
+    $('convertCountry').focus();
+    return;
+  }
+  const names = country => [country.name, country.region, regionDisplayNames.of(country.region), ...(currencyCountryAliases[country.region] || [])].map(normaliseCurrencyCountry);
+  const exact = currencyCountries.filter(country => names(country).includes(query));
+  const matches = exact.length ? exact : currencyCountries.filter(country => names(country).some(name => name.includes(query)));
+  if (matches.length === 1) {
+    chooseCurrencyCountry(matches[0]);
+  } else if (!matches.length) {
+    $('convertCountryStatus').textContent = 'Country not found. Check the spelling or choose a country from the suggestions.';
+  } else {
+    $('convertCountryStatus').textContent = matches.length > 12 ? 'Enter more of the country name to narrow the list.' : 'Choose the country you mean.';
+    for (const country of matches.slice(0, 12)) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = country.name;
+      button.addEventListener('click', () => chooseCurrencyCountry(country));
+      $('convertCountryMatches').append(button);
+    }
+  }
+}
+
+function keepConverterCurrency() {
+  const code = pendingConverterCurrency;
+  if (!converterKnownCurrencies.has(code)) return;
+  const currencies = [...new Set([...keptConverterCurrencies, code])].filter(value => !converterDefaultCurrencies.includes(value));
+  try {
+    localStorage.setItem(converterStorageKey, JSON.stringify({currencies, to: code}));
+  } catch {
+    $('convertCountryStatus').textContent = 'This browser could not save the currency. Allow website storage and try again.';
+    return;
+  }
+  keptConverterCurrencies = currencies;
+  addConverterCurrency(code);
+  $('convertTo').value = code;
+  previousConverterTo = code;
+  closeCurrencyCountryLookup();
+  updateConverterCurrency();
+  $('convertTo').focus();
+}
+
+async function refreshConverterPairRate(from, to, force = false) {
+  const key = from + '/' + to;
+  const current = converterPairRates.get(key);
+  if (current?.state === 'loading' || (!force && current?.state === 'ready' && Date.now() < current.expiresAt)) return;
+  const entry = {state: 'loading'};
+  converterPairRates.set(key, entry);
+  convert();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const url = 'https://api.frankfurter.dev/v2/rate/' + encodeURIComponent(from) + '/' + encodeURIComponent(to);
+    const options = {credentials: 'omit', referrerPolicy: 'no-referrer', redirect: 'error', signal: controller.signal};
+    let source = 'ECB reference rate';
+    let response = await fetch(url + '?providers=ECB', options);
+    // Keep ECB where available; other currencies use Frankfurter's wider reference feed.
+    if (response.status === 404 || response.status === 422) {
+      response = await fetch(url, options);
+      source = 'Frankfurter reference rate';
+    }
+    if (!response.ok) throw new Error('Exchange rate unavailable');
+    const row = await response.json();
+    const published = new Date(row?.date + 'T00:00:00Z');
+    if (row?.base !== from || row?.quote !== to || !/^\d{4}-\d{2}-\d{2}$/.test(row.date) ||
+        !Number.isFinite(published.getTime()) || published.toISOString().slice(0, 10) !== row.date ||
+        !clean(row.rate) || row.rate === 0) throw new Error('Invalid exchange rate');
+    Object.assign(entry, {state: 'ready', rate: row.rate, published, source, expiresAt: Date.now() + referenceRateCacheMs});
+  } catch {
+    entry.state = 'failed';
+  } finally {
+    clearTimeout(timeout);
+    convert();
+  }
+}
+
+function showConverterRate(from, to) {
+  if (converterDefaultCurrencies.includes(to)) return showReferenceRate('convertFx', from, to);
+  const entry = converterPairRates.get(from + '/' + to);
+  $('convertFxRetry').hidden = entry?.state !== 'failed';
+  $('convertFxStatus').textContent = entry?.state === 'ready'
+    ? '1 ' + from + ' = ' + referenceRateFormat.format(entry.rate) + ' ' + to + ' · ' + entry.source + ', ' + referenceDateFormat.format(entry.published)
+    : entry?.state === 'failed' ? 'The exchange rate for ' + to + ' is temporarily unavailable.' : 'Getting the exchange rate…';
+  return entry?.state === 'ready' ? entry.rate : null;
+}
+
+restoreConverterCurrencies();
+
 async function refreshReferenceRates() {
   if (referenceRateState === 'loading' || (referenceRates && Date.now() < referenceRates.expiresAt)) return;
   referenceRateState = 'loading';
@@ -9826,7 +10338,12 @@ function updateQuoteCurrency() {
 }
 
 function updateConverterCurrency() {
-  if ($('convertFrom').value !== $('convertTo').value) void refreshReferenceRates();
+  const from = $('convertFrom').value, to = $('convertTo').value;
+  if (converterDefaultCurrencies.includes(to)) {
+    if (from !== to) void refreshReferenceRates();
+  } else {
+    void refreshConverterPairRate(from, to);
+  }
   convert();
 }
 
@@ -10224,7 +10741,7 @@ function update() {
 function convert() {
   const amount = num('convertAmount'), uplift = num('convertUplift') ?? 0;
   const from = $('convertFrom').value, to = $('convertTo').value;
-  const rate = showReferenceRate('convertFx', from, to);
+  const rate = showConverterRate(from, to);
   const result = $('conversionResult');
   if (amount === null) {
     result.textContent = 'Enter an amount.';
@@ -10285,8 +10802,38 @@ $('printInternal').addEventListener('click',()=>printSelectedQuote('internal'));
 });
 $('quoteCurrency').addEventListener('change', updateQuoteCurrency);
 ['convertAmount','convertUplift'].forEach(id => $(id).addEventListener('input', convert));
-['convertFrom','convertTo'].forEach(id => $(id).addEventListener('change', updateConverterCurrency));
-$('convertFxRetry').addEventListener('click', refreshReferenceRates);
+$('convertFrom').addEventListener('change', updateConverterCurrency);
+$('convertTo').addEventListener('change', () => {
+  if ($('convertTo').value === '__other__') {
+    $('convertTo').value = previousConverterTo;
+    openCurrencyCountryLookup();
+    return;
+  }
+  previousConverterTo = $('convertTo').value;
+  closeCurrencyCountryLookup();
+  try {
+    if (localStorage.getItem(converterStorageKey)) {
+      localStorage.setItem(converterStorageKey, JSON.stringify({currencies: keptConverterCurrencies, to: previousConverterTo}));
+    }
+  } catch { /* Conversion still works when browser storage is unavailable. */ }
+  updateConverterCurrency();
+});
+$('convertCountryFind').addEventListener('click', findCurrencyCountry);
+$('convertCountry').addEventListener('input', clearCurrencyCountryResult);
+$('convertCountry').addEventListener('keydown', event => {
+  if (event.key === 'Enter') {event.preventDefault();findCurrencyCountry();}
+});
+$('convertCountryKeep').addEventListener('click', keepConverterCurrency);
+['convertCountryNo', 'convertCountryCancel'].forEach(id => $(id).addEventListener('click', () => {
+  closeCurrencyCountryLookup();
+  $('convertTo').focus();
+}));
+document.getElementById('wscCurrencyDialog').addEventListener('close', closeCurrencyCountryLookup);
+$('convertFxRetry').addEventListener('click', () => {
+  const from = $('convertFrom').value, to = $('convertTo').value;
+  if (converterDefaultCurrencies.includes(to)) void refreshReferenceRates();
+  else void refreshConverterPairRate(from, to, true);
+});
 $('quoteFxRetry').addEventListener('click', refreshReferenceRates);
 document.getElementById('wscCurrencyFab').addEventListener('click', updateConverterCurrency);
 document.querySelectorAll('input[name="wscPostageSource"]').forEach(el=>el.addEventListener('change',update));
