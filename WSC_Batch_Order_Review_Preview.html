@@ -114,10 +114,10 @@
    <div class="price-panel" aria-labelledby="priceSourceTitle">
     <h3 id="priceSourceTitle">Customer prices</h3>
     <p id="priceSourceStatus" role="status" aria-live="polite"></p>
-    <p class="muted">The preview checks for a price sheet previously uploaded for this customer in this browser. It cannot search Google Drive or QuickBooks yet.</p>
+    <p class="muted">WSC loads the saved price sheet for the selected customer. Upload a replacement when prices change.</p>
     <div class="price-actions"><button id="uploadPrice" class="minor" type="button">📄 Upload price sheet</button><button id="noPriceSheet" class="minor" type="button">No price sheet</button></div>
     <input id="priceFile" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden>
-    <p class="muted">Uploaded prices are kept only in this browser on this device, where available. Prices are not shared with other staff.</p>
+    <p class="muted">Uploaded price sheets are saved for this customer in WSC and are available to all staff with Batch Orders access. Edited product prices apply only to the current order.</p>
     <p id="priceError" class="message" role="alert"></p>
     <div id="priceMapper" hidden>
      <p><strong id="priceFileName"></strong></p>
@@ -144,13 +144,13 @@
     <p class="muted">QuickBooks customer, product, account and VAT details still need to be connected and checked.</p>
    </section>
    <section class="card" aria-labelledby="typeTitle"><h2 id="typeTitle">Choose document and charges</h2>
-    <div class="document-actions"><fieldset style="border:0;padding:0;margin:0"><legend style="font-weight:bold;font-size:.9rem;margin-bottom:8px">Document type</legend><div class="type-row"><label class="choice"><input type="radio" name="documentType" value="Invoice" checked> Invoice</label><label class="choice"><input type="radio" name="documentType" value="Pro Forma"> Pro Forma</label></div></fieldset><button id="generatePostage" class="primary" type="button"><span class="post-globe" aria-hidden="true">🌐</span> Generate Postage</button></div>
-    <div id="postProgress" class="post-progress" role="status" aria-live="polite" hidden><span id="postProgressGlobe" class="post-globe" aria-hidden="true" hidden>🌐</span><span id="postCalcStatus"></span></div>
+    <div class="document-actions"><fieldset style="border:0;padding:0;margin:0"><legend style="font-weight:bold;font-size:.9rem;margin-bottom:8px">Document type</legend><div class="type-row"><label class="choice"><input type="radio" name="documentType" value="Invoice" checked> Invoice</label><label class="choice"><input type="radio" name="documentType" value="Pro Forma"> Pro Forma</label></div></fieldset></div>
+
     <div class="charge"><label class="charge-title"><input id="bank" type="checkbox"> Bank charge</label> <label class="charge-title"><input id="bankUK" type="checkbox"> UK</label><div id="bankFields" class="field" hidden><label for="bankAmount">Bank charge (£)</label><input id="bankAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Enter amount"></div><p class="muted">The real charge still needs to be configured.</p></div>
     <div class="charge"><label class="charge-title"><input id="smallFee" type="checkbox"> Small order fee — £25.00</label><p id="smallFeeHint" class="muted"></p><p class="muted">Preview assumption: the £250 threshold is before VAT and delivery; this still needs confirming.</p></div>
     <div class="charge"><label class="charge-title"><input id="postage" type="checkbox"> Post</label>
-     <div class="field post-service-choice"><label for="postService">Royal Mail service</label><select id="postService"><option value="tracked24">Royal Mail Tracked 24</option><option value="tracked48">Royal Mail Tracked 48</option><option value="international">International</option></select></div>
      <div id="postFields" class="post-fields" hidden>
+     <div class="field post-service-choice"><label for="postService">Royal Mail service</label><select id="postService"><option value="tracked24">Royal Mail Tracked 24</option><option value="tracked48">Royal Mail Tracked 48</option><option value="international">International</option></select></div>
       <div class="grid post-adjustments"><div class="field"><label for="postPacking">Packaging fee for the order (£)</label><input id="postPacking" type="number" min="0" step="0.01" value="0" inputmode="decimal"><small>Leave blank or 0 if not required.</small></div><div class="field"><label for="postMarkup">Add percentage (%)</label><input id="postMarkup" type="number" min="0" step="0.1" value="10" inputmode="decimal"><small>Applied to postage plus packaging. Leave blank or 0 if not required.</small></div></div>
       <div class="post-breakdown" aria-live="polite"><div><span id="postBaseLabel">Royal Mail postage</span><strong id="postBaseDisplay">—</strong></div><div><span>Packaging</span><strong id="postPackingDisplay">—</strong></div><div><span>Percentage uplift</span><strong id="postMarkupDisplay">—</strong></div><div><span>Postage charge for invoice</span><strong id="postChargeDisplay">—</strong></div></div>
       <div id="postParcelDetails" class="parcel-details" hidden>
@@ -161,7 +161,8 @@
        <div id="postBoxes"></div><button id="postAddBox" class="minor" type="button">＋ Add another box</button>
        <div id="postVatFields" class="field" hidden><label for="postVat">How should the Royal Mail VAT amount be handled?</label><select id="postVat"><option value="">Check with Royal Mail</option><option value="included">Returned price already includes VAT</option><option value="add">Add the returned VAT to the price</option></select></div>
        <p class="muted">Check the packed dimensions and weight before using the quote.</p>
-       <button id="postGetPrices" class="primary" type="button">Recalculate postage</button>
+       <button id="generatePostage" class="primary" type="button">Generate postage</button>
+    <div id="postProgress" class="post-progress" role="status" aria-live="polite" hidden><span id="postProgressGlobe" class="post-globe" aria-hidden="true" hidden>🌐</span><span id="postCalcStatus"></span></div>
       </div>
      </div>
     </div>
@@ -799,6 +800,7 @@ const $=id=>document.getElementById(id),form=$('orderForm'),items=$('items');
 const exampleText='Customer: Example Customer\nPurchase order: PO-12345\nSKU: 480011, Qty: 10';
 let orders=[],editing=null,exampleSource=false,savedSources=[],lastSourceSignature=null,confirmedSignature=null,examplePricing=false,manualFee=false,purchaseOrder='',invoicePreviewIndex=0;
 let priceChoice='',priceBook=null,priceCustomer='',priceTables=[],priceFilename='',priceUploadCustomer='',priceLoadId=0;
+let postGenerated=false,postGeneratedSignature='';
 let postAuto={status:'idle',key:'',message:'',raw:null,boxes:0,source:'',expires:0},postSerial=0,postTimer=null;
 let customerState={status:'idle',query:'',matches:[],selected:null,staff:'',exactCount:0},customerLookupSerial=0,customerLookupTimer=null;
 const money=n=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(n/100);
@@ -1069,7 +1071,7 @@ function resolveCustomer(chosen,expectedId=''){
   if(serial!==customerLookupSerial||$('customer').value.trim()!==chosen.displayName||customerStaff()!==staff)return;
   const c=result?.customer;if(result?.kind!=='resolved'||!c||!/^\d+$/.test(String(c.id||''))||typeof c.displayName!=='string')throw Error('Updated QuickBooks.gs customer index is not installed or deployed.');
   if(expectedId&&String(c.id)!==String(expectedId))throw Error('More than one QuickBooks customer matched. Check the customer in QuickBooks.');
-  customerState.selected=c;customerState.status='ready';customerState.query=c.displayName;$('customer').value=c.displayName;refreshCustomerPrice();paintCustomerLookup();invalidate();update();
+  customerState.selected=c;customerState.status='ready';customerState.query=c.displayName;$('customer').value=c.displayName;refreshCustomerPrice();paintCustomerLookup();invalidate();update();void loadSharedPriceSheet(c.id);
  }).catch(error=>{if(serial===customerLookupSerial&&$('customer').value.trim()===chosen.displayName){customerState.status='error';customerState.error=customerLookupError(error);customerState.selected=null;paintCustomerLookup();invalidate();update();}});
 }
 function chooseQBCustomer(index){const chosen=customerState.matches[index];if(chosen)resolveCustomer(chosen);}
@@ -1088,10 +1090,10 @@ function customerGuard(){
 function showPriceStatus(){
  const customer=$('customer').value.trim();
  if(!customer)$('priceSourceStatus').textContent='Enter a customer to check for a saved price sheet.';
- else if(priceChoice==='sheet'&&priceBook)$('priceSourceStatus').textContent='Saved price sheet for '+customer+': '+priceBook.filename+' ('+priceBook.tab+', '+priceBook.priceHeading+'). Bulk price trigger: '+WSCPriceSheets.bulkPriceTrigger(priceBook)+'. Imported '+new Date(priceBook.storedAt).toLocaleDateString('en-GB')+'.'+(priceBook.sessionOnly?' Available only until this preview is closed.':'')+' Re-upload if prices change.';
+ else if(priceChoice==='sheet'&&priceBook)$('priceSourceStatus').textContent='Saved price sheet for '+customer+': '+priceBook.filename+' ('+priceBook.tab+', '+priceBook.priceHeading+'). Bulk price trigger: '+WSCPriceSheets.bulkPriceTrigger(priceBook)+'. Imported '+new Date(priceBook.storedAt).toLocaleDateString('en-GB')+'.'+(priceBook.shared?' Shared with all Batch Orders staff.':priceBook.sessionOnly?' Available only until this preview is closed.':' Saved on this device; select the customer to share it in WSC.')+' Re-upload if prices change.';
  else if(priceChoice==='quickbooks')$('priceSourceStatus').textContent='No price sheet selected. QuickBooks standard product prices are not available in this preview.';
  else if(priceChoice==='example')$('priceSourceStatus').textContent='The example uses an invented price and is not connected to QuickBooks.';
- else $('priceSourceStatus').textContent='No price sheet saved for '+customer+' in this browser. Upload one or choose No price sheet.';
+ else $('priceSourceStatus').textContent='No price sheet selected for '+customer+'. Upload one or choose No price sheet.';
 }
 function duplicateMessage(book){return book&&book.duplicates?.length?book.duplicates.length+' repeated SKU(s) in the price sheet: '+book.duplicates.map(k=>k+' (rows '+(book.duplicateDetails?.[k]||[]).join(', ')+')').join('; ')+'. Choose the correct product if one is ordered.':'';}
 function refreshCustomerPrice(force=false){
@@ -1099,6 +1101,23 @@ function refreshCustomerPrice(force=false){
  priceCustomer=customer;priceChoice='';priceBook=null;priceTables=[];priceUploadCustomer='';priceLoadId++;$('priceMapper').hidden=true;$('priceError').textContent='';
  const saved=WSCPriceSheets.get(customer);if(saved&&saved.schema===3){priceChoice='sheet';priceBook=saved;$('priceError').textContent=duplicateMessage(saved);}else if(saved){$('priceError').textContent='Please upload this price sheet again to enable product choices and displayed prices.';}
  refreshAllMatches();showPriceStatus();
+}
+let sharedPriceSerial=0;
+async function loadSharedPriceSheet(customerId){
+ const bridge=customerBridge(),staff=customerStaff(),serial=++sharedPriceSerial,loadId=priceLoadId;
+ if(!bridge?.priceSheet||!customerId)return;
+ const current=()=>serial===sharedPriceSerial&&staff===customerStaff()&&String(customerState.selected?.id)===String(customerId)&&loadId===priceLoadId;
+ $('priceSourceStatus').textContent='Checking the shared customer price sheet…';
+ try{
+  let result=await bridge.priceSheet({mode:'get',customerId:String(customerId)});
+  if(!current())return;
+  if(!result.book&&priceBook?.schema===3&&!priceBook.shared){
+   result=await bridge.priceSheet({mode:'save',customerId:String(customerId),book:priceBook});
+   if(!current())return;
+  }
+  if(result.book){priceBook=result.book;priceChoice='sheet';WSCPriceSheets.save($('customer').value,priceBook);$('priceError').textContent=duplicateMessage(priceBook);refreshAllMatches();invalidate();update();}
+  showPriceStatus();
+ }catch(error){if(current()){$('priceError').textContent='Shared price sheet: '+error.message;showPriceStatus();}}
 }
 function matchedEntry(row){if(!matchSource()||row.matchBook!==matchSource()||!row.matchSelection||row.matchSelection==='none')return null;return productChoices(row.sku,true).find(e=>e.id===row.matchSelection)||productChoices(row.sku).find(e=>e.id===row.matchSelection)||null;}
 function productKey(row){const e=matchedEntry(row);return e?WSCPriceSheets.key(e.sku)+'|'+e.row:WSCPriceSheets.key(row.sku)+'|?';}
@@ -1306,7 +1325,7 @@ function postPlan() {
  return {service,parcels,vat:$('postVat').value};
 }
 function postKey() {
- return JSON.stringify([detailsSignature(),$('postService').value,$('postCountry').value,$('postCode').value,
+ return JSON.stringify([detailsSignature(),document.querySelector('[name=documentType]:checked').value,$('bank').checked,$('bankUK').checked,$('bankAmount').value,$('smallFee').checked,$('postService').value,$('postCountry').value,$('postCode').value,
   $('postVat').value,[...$('postBoxes').querySelectorAll('input')].map(el=>el.value),[...postOverrides]]);
 }
 function postMatches(service,category) {
@@ -1359,6 +1378,7 @@ async function generatePostage() {
  const serial = postSerial, email = customerStaff(), bridge = customerBridge();
  const isCurrent = () => serial === postSerial && $('postage').checked &&
   confirmedSignature === detailsSignature() && (examplePricing || customerStaff() === email);
+ postGenerated=true;postGeneratedSignature=JSON.stringify([postKey(),$('postPacking').value,$('postMarkup').value]);
  postAuto.status = 'loading';
  postAuto.message = 'Reading the delivery address and planning boxes from the order quantities…';
  update();
@@ -1369,6 +1389,7 @@ async function generatePostage() {
   postOpenParcelDetails();
   postFillFromGuide($('postCountry').value.trim().toUpperCase());
   const plan = postPlan(), key = postKey();
+  postGeneratedSignature=JSON.stringify([key,$('postPacking').value,$('postMarkup').value]);
   const count = plan.parcels.length, boxes = count + (count === 1 ? ' box' : ' boxes');
   if(examplePricing){
    postAuto = {status:'ready',key,email,raw:4.65 * count,boxes:count,source:'example',estimated:postEstimated,
@@ -1428,9 +1449,14 @@ function getPostQuote() {
 function updatePost() {
  const selected = $('postage').checked;
  $('postFields').hidden = !selected;
+ if(selected&&$('postParcelDetails').hidden){
+  postOpenParcelDetails();
+  try{postFillFromGuide($('postCountry').value.trim().toUpperCase());}catch(error){postAuto.message=String(error.message||error);}
+ }
  const quote = getPostQuote(), loading = postAuto.status === 'loading';
  $('generatePostage').disabled = loading;
- $('postGetPrices').disabled = loading;
+ const currentPostSignature=JSON.stringify([postKey(),$('postPacking').value,$('postMarkup').value]);
+ $('generatePostage').textContent=loading?'Generating postage…':postGenerated&&currentPostSignature!==postGeneratedSignature?'Recalculate postage':'Generate postage';
  const progress = $('postProgress');
  progress.hidden = !selected;
  progress.dataset.state = quote.error && postAuto.status === 'ready' ? 'error' : postAuto.status;
@@ -1460,7 +1486,7 @@ function update(){
  $('sumTotal').textContent=goods!==null&&bank!==null&&post!==null&&fee!==null?money(goods+bank+post+fee):'—';$('batchCount').textContent=orders.length+' '+(orders.length===1?'order':'orders')+' in batch';
 }
 function invalidate(){if(confirmedSignature!==null&&detailsSignature()!==confirmedSignature){clearPostForChangedOrder();confirmedSignature=null;examplePricing=false;manualFee=false;$('confirmedArea').hidden=true;$('detailError').textContent='The order details changed. Please confirm them again.';}}
-function reset(){form.reset();setImportedDelivery([]);showSelectedOrderPhoto();clearPostForChangedOrder();postServiceTouched=false;items.replaceChildren();addItem();clearCustomerLookup();editing=null;exampleSource=false;savedSources=[];lastSourceSignature=null;confirmedSignature=null;examplePricing=false;manualFee=false;purchaseOrder='';priceCustomer='';priceChoice='';priceBook=null;priceTables=[];priceUploadCustomer='';priceLoadId++;clearPostLive();$('priceMapper').hidden=true;$('priceError').textContent='';$('sourceInfo').textContent='';$('uploadError').textContent='';$('extractStatus').textContent='';$('recognitionNotes').textContent='';$('detailError').textContent='';$('error').textContent='';$('confirmedArea').hidden=true;showPriceStatus();setStep(1);update();}
+function reset(){postGenerated=false;postGeneratedSignature='';form.reset();setImportedDelivery([]);showSelectedOrderPhoto();clearPostForChangedOrder();postServiceTouched=false;items.replaceChildren();addItem();clearCustomerLookup();editing=null;exampleSource=false;savedSources=[];lastSourceSignature=null;confirmedSignature=null;examplePricing=false;manualFee=false;purchaseOrder='';priceCustomer='';priceChoice='';priceBook=null;priceTables=[];priceUploadCustomer='';priceLoadId++;clearPostLive();$('priceMapper').hidden=true;$('priceError').textContent='';$('sourceInfo').textContent='';$('uploadError').textContent='';$('extractStatus').textContent='';$('recognitionNotes').textContent='';$('detailError').textContent='';$('error').textContent='';$('confirmedArea').hidden=true;showPriceStatus();setStep(1);update();}
 function inputSources(){return [...savedSources,...['emailFile','pdfFile','orderPhoto'].flatMap(id=>{const file=$(id).files?.[0];return file?[file.name]:[];}),...($('emailText').value.trim()?['Pasted email text']:[]),...(exampleSource?['Example order']:[])];}
 function sourceSignature(){const fileInfo=id=>{const file=$(id).files?.[0];return file?[file.name,file.size,file.lastModified]:null;};return JSON.stringify([fileInfo('emailFile'),fileInfo('pdfFile'),fileInfo('orderPhoto'),photoSource,$('emailText').value,savedSources]);}
 let photoSource='',requestedPhotoSource='';
@@ -1572,7 +1598,7 @@ function showBatch(){
   card.append(heading,make('p',o.items.map(i=>i.sku+(i.productName?' — '+i.productName:'')+(i.sheetProductName&&i.sheetProductName!==i.productName?' (price sheet: '+i.sheetProductName+')':'')+(i.priceSubstitutionConfirmed?' (price from '+i.priceSourceSku+')':'')+' × '+i.quantity).join(' · ')),make('p',o.total===null?'Prices or charges need checking or are awaiting connection.':(o.example?'Example preview total: ':'Preview total: ')+money(o.total)),make('p','Selected: '+[o.bankOn?'Bank charge':'',o.feeOn?'Small order fee':'',o.postOn?(o.postQuote?.category||'Postage'):''].filter(Boolean).join(', ')));
   if(o.postOn){const q=o.postQuote;card.append(make('p',q&&q.total!==null?(q.service||q.category||'Royal Mail')+' postage ('+q.boxes+' '+(q.boxes===1?'box':'boxes')+'): '+money(q.postage)+' + packaging '+money(q.packing)+' + '+q.markup+'% uplift '+money(q.uplift)+' = '+money(q.total)+(q.source==='live'?' (live quote; recheck before use)':' (example only — simulated, not live)'):'Postage needs a valid quote.','muted'));}
   const actions=make('div','','order-buttons'),edit=make('button','Edit','minor'),remove=make('button','Remove','danger'),preview=make('button',o.type==='Pro Forma'?'View pro forma preview':'View invoice preview','minor');edit.type=remove.type=preview.type='button';
-  edit.disabled=remove.disabled=!!o.quickBooksPending||!!o.quickBooksReceipt;edit.addEventListener('click',()=>editOrder(index));remove.addEventListener('click',()=>{orders.splice(index,1);update();showBatch();});preview.addEventListener('click',()=>{renderInvoicePreview(index);$('invoicePreview').scrollIntoView({block:'start',behavior:'smooth'});});actions.append(edit,remove,preview);card.append(actions);list.append(card);
+  edit.disabled=remove.disabled=!!o.quickBooksPending||!!o.quickBooksReceipt;edit.addEventListener('click',()=>editOrder(index));remove.addEventListener('click',()=>{orders.splice(index,1);update();showBatch();});preview.addEventListener('click',()=>{renderInvoicePreview(index);$('invoicePreview').scrollIntoView({block:'start',behavior:'smooth'});});actions.append(edit,remove,preview);card.append(actions);addQuickBooksActions(card,o);list.append(card);
  });
  if(!orders.length){list.append(make('p','There are no orders in this batch.'));$('invoicePreview').hidden=true;}else{invoicePreviewIndex=Math.max(0,Math.min(invoicePreviewIndex,orders.length-1));renderInvoicePreview(invoicePreviewIndex);}$('batchTotal').textContent=hasExample?money(total):'—';window.scrollTo({top:0,behavior:'smooth'});
 }
@@ -1582,7 +1608,7 @@ function renderInvoicePreview(index){
  if(!o){host.hidden=true;return;}
  invoicePreviewIndex=index;host.hidden=false;
  const title=o.type==='Pro Forma'?'PRO FORMA':'INVOICE';
- const bar=make('div','','invoice-preview-bar');bar.append(make('strong','PREVIEW ONLY — NOT CREATED IN QUICKBOOKS'),make('span',(index+1)+' of '+orders.length));host.append(bar);
+ const bar=make('div','','invoice-preview-bar');bar.append(make('strong',o.quickBooksReceipt?'SAVED IN QUICKBOOKS — '+(o.quickBooksReceipt.number||o.quickBooksReceipt.id):'PREVIEW ONLY — NOT CREATED IN QUICKBOOKS'),make('span',(index+1)+' of '+orders.length));host.append(bar);
  const top=make('div','','invoice-letterhead'),company=make('div','','invoice-company');
  company.append(make('div',title,'invoice-document-title'),make('strong','ITS Europe Ltd'),make('div','Company Reg. No. 05626613'),make('div','VAT details: to be checked in QuickBooks'));
  const contact=make('div','','invoice-contact');for(const line of ['Unit 7, Chilmark Estates','Chilmark, Salisbury, Wiltshire, SP3 5DU','itseurope@sensafe.com','01722 717 911','www.itseurope.co.uk'])contact.append(make('div',line));
@@ -1614,7 +1640,8 @@ function renderInvoicePreview(index){
 }
 function addQuickBooksActions(host,order){
  const bridge=customerBridge();
- if(!bridge?.salesDocument||order.example)return;
+ if(order.example)return;
+ if(!bridge?.salesDocument){host.append(make('p','Open this order inside WSC to commit it to QuickBooks.','message'));return;}
  const status=make('p',order.quickBooksReceipt
   ? 'Saved in QuickBooks as '+order.quickBooksReceipt.entity+' '+(order.quickBooksReceipt.number||order.quickBooksReceipt.id)+'.'
   : 'Review the WSC preview before creating the document. The QuickBooks PDF is available after creation.','muted');
@@ -1622,11 +1649,10 @@ function addQuickBooksActions(host,order){
  const eligible=order.customerQB?.id&&order.total!==null&&(!order.postOn||order.postQuote?.source==='live');
  if(!eligible&&!order.quickBooksReceipt){
   status.textContent='Select a verified customer and complete pricing and any live postage quote before creating a document.';
-  return;
  }
- const label=order.type==='Pro Forma'?'Estimate for pro forma':'invoice';
- const button=make('button',order.quickBooksReceipt?'View QuickBooks PDF':order.quickBooksPending?'Check creation result':'Create '+label+' in QuickBooks','primary');
- button.type='button';host.append(button);
+ const label=order.type==='Pro Forma'?'pro forma':'invoice';
+ const button=make('button',order.quickBooksReceipt?'View QuickBooks PDF':order.quickBooksPending?'Check creation result':'Commit to QB — '+label,'primary');
+ button.type='button';button.disabled=!eligible&&!order.quickBooksReceipt;host.append(button);
  button.addEventListener('click',async()=>{
   if(button.disabled)return;
   button.disabled=true;
@@ -1701,14 +1727,19 @@ async function loadPriceFile(){
  }catch(error){if(token===priceLoadId){$('priceError').textContent=error.message||'Could not read that price sheet.';showPriceStatus();}}
  finally{$('priceFile').value='';}
 }
-function usePriceSheet(){
+async function usePriceSheet(){
  if(priceUploadCustomer!==WSCPriceSheets.key($('customer').value)){ $('priceError').textContent='The customer changed. Upload the correct price sheet for this customer.';return;}
  if($('skuColumn').value===''||$('priceColumn').value===''){ $('priceError').textContent='Choose the SKU column and the customer price column.';return;}
+ const selected=customerSnapshot(),bridge=customerBridge(),staff=customerStaff(),loadId=priceLoadId;
+ if(bridge&&(!selected?.id||typeof bridge.priceSheet!=='function')){$('priceError').textContent='Select the verified QuickBooks customer before saving this price sheet.';return;}
+ const button=$('usePriceSheet');button.disabled=true;sharedPriceSerial++;
  try{
-  const book=WSCPriceSheets.buildBook(currentPriceTable(),Number($('priceHeaderRow').value)-1,Number($('skuColumn').value),Number($('priceColumn').value),priceFilename,$('bulkColumn').value===''?-1:Number($('bulkColumn').value),$('bulkPriceTrigger').valueAsNumber);
-  book.customer=$('customer').value.trim();const persistent=WSCPriceSheets.save(book.customer,book);book.sessionOnly=!persistent;priceBook=book;priceChoice='sheet';$('priceMapper').hidden=true;
+  let book=WSCPriceSheets.buildBook(currentPriceTable(),Number($('priceHeaderRow').value)-1,Number($('skuColumn').value),Number($('priceColumn').value),priceFilename,$('bulkColumn').value===''?-1:Number($('bulkColumn').value),$('bulkPriceTrigger').valueAsNumber);
+  book.customer=$('customer').value.trim();
+  if(bridge){$('priceSourceStatus').textContent='Saving the price sheet for all staff…';const result=await bridge.priceSheet({mode:'save',customerId:String(selected.id),book});if(loadId!==priceLoadId||staff!==customerStaff()||String(customerState.selected?.id)!==String(selected.id))return;if(!result.book)throw Error('WSC did not confirm the saved price sheet.');book=result.book;}
+  const persistent=WSCPriceSheets.save(book.customer,book);book.sessionOnly=!persistent&&!book.shared;priceBook=book;priceChoice='sheet';$('priceMapper').hidden=true;
   $('priceError').textContent=duplicateMessage(book);refreshAllMatches();showPriceStatus();invalidate();update();const query=items.querySelector('.sku-match-select');if(query){$('priceError').textContent='Please choose the correct product above. '+$('priceError').textContent;query.scrollIntoView({block:'center',behavior:'smooth'});}
- }catch(error){$('priceError').textContent=error.message||'Could not use this price sheet.';}
+ }catch(error){$('priceError').textContent=error.message||'Could not use this price sheet.';}finally{button.disabled=false;}
 }
 $('uploadNext').addEventListener('click',readOrder);$('reviewBack').addEventListener('click',()=>setStep(1));$('confirmDetails').addEventListener('click',confirmDetails);
 const canScan=!!customerBridge()?.scanOrderPage;
@@ -1766,7 +1797,7 @@ function handleChange(event){
  invalidate();update();
 }
 form.addEventListener('input',handleChange);form.addEventListener('change',handleChange);$('smallFee').addEventListener('input',()=>{manualFee=true;});$('smallFee').addEventListener('change',()=>{manualFee=true;update();});
-$('generatePostage').addEventListener('click',generatePostage);$('postGetPrices').addEventListener('click',generatePostage);
+$('generatePostage').addEventListener('click',generatePostage);
 $('postAddBox').addEventListener('click',()=>{
  if($('postBoxes').children.length>=postPacking.maxBoxes)return;
  postManualPacking=true;
