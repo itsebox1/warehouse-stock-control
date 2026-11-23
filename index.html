@@ -379,6 +379,30 @@ input[type="reset"]:disabled,
 #wscPostageScreen .pdf-options{display:grid;gap:10px} #wscPostageScreen .pdf-options button{width:100%;margin:0}
 #wscPostagePrint td{white-space:pre-line}
 @media(max-width:850px){#wscPostageScreen .layout{grid-template-columns:1fr}} @media(max-width:600px){#wscPostageScreen .card{padding:16px} #wscPostageScreen .grid.three,#wscPostageScreen .grid.two{grid-template-columns:1fr}}
+.wsc-expiry-report{color:#23384d;text-align:left}
+.wsc-expiry-report h2,.wsc-expiry-report h3{text-align:left}
+.wsc-expiry-report h2{margin:0}
+.wsc-expiry-report header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.wsc-expiry-report header p{margin:.3rem 0;font-size:.9rem}
+.wsc-expiry-report .wsc-expiry-print{width:auto;margin:0}
+.wsc-expiry-report section{margin:1.5rem 0}
+.wsc-expiry-report h3{margin:0 0 .55rem;font-size:1.07rem}
+.wsc-expiry-table{max-width:100%;overflow-x:auto}
+.wsc-expiry-report table{width:100%;border-collapse:collapse;font-size:.93rem}
+.wsc-expiry-report th,.wsc-expiry-report td{padding:8px 6px;border-bottom:1px solid #d5dee7;text-align:left;vertical-align:top;overflow-wrap:anywhere}
+.wsc-expiry-report th{background:#edf2f7;color:#244b72}
+.wsc-expiry-report th:nth-child(4),.wsc-expiry-report td:nth-child(4){min-width:5rem}
+.wsc-expiry-report td:last-child,.wsc-expiry-report th:last-child{text-align:right}
+.wsc-expiry-empty{color:#516477;margin:.4rem 0}
+@media print{
+ body.wsc-expiry-printing{margin:0!important;padding:0!important;background:white!important}
+ body.wsc-expiry-printing > :not(#reportsScreen),body.wsc-expiry-printing #reportsScreen > :not(#wscReportPanel),
+ body.wsc-expiry-printing #wscReportPanel > :not(#wscUnifiedResults),body.wsc-expiry-printing .wsc-expiry-print{display:none!important}
+ body.wsc-expiry-printing #wscReportPanel,body.wsc-expiry-printing #reportsScreen{display:block!important;max-width:none!important;margin:0!important;padding:0!important;border:0!important;box-shadow:none}
+ body.wsc-expiry-printing .wsc-expiry-table{overflow:visible}
+ .wsc-expiry-report h3{break-after:avoid}
+ .wsc-expiry-report tr{break-inside:avoid}
+}
 #wscPostagePrint{display:none} @media print{body.wsc-postage-printing > *:not(#wscPostagePrint){display:none!important} body.wsc-postage-printing #wscPostagePrint{display:block!important;color:#182c45;font:13px/1.5 Arial,sans-serif} #wscPostagePrint table{border-collapse:collapse;width:100%;margin:20px 0} #wscPostagePrint td{padding:8px;border-bottom:1px solid #ddd} #wscPostagePrint td:first-child{width:42%;font-weight:bold}}
 </style>
 <style>
@@ -1544,7 +1568,7 @@ function validateTradeShowFields() {
 <div id="reportsScreen" data-wsc-page style="display:none;">
   <header class="wsc-page-bar"><strong>Warehouse Stock Control</strong><span id="wscReportsPageTitle">Reports</span></header>
   <button data-wsc-back type="button" onclick="showWelcomeScreen()">← Home</button>
-  <div style="max-width:720px;margin:22px auto;padding:18px;border:1px solid #d5dce5;border-radius:12px;box-sizing:border-box;">
+  <div id="wscReportPanel" style="max-width:720px;margin:22px auto;padding:18px;border:1px solid #d5dce5;border-radius:12px;box-sizing:border-box;">
     <h2>📊 WSC Reports</h2>
     <label for="wscReportSelect"><strong>Select Report</strong></label>
     <select id="wscReportSelect" onchange="wscReportsUpdate()" style="display:block;width:100%;margin:8px 0 18px;padding:12px;box-sizing:border-box;">
@@ -1553,7 +1577,9 @@ function validateTradeShowFields() {
       <option value="BOM">BOM — Bill of Materials</option>
       <option value="DL">DL — Delivery</option>
       <option value="TR">TR — Trade Show</option>
+      <option id="wscOutOfDateOption" value="outOfDate" hidden disabled>Out of Date</option>
     </select>
+    <div id="wscReportSearchFields">
     <label for="wscReportSearchBy"><strong>Search By</strong></label>
     <select id="wscReportSearchBy" onchange="wscReportsUpdateFields()" style="display:block;width:100%;margin:8px 0 18px;padding:12px;box-sizing:border-box;"></select>
     <div id="wscReportNumberRow">
@@ -1571,6 +1597,7 @@ function validateTradeShowFields() {
     <div id="wscReportTextRow" style="display:none;">
       <label for="wscReportText" id="wscReportTextLabel">Search</label>
       <input id="wscReportText" type="text" style="display:block;width:100%;box-sizing:border-box;">
+    </div>
     </div>
     <button type="button" id="wscReportRunButton" onclick="wscRunUnifiedReport()" style="width:100%;margin-top:20px;">📄 Generate Report</button>
     <p id="wscReportInfo" aria-live="polite" style="font-size:13px;"></p>
@@ -1795,7 +1822,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.1.16";
+const WSC_VERSION = "1.1.17";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -6827,11 +6854,34 @@ function showReportsScreen() {
   wscReportsUpdate();
 }
 
+let wscExpiryReportRequest = null;
+function wscClearUnifiedResults() {
+  const target = document.getElementById('wscUnifiedResults');
+  // Delivery and Trade Show lend their result containers to the Reports screen.
+  for (const [id, home] of [['deliverySearchResults','deliverySetupScreen'],['trReportSearchResults','tradeShowSearchSection']]) {
+    const results = document.getElementById(id);
+    if (results && target.contains(results)) document.getElementById(home).appendChild(results);
+  }
+  target.replaceChildren();
+  return target;
+}
 function wscReportsUpdate() {
+  if (wscExpiryReportRequest) {
+    wscExpiryReportRequest.abort();
+    wscExpiryReportRequest = null;
+    wscUnifiedBusy(false);
+  }
+  document.body.classList.remove('wsc-expiry-printing');
   document.getElementById('wscReportsPageTitle').textContent='Reports';
-  const previousResults=document.getElementById('wscUnifiedResults'); if(previousResults) previousResults.replaceChildren();
+  wscClearUnifiedResults();
   const type = document.getElementById('wscReportSelect').value;
   const select = document.getElementById('wscReportSearchBy');
+  const expiryReport = type === 'outOfDate';
+  document.getElementById('wscReportSearchFields').hidden = expiryReport;
+  if (expiryReport) {
+    document.getElementById('wscReportInfo').textContent = 'Generate a report from the lots recorded in Check Dates.';
+    return;
+  }
   const options = [['number','Report Number'],['date','Date Period']];
   if (type === 'SC') options.push(['staff','Counted By'],['sku','SKU']);
   if (type === 'DL') options.push(['invoice','Invoice Number'],['invoiceDate','Invoice Date']);
@@ -6862,6 +6912,8 @@ function wscDownloadBOMPdf_(result) {
 function wscUnifiedBusy(active){
   const loading=document.getElementById('wscUnifiedLoading');if(loading)loading.style.display=active?'block':'none';
   const button=document.getElementById('wscReportRunButton');if(button)button.disabled=!!active;
+  const report=document.getElementById('wscReportSelect');
+  report.disabled=!!active && report.value!=='outOfDate';
 }
 async function wscBOMRequest(payload){
   const idToken=await window.getCurrentStaffToken();
@@ -6936,8 +6988,99 @@ async function wscEmailBOMPdf(number,button){
   finally{button.disabled=false;button.textContent=previous;}
 }
 
+function wscRenderExpiryReport(report, target) {
+  const bands = [
+    ['sixToTwelve', '6–12 months until expiry'],
+    ['withinSix', '0–6 months until expiry'],
+    ['expired', 'Past expiry date']
+  ];
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(report.asOf) || !bands.every(([key]) => Array.isArray(report.groups?.[key]))) {
+    throw new Error('WSC could not read the Out of Date report.');
+  }
+  const make = (tag, value) => {
+    const el = document.createElement(tag);
+    el.textContent = value;
+    return el;
+  };
+  const article = document.createElement('article');
+  article.className = 'wsc-expiry-report';
+  const header = document.createElement('header');
+  const title = document.createElement('div');
+  const date = new Date(report.asOf + 'T12:00:00Z').toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric', timeZone:'Europe/London'});
+  title.append(make('h2', 'Out of Date'), make('p', 'Check Dates · ' + date));
+  const print = make('button', 'Print report');
+  print.type = 'button';
+  print.className = 'wsc-expiry-print';
+  print.onclick = () => {
+    document.body.classList.add('wsc-expiry-printing');
+    window.print();
+  };
+  header.append(title, print);
+  article.append(header);
+  if (report.unreadable > 0) {
+    const n = report.unreadable;
+    article.append(make('p', n + (n === 1 ? ' lot has' : ' lots have') + ' a missing or unrecognised expiry date. Review in Check Dates.'));
+  }
+  for (const [key, label] of bands) {
+    const rows = report.groups[key];
+    const section = document.createElement('section');
+    section.append(make('h3', label + ' (' + rows.length + ')'));
+    article.append(section);
+    if (!rows.length) {
+      const empty = make('p', 'No lots in this group.');
+      empty.className = 'wsc-expiry-empty';
+      section.append(empty);
+      continue;
+    }
+    const wrap = document.createElement('div');
+    wrap.className = 'wsc-expiry-table';
+    const table = document.createElement('table');
+    table.setAttribute('aria-label', label);
+    const heading = table.createTHead().insertRow();
+    for (const name of ['SKU', 'Product', 'Lot number', 'Expiry', 'Approx. qty']) {
+      const th = make('th', name);
+      th.scope = 'col';
+      heading.append(th);
+    }
+    const body = table.createTBody();
+    for (const item of rows) {
+      const row = body.insertRow();
+      for (const value of [item.sku, item.name, item.lot, item.expiry, item.quantity]) {
+        row.append(make('td', value));
+      }
+    }
+    wrap.append(table);
+    section.append(wrap);
+  }
+  target.replaceChildren(article);
+}
+window.addEventListener('afterprint', () => document.body.classList.remove('wsc-expiry-printing'));
+async function wscRunExpiryReport() {
+  if (wscExpiryReportRequest) return;
+  const request = new AbortController();
+  wscExpiryReportRequest = request;
+  const staff = window.getCurrentStaffEmail?.();
+  const current = () => wscExpiryReportRequest === request &&
+    staff === window.getCurrentStaffEmail?.() && document.getElementById('reportsScreen').style.display !== 'none';
+  const target = wscClearUnifiedResults();
+  const info = document.getElementById('wscReportInfo');
+  info.textContent = '';
+  wscUnifiedBusy(true);
+  try {
+    const report = await wscDatesRequest('getProductDates', {report:'outOfDate'}, request.signal);
+    if (current()) wscRenderExpiryReport(report, target);
+  } catch (error) {
+    if (current()) info.textContent = 'Could not generate Out of Date. ' + (error.message || 'Please try again.');
+  } finally {
+    if (wscExpiryReportRequest === request) {
+      wscExpiryReportRequest = null;
+      wscUnifiedBusy(false);
+    }
+  }
+}
 async function wscRunUnifiedReport() {
   const type=document.getElementById('wscReportSelect').value;
+  if (type==='outOfDate') return wscRunExpiryReport();
   const search=document.getElementById('wscReportSearchBy').value;
   if (type==='BOM') {
     const numberInput=document.getElementById('wscReportNumber').value.trim().replace(/^BOM-/i,'');
@@ -6948,7 +7091,7 @@ async function wscRunUnifiedReport() {
     wscUnifiedBusy(true);
     try {
       const found=await wscBOMRequest({action:'findBOMReports',searchBy:search,reportNumber:'BOM-'+numberInput,dateFrom,dateTo});
-      const target=document.getElementById('wscUnifiedResults');target.replaceChildren();
+      const target=wscClearUnifiedResults();
       const reports=found.reports||[];
       if(!reports.length){target.textContent='No saved BOM reports match your search.';return;}
       const title=document.createElement('h3');title.textContent='BOM — Saved Reports ('+reports.length+')';target.appendChild(title);
@@ -6979,7 +7122,7 @@ async function wscRunUnifiedReport() {
     return;
   }
   if(type==='DL'||type==='TR') {
-    const target=document.getElementById('wscUnifiedResults');target.replaceChildren();
+    const target=wscClearUnifiedResults();
     const raw=document.getElementById('wscReportNumber').value.trim();
     const text=document.getElementById('wscReportText').value.trim();
     const from=document.getElementById('wscReportFrom').value;
@@ -7047,7 +7190,7 @@ async function wscRunUnifiedReport() {
     document.getElementById('scCountedBy').value=search==='staff'?document.getElementById('wscReportText').value.trim():'';
     document.getElementById('scSku').value=search==='sku'?document.getElementById('wscReportText').value.trim():'';
   }
-  document.getElementById('wscUnifiedResults').replaceChildren();
+  wscClearUnifiedResults();
   document.getElementById('reportDateFrom').value=from;
   document.getElementById('reportDateTo').value=to;
   updateReportSearchMode();
@@ -8130,6 +8273,12 @@ function wscPaintPermissions(permissions) {
   window.wscPaintMailbox?.();
   const cog = document.getElementById("wscAdminCog");
   const areas = permissions?.functions || {};
+  const expiryOption = document.getElementById('wscOutOfDateOption');
+  expiryOption.hidden = expiryOption.disabled = areas.DATES !== true;
+  if (expiryOption.disabled && expiryOption.selected) {
+    document.getElementById('wscReportSelect').value = 'ST';
+    wscReportsUpdate();
+  }
   if (areas.SC !== true) window.wscCloseQuickCheck?.();
   const canUsePost = areas.POSTAGE_QUOTES === true || areas.SHOPIFY_INVOICES === true;
   const canUseBatchOrders = wscFunctionAllowed(areas, 'BATCH_ORDERS');
