@@ -865,8 +865,8 @@ input[type="reset"]:disabled,
         <div id="wscPQConvertCountryConfirm" hidden>
           <p id="wscPQConvertCountryQuestion"></p>
           <div class="wsc-currency-actions">
-            <button id="wscPQConvertCountryKeep" type="button">Yes, keep it</button>
-            <button id="wscPQConvertCountryNo" type="button">No</button>
+            <button id="wscPQConvertCountryOnce" type="button">Use Once</button>
+            <button id="wscPQConvertCountryKeep" type="button">Save</button>
           </div>
         </div>
       </div>
@@ -1795,7 +1795,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.1.15";
+const WSC_VERSION = "1.1.16";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -10105,6 +10105,7 @@ const converterPairRates = new Map();
 const currencyDisplayNames = new Intl.DisplayNames(['en-GB'], {type: 'currency'});
 const regionDisplayNames = new Intl.DisplayNames(['en-GB'], {type: 'region'});
 let keptConverterCurrencies = [], previousConverterTo = $('convertTo').value, pendingConverterCurrency = null;
+let temporaryConverterCurrency = null;
 
 function normaliseCurrencyCountry(value) {
   return String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -10166,7 +10167,7 @@ function confirmConverterCurrency(country, code) {
   $('convertCountryMatches').replaceChildren();
   pendingConverterCurrency = code;
   $('convertCountryStatus').textContent = country.name + ': ' + converterCurrencyLabel(code);
-  $('convertCountryQuestion').textContent = 'Would you like to keep ' + code + ' in your To list?';
+  $('convertCountryQuestion').textContent = 'Use ' + code + ' once, or save it in your To list?';
   $('convertCountryConfirm').hidden = false;
 }
 
@@ -10177,7 +10178,7 @@ function chooseCurrencyCountry(country) {
     confirmConverterCurrency(country, country.currencies[0]);
     return;
   }
-  $('convertCountryStatus').textContent = country.name + ' uses more than one currency. Choose the one to keep.';
+  $('convertCountryStatus').textContent = country.name + ' uses more than one currency. Choose the currency to use.';
   for (const code of country.currencies) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -10187,7 +10188,7 @@ function chooseCurrencyCountry(country) {
   }
 }
 
-function findCurrencyCountry() {
+function findCurrencyCountry(live = false) {
   clearCurrencyCountryResult();
   const query = normaliseCurrencyCountry($('convertCountry').value);
   if (!query) {
@@ -10199,7 +10200,9 @@ function findCurrencyCountry() {
   const exact = currencyCountries.filter(country => names(country).includes(query));
   const matches = exact.length ? exact : currencyCountries.filter(country => names(country).some(name => name.includes(query)));
   if (matches.length === 1) {
+    const typed = $('convertCountry').value;
     chooseCurrencyCountry(matches[0]);
+    if (live === true) $('convertCountry').value = typed;
   } else if (!matches.length) {
     $('convertCountryStatus').textContent = 'Country not found. Check the spelling or choose a country from the suggestions.';
   } else {
@@ -10214,6 +10217,32 @@ function findCurrencyCountry() {
   }
 }
 
+function finishTemporaryConverterCurrency() {
+  if (!temporaryConverterCurrency) return;
+  const {code, previous} = temporaryConverterCurrency;
+  if ($('convertTo').value === code) {
+    $('convertTo').value = previous;
+    previousConverterTo = previous;
+  }
+  if (!keptConverterCurrencies.includes(code) && !converterDefaultCurrencies.includes(code)) {
+    Array.from($('convertTo').options).find(option => option.value === code)?.remove();
+  }
+  temporaryConverterCurrency = null;
+}
+
+function useConverterCurrencyOnce() {
+  const code = pendingConverterCurrency;
+  if (!converterKnownCurrencies.has(code)) return;
+  finishTemporaryConverterCurrency();
+  temporaryConverterCurrency = {code, previous: previousConverterTo};
+  addConverterCurrency(code);
+  $('convertTo').value = code;
+  previousConverterTo = code;
+  closeCurrencyCountryLookup();
+  updateConverterCurrency();
+  $('convertTo').focus();
+}
+
 function keepConverterCurrency() {
   const code = pendingConverterCurrency;
   if (!converterKnownCurrencies.has(code)) return;
@@ -10224,6 +10253,7 @@ function keepConverterCurrency() {
     $('convertCountryStatus').textContent = 'This browser could not save the currency. Allow website storage and try again.';
     return;
   }
+  finishTemporaryConverterCurrency();
   keptConverterCurrencies = currencies;
   addConverterCurrency(code);
   $('convertTo').value = code;
@@ -10809,26 +10839,34 @@ $('convertTo').addEventListener('change', () => {
     openCurrencyCountryLookup();
     return;
   }
+  if (temporaryConverterCurrency && $('convertTo').value !== temporaryConverterCurrency.code) finishTemporaryConverterCurrency();
   previousConverterTo = $('convertTo').value;
   closeCurrencyCountryLookup();
   try {
-    if (localStorage.getItem(converterStorageKey)) {
+    if (!temporaryConverterCurrency && localStorage.getItem(converterStorageKey)) {
       localStorage.setItem(converterStorageKey, JSON.stringify({currencies: keptConverterCurrencies, to: previousConverterTo}));
     }
   } catch { /* Conversion still works when browser storage is unavailable. */ }
   updateConverterCurrency();
 });
 $('convertCountryFind').addEventListener('click', findCurrencyCountry);
-$('convertCountry').addEventListener('input', clearCurrencyCountryResult);
+$('convertCountry').addEventListener('input', () => {
+  clearCurrencyCountryResult();
+  if (normaliseCurrencyCountry($('convertCountry').value).length >= 3) findCurrencyCountry(true);
+});
 $('convertCountry').addEventListener('keydown', event => {
   if (event.key === 'Enter') {event.preventDefault();findCurrencyCountry();}
 });
 $('convertCountryKeep').addEventListener('click', keepConverterCurrency);
-['convertCountryNo', 'convertCountryCancel'].forEach(id => $(id).addEventListener('click', () => {
+$('convertCountryOnce').addEventListener('click', useConverterCurrencyOnce);
+['convertCountryCancel'].forEach(id => $(id).addEventListener('click', () => {
   closeCurrencyCountryLookup();
   $('convertTo').focus();
 }));
-document.getElementById('wscCurrencyDialog').addEventListener('close', closeCurrencyCountryLookup);
+document.getElementById('wscCurrencyDialog').addEventListener('close', () => {
+  closeCurrencyCountryLookup();
+  finishTemporaryConverterCurrency();
+});
 $('convertFxRetry').addEventListener('click', () => {
   const from = $('convertFrom').value, to = $('convertTo').value;
   if (converterDefaultCurrencies.includes(to)) void refreshReferenceRates();
