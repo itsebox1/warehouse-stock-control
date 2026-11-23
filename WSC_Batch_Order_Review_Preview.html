@@ -18,6 +18,15 @@
 .post-fields{margin:14px 0 0 30px}.post-fields .field{margin:0;max-width:none}.post-fields p{margin:8px 0}.post-fields .grid{margin:12px 0}.post-source{border:0;padding:0;margin:0 0 12px}.post-source legend{font-weight:600;font-size:.9rem;margin-bottom:8px}.post-fields .choice{min-width:0}.post-fields .field select{border:1px solid #bccad6;border-radius:6px;padding:10px;width:100%;background:#fff;color:#213146}.post-dimensions{grid-template-columns:repeat(3,minmax(0,1fr))}.post-fields #postFetch{margin:12px 0 4px}.post-breakdown{background:#edf3f9;border-radius:7px;padding:10px 12px;margin-top:12px}.post-breakdown div{display:flex;justify-content:space-between;gap:12px}.post-breakdown div:last-child{border-top:1px solid #c8d4df;margin-top:6px;padding-top:6px}@media(max-width:650px){.post-fields{margin-left:0}.post-dimensions{grid-template-columns:1fr 1fr 1fr}}
 
 .invoice-preview{border:1px solid #c9d8e4;border-radius:8px;overflow:hidden;margin:18px 0 26px;background:#fff;color:#253849}
+.qb-commit-status{margin:12px 0 8px}
+.invoice-preview>.qb-commit-status,.invoice-preview>.qb-commit-button{margin-left:16px;margin-right:16px}
+.invoice-preview>.qb-commit-button{margin-bottom:16px}
+.qb-commit-status[data-state="sending"],.qb-commit-status[data-state="saved"],.qb-commit-status[data-state="error"]{padding:10px 12px;border-radius:7px;font-weight:600}
+.qb-commit-status[data-state="sending"]{background:#edf4fa;color:#243f60}
+.qb-commit-status[data-state="sending"]::before{content:"";display:inline-block;width:.85em;height:.85em;border:.15em solid #a4bbd2;border-top-color:#254d74;border-radius:50%;vertical-align:-.13em;margin-right:.55em;animation:post-spin .9s linear infinite}
+.qb-commit-status[data-state="saved"],.invoice-preview-bar[data-state="saved"]{background:#eff8f4;color:#215d4f}
+.qb-commit-status[data-state="error"]{background:#fff3e1;color:#754b08}
+@media(prefers-reduced-motion:reduce){.qb-commit-status[data-state="sending"]::before{animation:none}}
 .invoice-preview-bar{display:flex;justify-content:space-between;gap:8px;background:#fff3e1;color:#754b08;padding:10px 15px;font-size:.83rem}
 .invoice-letterhead{display:grid;grid-template-columns:1fr 1.2fr 1.3fr;gap:16px;padding:20px 16px;font-size:.81rem}
 .invoice-document-title{font-size:1.35rem;color:#297dad;letter-spacing:.08em;font-weight:bold;margin-bottom:6px}
@@ -34,6 +43,10 @@
 .customer-choices{list-style:none;margin:-5px 0 0;padding:0;max-height:240px;overflow:auto;background:#fff;border:1px solid #a9becf;border-radius:0 0 7px 7px;box-shadow:0 4px 10px rgba(33,49,70,.12)}
 .customer-choices li{padding:10px 12px;cursor:pointer;border-bottom:1px solid #e6edf2}.customer-choices li:last-child{border-bottom:0}.customer-choices li:hover,.customer-choices li.active{background:#e6f1fa;color:#183a5a}
 .qb-customer-panel #qbCustomerAddress strong{display:block;margin-top:10px}
+#qbCustomerSummary{cursor:pointer;padding:5px 0;font-weight:600;color:#234963}
+#qbCustomerSummary:focus-visible{outline:2px solid #225f9a;outline-offset:3px}
+#qbCustomerDetails[open] #qbCustomerAddress{margin-top:8px}
+#qbCustomerDetails:not([hidden]):not([open]) + .qb-customer-actions{display:none}
 
 .document-actions{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:14px}
 .document-actions button{min-height:48px;white-space:nowrap}.post-globe{display:inline-block}
@@ -104,7 +117,11 @@
    <div class="field"><label for="customer">1. Customer</label><input id="customer" type="text" autocomplete="off" placeholder="Start typing a customer name" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="qbCustomerMatches"><ul id="qbCustomerMatches" class="customer-choices" role="listbox" aria-label="Matching customers" hidden></ul></div>
    <div class="qb-customer-panel" aria-label="QuickBooks customer and delivery address">
  <p id="qbCustomerStatus" class="muted" role="status" aria-live="polite"></p>
- <div id="qbCustomerAddress"></div><button id="qbCustomerRetry" class="minor" type="button" hidden>Try customer lookup again</button> <button id="qbCustomerRefresh" class="minor" type="button" hidden>Refresh customer list</button>
+ <details id="qbCustomerDetails" hidden>
+  <summary id="qbCustomerSummary"></summary>
+  <div id="qbCustomerAddress"></div>
+ </details>
+ <div class="qb-customer-actions"><button id="qbCustomerRetry" class="minor" type="button" hidden>Try customer lookup again</button> <button id="qbCustomerRefresh" class="minor" type="button" hidden>Refresh customer list</button></div>
 </div>
    <div id="importedDeliveryPanel" class="qb-customer-panel" hidden>
     <div class="field"><label for="importedDeliveryChoice">Delivery address found in the order</label><select id="importedDeliveryChoice"></select></div>
@@ -121,7 +138,7 @@
     <p id="priceError" class="message" role="alert"></p>
     <div id="priceMapper" hidden>
      <p><strong id="priceFileName"></strong></p>
-     <p class="muted">Select the SKU, “Your price” and Bulk columns. Use GBP prices. VAT is not calculated in this preview.</p>
+     <p class="muted">Select the SKU, “Your price” and Bulk columns. Use GBP unit prices.</p>
      <div class="grid">
       <div class="field"><label for="priceTab">Worksheet</label><select id="priceTab"></select></div>
       <div class="field"><label for="priceHeaderRow">Heading row</label><input id="priceHeaderRow" type="number" min="1" max="15000" step="1" inputmode="numeric"></div>
@@ -141,13 +158,13 @@
   <div id="confirmedArea" hidden>
    <section class="card" aria-labelledby="autoTitle"><h2 id="autoTitle">Information for the invoice</h2>
     <p id="connectionMessage" class="muted" role="status"></p><div id="priceItems"></div>
-    <p class="muted">QuickBooks customer, product, account and VAT details still need to be connected and checked.</p>
    </section>
    <section class="card" aria-labelledby="typeTitle"><h2 id="typeTitle">Choose document and charges</h2>
     <div class="document-actions"><fieldset style="border:0;padding:0;margin:0"><legend style="font-weight:bold;font-size:.9rem;margin-bottom:8px">Document type</legend><div class="type-row"><label class="choice"><input type="radio" name="documentType" value="Invoice" checked> Invoice</label><label class="choice"><input type="radio" name="documentType" value="Pro Forma"> Pro Forma</label></div></fieldset></div>
 
-    <div class="charge"><label class="charge-title"><input id="bank" type="checkbox"> Bank charge</label> <label class="charge-title"><input id="bankUK" type="checkbox"> UK</label><div id="bankFields" class="field" hidden><label for="bankAmount">Bank charge (£)</label><input id="bankAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Enter amount"></div><p class="muted">The real charge still needs to be configured.</p></div>
-    <div class="charge"><label class="charge-title"><input id="smallFee" type="checkbox"> Small order fee — £25.00</label><p id="smallFeeHint" class="muted"></p><p class="muted">Preview assumption: the £250 threshold is before VAT and delivery; this still needs confirming.</p></div>
+    <div class="charge"><label class="charge-title"><input id="bankUK" type="checkbox" aria-describedby="orderVatHint"> UK</label><p id="orderVatHint" class="muted">Tick UK to apply the QuickBooks VAT rates to this order. Leave it unticked for an invoice or pro forma without VAT.</p></div>
+    <div class="charge"><label class="charge-title"><input id="bank" type="checkbox"> Bank charge</label><div id="bankFields" class="field" hidden><label for="bankAmount">Bank charge (£)</label><input id="bankAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Enter amount"></div></div>
+    <div class="charge"><label class="charge-title"><input id="smallFee" type="checkbox"> Small order fee — £25.00</label><p id="smallFeeHint" class="muted"></p></div>
     <div class="charge"><label class="charge-title"><input id="postage" type="checkbox"> Post</label>
      <div id="postFields" class="post-fields" hidden>
      <div class="field post-service-choice"><label for="postService">Royal Mail service</label><select id="postService"><option value="tracked24">Royal Mail Tracked 24</option><option value="tracked48">Royal Mail Tracked 48</option><option value="international">International</option></select></div>
@@ -166,14 +183,14 @@
       </div>
      </div>
     </div>
-    <div class="totals" aria-live="polite"><div class="total-row"><span>Products</span><span id="sumGoods">—</span></div><div class="total-row"><span>Bank charge</span><span id="sumBank">—</span></div><div class="total-row"><span>Small order fee</span><span id="sumFee">—</span></div><div class="total-row"><span>Postage</span><span id="sumPost">—</span></div><div class="total-row strong"><span>Preview total</span><span id="sumTotal">—</span></div><small>Invoice VAT is not calculated in this preview; check the VAT treatment of the postage price.</small></div>
+    <div class="totals" aria-live="polite"><div class="total-row"><span>Products</span><span id="sumGoods">—</span></div><div class="total-row"><span>Bank charge</span><span id="sumBank">—</span></div><div class="total-row"><span>Small order fee</span><span id="sumFee">—</span></div><div class="total-row"><span>Postage</span><span id="sumPost">—</span></div><div class="total-row strong"><span>Preview total</span><span id="sumTotal">—</span></div><small id="sumUKNote" hidden>QuickBooks calculates the applicable VAT when you commit this order.</small></div>
    </section>
    <p id="error" class="message" role="alert"></p><div class="actions"><button id="next" class="soft" type="button">✓ Confirm and next</button><button id="complete" class="primary" type="button">✓ Confirm and complete</button></div>
    <p class="muted">“Next” adds another order. “Complete” opens the batch review.</p>
   </div>
  </div>
 </form>
-<section id="batchReview" hidden><div class="card"><h2>📋 Batch review</h2><p class="muted">Review the drafts prepared in this WSC session.</p><div id="invoicePreview" class="invoice-preview" role="region" aria-label="Illustrative invoice preview" hidden></div><h3>Orders in this batch</h3><div id="batchList"></div><div class="totals"><div class="total-row strong"><span>Available preview totals</span><span id="batchTotal">—</span></div><small>Invoice VAT is not calculated. Orders without complete prices or charges are not included.</small></div><div class="actions"><button class="soft" id="more" type="button">＋ Add another order</button></div></div></section>
+<section id="batchReview" hidden><div class="card"><h2>📋 Batch review</h2><p class="muted">Review the drafts prepared in this WSC session.</p><div id="invoicePreview" class="invoice-preview" role="region" aria-label="Illustrative invoice preview" hidden></div><h3>Orders in this batch</h3><div id="batchList"></div><div class="totals"><div class="total-row strong"><span>Available preview totals</span><span id="batchTotal">—</span></div><small>Preview totals include orders with complete prices and charges. QuickBooks calculates any applicable tax at commit.</small></div><div class="actions"><button class="soft" id="more" type="button">＋ Add another order</button></div></div></section>
 
 <p id="batchPreviewFooter" class="footer">WSC workflow preview · Files are read locally · No QuickBooks connection</p>
 </main>
@@ -1001,12 +1018,15 @@ function renderCustomerMatches(){
 function paintCustomerLookup(){
  const status=$('qbCustomerStatus'),box=$('qbCustomerAddress'),list=$('qbCustomerMatches'),retry=$('qbCustomerRetry'),input=$('customer'),refresh=$('qbCustomerRefresh');
  if(refresh)refresh.hidden=!customerBridge()||exampleInputSource();
+ const details=$('qbCustomerDetails'),summary=$('qbCustomerSummary');
+ details.hidden=true;status.hidden=false;
+ if(customerState.status==='idle'&&!customerState.query){details.open=false;delete details.dataset.customerId;}
  const bridge=customerBridge();
  const canCreate=typeof bridge?.salesDocument==='function';
  const footer=$('batchPreviewFooter');
  if(footer)footer.textContent=canCreate?'WSC Batch Orders · QuickBooks invoices and pro formas':bridge?'WSC Batch Orders · Customer lookup only':'WSC workflow preview · No QuickBooks connection';
  const notice=$('previewNotice');
- if(notice&&bridge)notice.textContent=canCreate?'Select a customer and check the delivery address. Uploaded prices are saved in this browser. Choose Confirm and complete to review the order, then create the invoice or pro forma in QuickBooks.':'Customer lookup is available. Reopen Batch Orders in the updated WSC app to create a QuickBooks document.';
+ if(notice&&bridge)notice.textContent=canCreate?'Select a customer and check the delivery address. Choose Confirm and complete to review the order, then commit it to QuickBooks.':'Customer lookup is available. Reopen Batch Orders in the updated WSC app to create a QuickBooks document.';
  list.hidden=true;list.replaceChildren();input.setAttribute('aria-expanded','false');input.removeAttribute('aria-activedescendant');box.replaceChildren();retry.hidden=true;retry.textContent='Try customer lookup again';
  if(customerState.status==='error'){status.textContent=customerState.error||customerLookupError();retry.hidden=false;return;}
  if(!input.value.trim()&&!customerState.matches.length){
@@ -1025,7 +1045,11 @@ function paintCustomerLookup(){
    const total=Number.isSafeInteger(customerState.totalMatches)?customerState.totalMatches:customerState.matches.length;
    status.textContent=total>customerState.matches.length?'Showing '+customerState.matches.length+' of '+total+' customers. Type more to narrow the list.':'Choose the correct customer from the list.';return;
   }
-  const c=customerState.selected;status.textContent='QuickBooks customer: '+c.displayName;retry.textContent='Refresh customer details';retry.hidden=false;
+  const c=customerState.selected;
+  if(details.dataset.customerId!==String(c.id)){details.open=false;details.dataset.customerId=String(c.id);}
+  summary.textContent='QuickBooks customer: '+c.displayName;
+  status.hidden=true;status.textContent='';details.hidden=false;
+  retry.textContent='Refresh customer details';retry.hidden=false;
   const addDetail=(label,value)=>{if(value)box.append(make('div',label+': '+String(value)));};
   addDetail('QuickBooks customer ID',c.id);addDetail('Company',c.companyName);addDetail('Contact',c.contactName);addDetail('Email',c.email);addDetail('Telephone',c.phone);addDetail('Mobile',c.mobile);
   function addAddress(label,address,missing){box.append(make('strong',label));const lines=addressLines(address);if(lines.length)for(const line of lines)box.append(make('div',line));else box.append(make('p',missing,'muted'));}
@@ -1481,6 +1505,7 @@ function update(){
  if(!manualFee)$('smallFee').checked=goods!==null&&goods<25000;
  $('smallFee').disabled=goods===null;$('smallFeeHint').textContent=goods===null?'The fee can be suggested once all product prices are available.':goods<25000?'Product total is below £250. You can untick the fee.':'The product total is £250 or more.';
  $('bankFields').hidden=goods===null||!$('bank').checked;
+ $('sumUKNote').hidden=!$('bankUK').checked;
  const bank=$('bank').checked?(goods!==null?amount($('bankAmount')):null):0,post=updatePost().total,fee=goods===null?null:($('smallFee').checked?2500:0);
  $('sumGoods').textContent=goods===null?'—':money(goods);$('sumBank').textContent=bank===null?'—':money(bank);$('sumPost').textContent=post===null?'—':money(post);$('sumFee').textContent=fee===null?'—':money(fee);
  $('sumTotal').textContent=goods!==null&&bank!==null&&post!==null&&fee!==null?money(goods+bank+post+fee):'—';$('batchCount').textContent=orders.length+' '+(orders.length===1?'order':'orders')+' in batch';
@@ -1556,7 +1581,7 @@ async function readOrder(){
   setImportedDelivery(found.deliveryAddresses);
   $('customer').value=found.customer;clearCustomerLookup();refreshCustomerPrice(true);
   purchaseOrder=found.po;items.replaceChildren();if(found.items.length)found.items.forEach(addItem);else addItem();
-  confirmedSignature=null;examplePricing=false;manualFee=false;$('confirmedArea').hidden=true;$('bank').checked=false;$('postage').checked=false;$('bankAmount').value='';$('postPacking').value='0';$('postMarkup').value='10';clearPostLive();
+  confirmedSignature=null;examplePricing=false;manualFee=false;$('confirmedArea').hidden=true;$('bankUK').checked=false;$('bank').checked=false;$('postage').checked=false;$('bankAmount').value='';$('postPacking').value='0';$('postMarkup').value='10';clearPostLive();
   $('recognitionNotes').textContent=[...new Set([...notes,...found.notes])].join(' ');$('detailError').textContent='';lastSourceSignature=scanFailed?null:signature;update();setStep(2);scheduleCustomerLookup(false,'',found.customerCandidates);
  }catch(_){$('uploadError').textContent='The order could not be read. Try pasting the email text.';}finally{button.disabled=false;$('extractStatus').textContent='';}
 }
@@ -1592,7 +1617,7 @@ function save(finish){
  const order={quickBooksKey:crypto.randomUUID(),customer:$('customer').value.trim(),customerQB:customerSnapshot(),deliveryAddress:chosenOrderAddress()||customerSnapshot()?.shippingAddress||null,importedDelivery,deliveryChoice:$('importedDeliveryChoice').value,items:selected,sourceRows:getItems(),po:purchaseOrder,sources:inputSources(),type:document.querySelector('[name=documentType]:checked').value,example:examplePricing,priceChoice,priceBook,bankOn:$('bank').checked,bankUK:$('bankUK').checked,bankInput:$('bankAmount').value,postOn:$('postage').checked,postState,postQuote,feeOn:$('smallFee').checked,feeManual:manualFee,goods,bank,post,fee,total:complete?goods+bank+post+fee:null};
  const savedIndex=editing===null?orders.length:editing;if(editing===null)orders.push(order);else orders[editing]=order;reset();if(finish){invoicePreviewIndex=savedIndex;showBatch();}else window.scrollTo({top:0,behavior:'smooth'});
 }
-function showBatch(){
+function showBatch(scrollToTop=true){
  form.hidden=true;$('exampleButton').hidden=true;$('batchReview').hidden=false;const list=$('batchList');list.replaceChildren();let total=0,hasExample=false;
  orders.forEach((o,index)=>{if(o.total!==null){total+=o.total;hasExample=true;}const card=make('article','','order'),heading=make('div','','order-title');heading.append(make('strong',(index+1)+'. '+o.customer),make('span',o.type,'status'));
   card.append(heading,make('p',o.items.map(i=>i.sku+(i.productName?' — '+i.productName:'')+(i.sheetProductName&&i.sheetProductName!==i.productName?' (price sheet: '+i.sheetProductName+')':'')+(i.priceSubstitutionConfirmed?' (price from '+i.priceSourceSku+')':'')+' × '+i.quantity).join(' · ')),make('p',o.total===null?'Prices or charges need checking or are awaiting connection.':(o.example?'Example preview total: ':'Preview total: ')+money(o.total)),make('p','Selected: '+[o.bankOn?'Bank charge':'',o.feeOn?'Small order fee':'',o.postOn?(o.postQuote?.category||'Postage'):''].filter(Boolean).join(', ')));
@@ -1600,17 +1625,26 @@ function showBatch(){
   const actions=make('div','','order-buttons'),edit=make('button','Edit','minor'),remove=make('button','Remove','danger'),preview=make('button',o.type==='Pro Forma'?'View pro forma preview':'View invoice preview','minor');edit.type=remove.type=preview.type='button';
   edit.disabled=remove.disabled=!!o.quickBooksPending||!!o.quickBooksReceipt;edit.addEventListener('click',()=>editOrder(index));remove.addEventListener('click',()=>{orders.splice(index,1);update();showBatch();});preview.addEventListener('click',()=>{renderInvoicePreview(index);$('invoicePreview').scrollIntoView({block:'start',behavior:'smooth'});});actions.append(edit,remove,preview);card.append(actions);addQuickBooksActions(card,o);list.append(card);
  });
- if(!orders.length){list.append(make('p','There are no orders in this batch.'));$('invoicePreview').hidden=true;}else{invoicePreviewIndex=Math.max(0,Math.min(invoicePreviewIndex,orders.length-1));renderInvoicePreview(invoicePreviewIndex);}$('batchTotal').textContent=hasExample?money(total):'—';window.scrollTo({top:0,behavior:'smooth'});
+ if(!orders.length){list.append(make('p','There are no orders in this batch.'));$('invoicePreview').hidden=true;}else{invoicePreviewIndex=Math.max(0,Math.min(invoicePreviewIndex,orders.length-1));renderInvoicePreview(invoicePreviewIndex);}$('batchTotal').textContent=hasExample?money(total):'—';if(scrollToTop)window.scrollTo({top:0,behavior:'smooth'});
 }
-// This is a local visual preview only. It never calls QuickBooks or assigns an invoice number.
+function batchDocumentLabel(order){return order.type==='Pro Forma'?'pro forma':'invoice';}
+function batchReceiptText(order){
+ const number=String(order.quickBooksReceipt.number??'').trim();
+ return number?'QuickBooks '+batchDocumentLabel(order)+' number: '+number:'Saved in QuickBooks. No document number was returned.';
+}
+function batchPreviewState(order){
+ if(order.quickBooksReceipt)return batchReceiptText(order);
+ if(order.quickBooksPending)return order.quickBooksError?'Awaiting confirmation from QuickBooks':'Sending to QuickBooks…';
+ return 'PREVIEW ONLY — NOT CREATED IN QUICKBOOKS';
+}
 function renderInvoicePreview(index){
  const host=$('invoicePreview'),o=orders[index];host.replaceChildren();
  if(!o){host.hidden=true;return;}
  invoicePreviewIndex=index;host.hidden=false;
  const title=o.type==='Pro Forma'?'PRO FORMA':'INVOICE';
- const bar=make('div','','invoice-preview-bar');bar.append(make('strong',o.quickBooksReceipt?'SAVED IN QUICKBOOKS — '+(o.quickBooksReceipt.number||o.quickBooksReceipt.id):'PREVIEW ONLY — NOT CREATED IN QUICKBOOKS'),make('span',(index+1)+' of '+orders.length));host.append(bar);
+ const bar=make('div','','invoice-preview-bar');if(o.quickBooksReceipt)bar.dataset.state='saved';bar.append(make('strong',batchPreviewState(o)),make('span',(index+1)+' of '+orders.length));host.append(bar);
  const top=make('div','','invoice-letterhead'),company=make('div','','invoice-company');
- company.append(make('div',title,'invoice-document-title'),make('strong','ITS Europe Ltd'),make('div','Company Reg. No. 05626613'),make('div','VAT details: to be checked in QuickBooks'));
+ company.append(make('div',title,'invoice-document-title'),make('strong','ITS Europe Ltd'),make('div','Company Reg. No. 05626613'));
  const contact=make('div','','invoice-contact');for(const line of ['Unit 7, Chilmark Estates','Chilmark, Salisbury, Wiltshire, SP3 5DU','itseurope@sensafe.com','01722 717 911','www.itseurope.co.uk'])contact.append(make('div',line));
  const brand=make('div','','invoice-brand');brand.append(make('strong','ITS Europe, Ltd.'),make('div','Innovators of Water Quality Testing'));
  top.append(company,contact,brand);host.append(top);
@@ -1620,21 +1654,28 @@ function renderInvoicePreview(index){
  const meta=make('div','','invoice-blue invoice-meta'),shippingInfo=make('div'),details=make('div'),extra=make('div');
  shippingInfo.append(make('strong','Shipping info'),make('div',o.postOn?(o.postQuote?.service||o.postQuote?.category||'Royal Mail'):'Not selected'));
  if(o.postOn&&o.postQuote?.estimated)shippingInfo.append(make('div',o.postQuote.boxes+(o.postQuote.boxes===1?' estimated box':' estimated boxes'),'invoice-missing'));
- details.append(make('strong',o.type==='Pro Forma'?'Pro forma details':'Invoice details'),make('div',(o.type==='Pro Forma'?'Pro forma':'Invoice')+' number: Not created'),make('div','Date and terms: Not set'));
+ details.append(make('strong',o.type==='Pro Forma'?'Pro forma details':'Invoice details'),make('div',(o.type==='Pro Forma'?'Pro forma':'Invoice')+' number: '+(o.quickBooksReceipt?(String(o.quickBooksReceipt.number??'').trim()||'Unavailable'):o.quickBooksPending?'Awaiting confirmation':'Not created')),make('div',o.quickBooksReceipt?'See the QuickBooks PDF for date and terms.':'Date and terms: Not set'));
  extra.append(make('strong','Purchase order'),make('div',o.po||'Not provided'));meta.append(shippingInfo,details,extra);host.append(meta);
  const wrapper=make('div','','invoice-table-wrap'),table=make('table','','invoice-items'),thead=make('thead'),head=make('tr');
  for(const label of ['Product / SKU','Description','Qty','Rate','Amount'])head.append(make('th',label));thead.append(head);table.append(thead);const body=make('tbody');
  function addLine(sku,description,qty,rate,line){const tr=make('tr');for(const value of [sku,description,qty,rate,line])tr.append(make('td',String(value)));body.append(tr);}
  const asMoney=v=>typeof v==='number'&&Number.isSafeInteger(v)?money(v):'Awaiting price';
  for(const item of o.items)addLine(item.sku,item.productName||item.sheetProductName||'Product details awaiting connection',item.quantity,asMoney(item.unitPrice),asMoney(item.lineAmount));
- if(o.bankOn)addLine('Bank charge',o.bankUK?'Bank charge — UK VAT applies':'Bank charge — VAT exempt','1',asMoney(o.bank),asMoney(o.bank));
+ if(o.bankOn)addLine('Bank charge','Bank charge','1',asMoney(o.bank),asMoney(o.bank));
  if(o.feeOn)addLine('Small order fee','Small order fee','1',asMoney(o.fee),asMoney(o.fee));
  if(o.postOn)addLine('Post',(o.postQuote?.service||o.postQuote?.category||'Royal Mail')+' (including packaging and percentage)','1',asMoney(o.post),asMoney(o.post));
  table.append(body);wrapper.append(table);host.append(wrapper);
  const totals=make('div','','invoice-amounts');
  function totalLine(label,value,strong){const line=make('div','','invoice-amount-row'+(strong?' invoice-final':''));line.append(make('span',label),make('strong',value));totals.append(line);}
- totalLine('Subtotal (VAT not checked)',o.total===null?'Awaiting prices':money(o.total));totalLine('VAT','Not calculated');totalLine('Total including VAT','Not available',true);host.append(totals);
- host.append(make('p',(o.example?'The product and postage prices in this example are simulated. ':'')+'This is an illustrative WSC preview. The final QuickBooks layout, customer details, dates and VAT may differ. No invoice or pro forma has been created.','invoice-preview-note'));
+ const previewAmount=o.total===null?'Awaiting prices':money(o.total);
+ if(o.bankUK){
+  totalLine('Subtotal before VAT',previewAmount);
+  totalLine('Total including VAT',o.quickBooksReceipt&&Number.isFinite(o.quickBooksReceipt.total)?money(Math.round(o.quickBooksReceipt.total*100)):'Calculated by QuickBooks on commit',true);
+ }else{
+  totalLine('Total',previewAmount,true);
+ }
+ host.append(totals);
+ host.append(make('p',(o.example?'The product and postage prices in this example are simulated. ':'')+(o.quickBooksReceipt?'Open the QuickBooks PDF for the issued document.':'This is a WSC preview. The issued document will use your QuickBooks layout.'),'invoice-preview-note'));
  const controls=make('div','','invoice-preview-controls'),previous=make('button','← Previous invoice','soft'),next=make('button','Next invoice →','soft');previous.type=next.type='button';previous.disabled=index===0;next.disabled=index===orders.length-1;previous.addEventListener('click',()=>{renderInvoicePreview(index-1);host.scrollIntoView({block:'start',behavior:'smooth'});});next.addEventListener('click',()=>{renderInvoicePreview(index+1);host.scrollIntoView({block:'start',behavior:'smooth'});});controls.append(previous,next);host.append(controls);
  addQuickBooksActions(host,o);
 }
@@ -1642,35 +1683,40 @@ function addQuickBooksActions(host,order){
  const bridge=customerBridge();
  if(order.example)return;
  if(!bridge?.salesDocument){host.append(make('p','Open this order inside WSC to commit it to QuickBooks.','message'));return;}
- const status=make('p',order.quickBooksReceipt
-  ? 'Saved in QuickBooks as '+order.quickBooksReceipt.entity+' '+(order.quickBooksReceipt.number||order.quickBooksReceipt.id)+'.'
-  : 'Review the WSC preview before creating the document. The QuickBooks PDF is available after creation.','muted');
- status.setAttribute('role','status');host.append(status);
+ const label=batchDocumentLabel(order),saved=!!order.quickBooksReceipt;
+ const sending=order.quickBooksPending&&!order.quickBooksError;
  const eligible=order.customerQB?.id&&order.total!==null&&(!order.postOn||order.postQuote?.source==='live');
- if(!eligible&&!order.quickBooksReceipt){
-  status.textContent='Select a verified customer and complete pricing and any live postage quote before creating a document.';
- }
- const label=order.type==='Pro Forma'?'pro forma':'invoice';
- const button=make('button',order.quickBooksReceipt?'View QuickBooks PDF':order.quickBooksPending?'Check creation result':'Commit to QB — '+label,'primary');
- button.type='button';button.disabled=!eligible&&!order.quickBooksReceipt;host.append(button);
+ const status=make('p','','qb-commit-status muted');
+ status.setAttribute('role','status');status.setAttribute('aria-live','polite');
+ if(saved){status.dataset.state='saved';status.textContent=batchReceiptText(order);}
+ else if(sending){status.dataset.state='sending';status.textContent=order.quickBooksChecking?'Checking the '+label+' in QuickBooks…':'Sending '+label+' to QuickBooks…';}
+ else if(order.quickBooksError){status.dataset.state='error';status.textContent=order.quickBooksError;}
+ else status.textContent=eligible?'Review the order before committing it to QuickBooks.':'Select a verified customer and complete pricing and any live postage quote before committing.';
+ const button=make('button',saved?'View QuickBooks PDF':sending?(order.quickBooksChecking?'Checking…':'Sending…'):order.quickBooksPending?'Check creation result':'Commit to QB — '+label,'primary qb-commit-button');
+ button.type='button';button.disabled=!!sending||(!eligible&&!saved);
+ host.append(status,button);
  button.addEventListener('click',async()=>{
-  if(button.disabled)return;
+  if(button.disabled||(order.quickBooksPending&&!order.quickBooksError))return;
   button.disabled=true;
   if(!order.quickBooksReceipt){
    const document={key:order.quickBooksKey,type:order.type==='Pro Forma'?'proforma':'invoice',
     customerId:order.customerQB.id,po:order.po,deliveryAddress:order.deliveryAddress,
     lines:order.items.map(item=>({sku:item.sku,quantity:Number(item.quantity),unitPence:item.unitPrice})),
-    bankUK:order.bankUK,charges:{bank:order.bankOn?order.bank:null,minimum:order.feeOn?order.fee:null,postage:order.postOn?order.post:null}};
+    bankUK:order.bankUK===true,ukVAT:order.bankUK===true,charges:{bank:order.bankOn?order.bank:null,minimum:order.feeOn?order.fee:null,postage:order.postOn?order.post:null}};
+   order.quickBooksChecking=!!order.quickBooksPending;
    order.quickBooksError='';order.quickBooksPending=true;
-   showBatch();
+   showBatch(false);
    try{
-    order.quickBooksReceipt=await bridge.salesDocument('createBatchQuickBooksDocument',document);
+    const receipt=await bridge.salesDocument('createBatchQuickBooksDocument',document);
+    if(!receipt?.id||receipt.entity!==(document.type==='invoice'?'Invoice':'Estimate'))throw new Error('The QuickBooks receipt is unconfirmed.');
+    order.quickBooksReceipt=receipt;
     order.quickBooksPending=false;
    }catch(error){
-    order.quickBooksError=error.message;
-    if(!/unconfirmed|check QuickBooks|locked|changed|fetch|network|load failed/i.test(error.message))order.quickBooksPending=false;
-   }
-   if(!$('batchReview').hidden)showBatch();
+    const message=String(error?.message||error);
+    order.quickBooksPending=order.quickBooksChecking||error?.saveUnconfirmed===true||/unconfirmed|check QuickBooks|order key already belongs|locked|changed|fetch|network|timeout|timed out|load failed/i.test(message);
+    order.quickBooksError=order.quickBooksPending?'Creation is unconfirmed. Use Check creation result for this order. '+message:message;
+   }finally{order.quickBooksChecking=false;}
+   if(!$('batchReview').hidden)showBatch(false);
    return;
   }
   try{
@@ -1681,13 +1727,11 @@ function addQuickBooksActions(host,order){
    link.href=url;link.target='_blank';link.rel='noopener';
    const pdf=make('iframe','');
    pdf.title='QuickBooks document PDF';pdf.src=url;pdf.style.cssText='display:block;width:100%;height:70vh;border:1px solid #cbd5e1';
-   status.replaceChildren(link);host.append(pdf);button.hidden=true;
+   status.replaceChildren(document.createTextNode(batchReceiptText(order)+' '),link);host.append(pdf);button.hidden=true;
    setTimeout(()=>URL.revokeObjectURL(url),300000);
-  }catch(error){status.textContent=error.message;}
+  }catch(error){status.textContent=batchReceiptText(order)+' '+error.message;}
   finally{button.disabled=false;}
  });
- if(order.quickBooksPending)button.disabled=!order.quickBooksError;
- if(order.quickBooksError&&!order.quickBooksReceipt)status.textContent=order.quickBooksError;
 }
 
 function editOrder(index){
