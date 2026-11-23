@@ -11035,6 +11035,13 @@ window.wscOpenPostageQuotes=async()=>{
    if(typeof result.text!=='string')throw new Error('Google Vision returned an invalid result.');
    return {text:result.text,words:result.words};
   },
+  async priceSheet(request){
+   const user=email();if(!user)throw new Error('Sign in to WSC and open Batch Orders.');
+   const result=await wscAdminRequest('getWSCPermissions',{batchPriceSheetRequest:request});
+   if(email()!==user)throw new Error('WSC locked or the signed-in user changed.');
+   if(!result.batchPriceSheet)throw new Error('The shared price-sheet update has not been deployed.');
+   return result.batchPriceSheet;
+  },
   async salesDocument(action, document){
    const user=email();
    if(!user)throw new Error('Sign in to WSC and open Batch Orders.');
@@ -11091,7 +11098,7 @@ window.wscOpenPostageQuotes=async()=>{
    if(!cachedPermission)await wscRefreshPermissions();
    if(wscPermissions?.functions?.BATCH_ORDERS!==true)throw new Error('Batch Orders access is disabled for this account.');
    const f=frame();if(!f)throw new Error('Batch Orders is unavailable.');
-   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=20261123-editable-price');batchUser=user;}
+   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=20261123-batch-commit-shared-postage');batchUser=user;}
    wscShowHomeView('batch', 'wscBatchOrderHome');
    tidyBatchNavigation();
    if(cachedPermission)void wscRefreshPermissions();
