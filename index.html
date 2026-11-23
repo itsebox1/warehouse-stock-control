@@ -386,6 +386,7 @@ input[type="reset"]:disabled,
 .wsc-expiry-report header p{margin:.3rem 0;font-size:.9rem}
 .wsc-expiry-report .wsc-expiry-print{width:auto;margin:0}
 .wsc-expiry-report section{margin:1.5rem 0}
+.wsc-expiry-report section[hidden]{display:none!important}
 .wsc-expiry-report h3{margin:0 0 .55rem;font-size:1.07rem}
 .wsc-expiry-table{max-width:100%;overflow-x:auto}
 .wsc-expiry-report table{width:100%;border-collapse:collapse;font-size:.93rem}
@@ -1579,6 +1580,15 @@ function validateTradeShowFields() {
       <option value="TR">TR — Trade Show</option>
       <option id="wscOutOfDateOption" value="outOfDate" hidden disabled>Out of Date</option>
     </select>
+    <div id="wscExpiryBandField" hidden>
+      <label for="wscExpiryBand"><strong>Show</strong></label>
+      <select id="wscExpiryBand" aria-controls="wscUnifiedResults" onchange="wscFilterExpiryReport()" style="display:block;width:100%;margin:8px 0 18px;padding:12px;box-sizing:border-box;">
+        <option value="all">All expiry groups</option>
+        <option value="expired">Past expiry date</option>
+        <option value="withinSix">0–6 months until expiry</option>
+        <option value="sixToTwelve">Over 6 to 12 months until expiry</option>
+      </select>
+    </div>
     <div id="wscReportSearchFields">
     <label for="wscReportSearchBy"><strong>Search By</strong></label>
     <select id="wscReportSearchBy" onchange="wscReportsUpdateFields()" style="display:block;width:100%;margin:8px 0 18px;padding:12px;box-sizing:border-box;"></select>
@@ -1822,7 +1832,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.1.17";
+const WSC_VERSION = "1.1.18";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -6878,6 +6888,8 @@ function wscReportsUpdate() {
   const select = document.getElementById('wscReportSearchBy');
   const expiryReport = type === 'outOfDate';
   document.getElementById('wscReportSearchFields').hidden = expiryReport;
+  document.getElementById('wscExpiryBandField').hidden = !expiryReport;
+  document.getElementById('wscExpiryBand').value = 'all';
   if (expiryReport) {
     document.getElementById('wscReportInfo').textContent = 'Generate a report from the lots recorded in Check Dates.';
     return;
@@ -6988,9 +7000,15 @@ async function wscEmailBOMPdf(number,button){
   finally{button.disabled=false;button.textContent=previous;}
 }
 
+function wscFilterExpiryReport() {
+  const selected = document.getElementById('wscExpiryBand').value;
+  for (const section of document.querySelectorAll('#wscUnifiedResults [data-expiry-band]')) {
+    section.hidden = selected !== 'all' && section.dataset.expiryBand !== selected;
+  }
+}
 function wscRenderExpiryReport(report, target) {
   const bands = [
-    ['sixToTwelve', '6–12 months until expiry'],
+    ['sixToTwelve', 'Over 6 to 12 months until expiry'],
     ['withinSix', '0–6 months until expiry'],
     ['expired', 'Past expiry date']
   ];
@@ -7024,6 +7042,7 @@ function wscRenderExpiryReport(report, target) {
   for (const [key, label] of bands) {
     const rows = report.groups[key];
     const section = document.createElement('section');
+    section.dataset.expiryBand = key;
     section.append(make('h3', label + ' (' + rows.length + ')'));
     article.append(section);
     if (!rows.length) {
@@ -7053,6 +7072,7 @@ function wscRenderExpiryReport(report, target) {
     section.append(wrap);
   }
   target.replaceChildren(article);
+  wscFilterExpiryReport();
 }
 window.addEventListener('afterprint', () => document.body.classList.remove('wsc-expiry-printing'));
 async function wscRunExpiryReport() {
