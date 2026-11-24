@@ -69,6 +69,10 @@
 .upload-label label{margin:0}
 .upload-label .upload-info{display:inline-grid;place-items:center;width:30px;height:30px;padding:0;border:1px solid #c5cdd5;border-radius:50%;background:#fff;color:#485967;font-size:.95rem}
 .upload-help{color:#59636c}
+#entryBatchOrders .card{margin-bottom:14px}
+#entryBatchOrders h3{margin-top:0}
+#entryBatchOrders .order{padding:9px 12px}
+.invoice-preview .single-order-actions{margin:8px 16px 14px}
 </style>
 <link rel="stylesheet" href="./wsc-page-layout.css?v=1">
 </head>
@@ -80,6 +84,7 @@
 <div class="notice" id="previewNotice">Import and review customer orders. Sign in to WSC to scan emails and PDFs with Google Vision.</div>
 <div class="header"><span id="batchCount" class="status">0 orders in batch</span><button class="example" type="button" id="exampleButton" hidden>Try an example order</button></div>
 
+<div id="entryBatchOrders"></div>
 <form id="orderForm" novalidate>
  <p id="stepIndicator" class="muted">Step 1 of 2 — Select an order</p>
  <section id="uploadStep" class="card" aria-labelledby="uploadTitle"><div class="section-title"><span class="number">01</span><h2 id="uploadTitle">Select an email and/or PDF</h2></div>
@@ -190,7 +195,7 @@
   </div>
  </div>
 </form>
-<section id="batchReview" hidden><div class="card"><h2>📋 Batch review</h2><p class="muted">Review the drafts prepared in this WSC session.</p><div id="invoicePreview" class="invoice-preview" role="region" aria-label="Illustrative invoice preview" hidden></div><h3>Orders in this batch</h3><div id="batchList"></div><div class="totals"><div class="total-row strong"><span>Available preview totals</span><span id="batchTotal">—</span></div><small>Preview totals include orders with complete prices and charges. QuickBooks calculates any applicable tax at commit.</small></div><div class="actions"><button class="soft" id="more" type="button">＋ Add another order</button></div></div></section>
+<section id="batchReview" hidden><div class="card"><h2>📋 Batch review</h2><p class="muted">Review the drafts prepared in this WSC session.</p><div id="invoicePreview" class="invoice-preview" role="region" aria-label="Illustrative invoice preview" hidden></div><div id="reviewBatchOrders"><section id="batchOrders" aria-labelledby="batchOrdersTitle" hidden><h3 id="batchOrdersTitle">Orders in this batch</h3><div id="batchList"></div><div class="totals" id="batchTotals"><div class="total-row strong"><span>Available preview totals</span><span id="batchTotal">—</span></div><small>Preview totals include orders with complete prices and charges. QuickBooks calculates any applicable tax at commit.</small></div></section></div><p id="emptyBatch" class="muted" hidden>There are no orders in this batch.</p><div class="actions"><button class="soft" id="more" type="button">＋ Add another order</button></div></div></section>
 
 <p id="batchPreviewFooter" class="footer">WSC workflow preview · Files are read locally · No QuickBooks connection</p>
 </main>
@@ -1615,17 +1620,58 @@ function save(finish){
  const selected=includedItems().map(row=>{const entry=matchedEntry(row);return {...row,originalSku:row.sku,sku:entry?entry.sku:row.sku,productName:entry?entry.name:'',sheetProductName:entry?entry.sheetName:'',sheetRow:entry?entry.row:null,priceSourceSku:entry?entry.priceSku:'',priceSubstitutionConfirmed:!!entry?.substitution&&row.matchPriceApproval==='yes',unitPrice:priceFor(row),lineAmount:lineTotal(row)};});
  const postState={packing:$('postPacking').value,markup:$('postMarkup').value,service:$('postService').value};
  const order={quickBooksKey:crypto.randomUUID(),customer:$('customer').value.trim(),customerQB:customerSnapshot(),deliveryAddress:chosenOrderAddress()||customerSnapshot()?.shippingAddress||null,importedDelivery,deliveryChoice:$('importedDeliveryChoice').value,items:selected,sourceRows:getItems(),po:purchaseOrder,sources:inputSources(),type:document.querySelector('[name=documentType]:checked').value,example:examplePricing,priceChoice,priceBook,bankOn:$('bank').checked,bankUK:$('bankUK').checked,bankInput:$('bankAmount').value,postOn:$('postage').checked,postState,postQuote,feeOn:$('smallFee').checked,feeManual:manualFee,goods,bank,post,fee,total:complete?goods+bank+post+fee:null};
- const savedIndex=editing===null?orders.length:editing;if(editing===null)orders.push(order);else orders[editing]=order;reset();if(finish){invoicePreviewIndex=savedIndex;showBatch();}else window.scrollTo({top:0,behavior:'smooth'});
+ const savedIndex=editing===null?orders.length:editing;if(editing===null)orders.push(order);else orders[editing]=order;reset();if(finish){invoicePreviewIndex=savedIndex;showBatch();}else {renderBatchOrders(false);window.scrollTo({top:0,behavior:'smooth'});}
+}
+function orderActions(order, index){
+ const actions=make('div','','order-buttons'), edit=make('button','Edit','minor'), remove=make('button','Remove','danger');
+ edit.type=remove.type='button';
+ edit.disabled=remove.disabled=!!order.quickBooksPending||!!order.quickBooksReceipt;
+ edit.addEventListener('click',()=>editOrder(index));
+ remove.addEventListener('click',()=>{
+  orders.splice(index,1);
+  if(index<invoicePreviewIndex)invoicePreviewIndex--;
+  update();showBatch();
+ });
+ actions.append(edit,remove);
+ return actions;
+}
+function renderBatchOrders(inReview){
+ const section=$('batchOrders'),list=$('batchList');
+ const adding=!inReview&&editing===null;
+ section.hidden=!orders.length||(orders.length===1&&!adding);
+ section.classList.toggle('card',!inReview);
+ $(inReview?'reviewBatchOrders':'entryBatchOrders').append(section);
+ list.replaceChildren();
+ if(section.hidden)return;
+ let total=0,hasTotal=false;
+ orders.forEach((o,index)=>{
+  const card=make('article','','order'),heading=make('div','','order-title');
+  heading.append(make('strong',(index+1)+'. '+o.customer),make('span',o.type,'status'));card.append(heading);
+  if(inReview){
+   card.append(make('p',o.items.map(i=>i.sku+(i.productName?' — '+i.productName:'')+(i.sheetProductName&&i.sheetProductName!==i.productName?' (price sheet: '+i.sheetProductName+')':'')+(i.priceSubstitutionConfirmed?' (price from '+i.priceSourceSku+')':'')+' × '+i.quantity).join(' · ')));
+   card.append(make('p',o.total===null?'Prices or charges need checking or are awaiting connection.':(o.example?'Example preview total: ':'Preview total: ')+money(o.total)));
+   const charges=[o.bankOn?'Bank charge':'',o.feeOn?'Small order fee':'',o.postOn?(o.postQuote?.category||'Postage'):''].filter(Boolean);
+   if(charges.length)card.append(make('p','Selected: '+charges.join(', ')));
+   if(o.postOn){const q=o.postQuote;card.append(make('p',q&&q.total!==null?(q.service||q.category||'Royal Mail')+' postage ('+q.boxes+' '+(q.boxes===1?'box':'boxes')+'): '+money(q.postage)+' + packaging '+money(q.packing)+' + '+q.markup+'% uplift '+money(q.uplift)+' = '+money(q.total)+(q.source==='live'?' (live quote; recheck before use)':' (example only — simulated, not live)'):'Postage needs a valid quote.','muted'));}
+   if(o.quickBooksReceipt)card.append(make('p',batchReceiptText(o),'muted'));
+   const actions=orderActions(o,index),preview=make('button',o.type==='Pro Forma'?'View pro forma preview':'View invoice preview','minor');
+   preview.type='button';
+   preview.addEventListener('click',()=>{renderInvoicePreview(index);$('invoicePreview').scrollIntoView({block:'start',behavior:'smooth'});});
+   actions.append(preview);card.append(actions);
+  }
+  if(o.total!==null){total+=o.total;hasTotal=true;}
+  list.append(card);
+ });
+ $('batchTotals').hidden=!inReview;
+ $('batchTotal').textContent=hasTotal?money(total):'—';
 }
 function showBatch(scrollToTop=true){
- form.hidden=true;$('exampleButton').hidden=true;$('batchReview').hidden=false;const list=$('batchList');list.replaceChildren();let total=0,hasExample=false;
- orders.forEach((o,index)=>{if(o.total!==null){total+=o.total;hasExample=true;}const card=make('article','','order'),heading=make('div','','order-title');heading.append(make('strong',(index+1)+'. '+o.customer),make('span',o.type,'status'));
-  card.append(heading,make('p',o.items.map(i=>i.sku+(i.productName?' — '+i.productName:'')+(i.sheetProductName&&i.sheetProductName!==i.productName?' (price sheet: '+i.sheetProductName+')':'')+(i.priceSubstitutionConfirmed?' (price from '+i.priceSourceSku+')':'')+' × '+i.quantity).join(' · ')),make('p',o.total===null?'Prices or charges need checking or are awaiting connection.':(o.example?'Example preview total: ':'Preview total: ')+money(o.total)),make('p','Selected: '+[o.bankOn?'Bank charge':'',o.feeOn?'Small order fee':'',o.postOn?(o.postQuote?.category||'Postage'):''].filter(Boolean).join(', ')));
-  if(o.postOn){const q=o.postQuote;card.append(make('p',q&&q.total!==null?(q.service||q.category||'Royal Mail')+' postage ('+q.boxes+' '+(q.boxes===1?'box':'boxes')+'): '+money(q.postage)+' + packaging '+money(q.packing)+' + '+q.markup+'% uplift '+money(q.uplift)+' = '+money(q.total)+(q.source==='live'?' (live quote; recheck before use)':' (example only — simulated, not live)'):'Postage needs a valid quote.','muted'));}
-  const actions=make('div','','order-buttons'),edit=make('button','Edit','minor'),remove=make('button','Remove','danger'),preview=make('button',o.type==='Pro Forma'?'View pro forma preview':'View invoice preview','minor');edit.type=remove.type=preview.type='button';
-  edit.disabled=remove.disabled=!!o.quickBooksPending||!!o.quickBooksReceipt;edit.addEventListener('click',()=>editOrder(index));remove.addEventListener('click',()=>{orders.splice(index,1);update();showBatch();});preview.addEventListener('click',()=>{renderInvoicePreview(index);$('invoicePreview').scrollIntoView({block:'start',behavior:'smooth'});});actions.append(edit,remove,preview);card.append(actions);addQuickBooksActions(card,o);list.append(card);
- });
- if(!orders.length){list.append(make('p','There are no orders in this batch.'));$('invoicePreview').hidden=true;}else{invoicePreviewIndex=Math.max(0,Math.min(invoicePreviewIndex,orders.length-1));renderInvoicePreview(invoicePreviewIndex);}$('batchTotal').textContent=hasExample?money(total):'—';if(scrollToTop)window.scrollTo({top:0,behavior:'smooth'});
+ form.hidden=true;$('exampleButton').hidden=true;$('batchReview').hidden=false;
+ renderBatchOrders(true);
+ $('emptyBatch').hidden=!!orders.length;
+ invoicePreviewIndex=Math.max(0,Math.min(invoicePreviewIndex,orders.length-1));
+ renderInvoicePreview(invoicePreviewIndex);
+ if(scrollToTop)window.scrollTo({top:0,behavior:'smooth'});
 }
 function batchDocumentLabel(order){return order.type==='Pro Forma'?'pro forma':'invoice';}
 function batchReceiptText(order){
@@ -1676,7 +1722,11 @@ function renderInvoicePreview(index){
  }
  host.append(totals);
  host.append(make('p',(o.example?'The product and postage prices in this example are simulated. ':'')+(o.quickBooksReceipt?'Open the QuickBooks PDF for the issued document.':'This is a WSC preview. The issued document will use your QuickBooks layout.'),'invoice-preview-note'));
+ if(orders.length>1){
  const controls=make('div','','invoice-preview-controls'),previous=make('button','← Previous invoice','soft'),next=make('button','Next invoice →','soft');previous.type=next.type='button';previous.disabled=index===0;next.disabled=index===orders.length-1;previous.addEventListener('click',()=>{renderInvoicePreview(index-1);host.scrollIntoView({block:'start',behavior:'smooth'});});next.addEventListener('click',()=>{renderInvoicePreview(index+1);host.scrollIntoView({block:'start',behavior:'smooth'});});controls.append(previous,next);host.append(controls);
+ }else if(!o.quickBooksReceipt){
+  const actions=orderActions(o,index);actions.classList.add('single-order-actions');host.append(actions);
+ }
  addQuickBooksActions(host,o);
 }
 function addQuickBooksActions(host,order){
@@ -1735,7 +1785,7 @@ function addQuickBooksActions(host,order){
 }
 
 function editOrder(index){
- const o=orders[index];form.hidden=false;$('batchReview').hidden=true;$('exampleButton').hidden=!!customerBridge();reset();editing=index;exampleSource=o.example;savedSources=o.sources;purchaseOrder=o.po;setImportedDelivery(o.importedDelivery,o.deliveryChoice);$('sourceInfo').textContent='Previously selected: '+savedSources.join(', ');$('customer').value=o.customer;priceCustomer=WSCPriceSheets.key(o.customer);priceChoice=o.priceChoice;priceBook=o.priceBook;showPriceStatus();items.replaceChildren();(o.sourceRows||o.items).forEach(addItem);
+ const o=orders[index];form.hidden=false;$('batchReview').hidden=true;$('exampleButton').hidden=!!customerBridge();reset();editing=index;renderBatchOrders(false);exampleSource=o.example;savedSources=o.sources;purchaseOrder=o.po;setImportedDelivery(o.importedDelivery,o.deliveryChoice);$('sourceInfo').textContent='Previously selected: '+savedSources.join(', ');$('customer').value=o.customer;priceCustomer=WSCPriceSheets.key(o.customer);priceChoice=o.priceChoice;priceBook=o.priceBook;showPriceStatus();items.replaceChildren();(o.sourceRows||o.items).forEach(addItem);
  document.querySelectorAll('[name=documentType]').forEach(r=>r.checked=r.value===o.type);$('bank').checked=o.bankOn;$('bankUK').checked=o.bankUK===true;$('bankAmount').value=o.bankInput;$('postage').checked=o.postOn;
  const ps=o.postState||{};for(const [id,key] of [['postPacking','packing'],['postMarkup','markup'],['postService','service']])if(ps[key]!==undefined)$(id).value=ps[key];
  postServiceTouched=!!ps.service;
@@ -1851,7 +1901,7 @@ $('postAddBox').addEventListener('click',()=>{
  clearPostLive();update();
 });
 $('addItem').addEventListener('click',()=>{addItem();invalidate();update();});$('next').addEventListener('click',()=>save(false));$('complete').addEventListener('click',()=>save(true));
-$('more').addEventListener('click',()=>{form.hidden=false;$('batchReview').hidden=true;$('exampleButton').hidden=!!customerBridge();reset();});
+$('more').addEventListener('click',()=>{form.hidden=false;$('batchReview').hidden=true;$('exampleButton').hidden=!!customerBridge();reset();renderBatchOrders(false);});
 $('homeButton').addEventListener('click',()=>{const host=customerBridge();if(host&&typeof host.close==='function'){host.close();return;}if(!$('batchReview').hidden){form.hidden=false;$('batchReview').hidden=true;$('exampleButton').hidden=!!customerBridge();}setStep(1);});
 for(const type of ['pointerdown','keydown','wheel','touchstart','input'])document.addEventListener(type,event=>{const host=customerBridge();if(host&&typeof host.noteActivity==='function'&&host.noteActivity()===false){event.preventDefault();event.stopImmediatePropagation();}},{capture:true,passive:false});
 $('exampleButton').addEventListener('click',()=>{reset();exampleSource=true;$('sourceInfo').textContent='Example order — press Next to read the details.';$('emailText').value=exampleText;update();});
