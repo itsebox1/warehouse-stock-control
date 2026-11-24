@@ -69,6 +69,7 @@
 .upload-label label{margin:0}
 .upload-label .upload-info{display:inline-grid;place-items:center;width:30px;height:30px;padding:0;border:1px solid #c5cdd5;border-radius:50%;background:#fff;color:#485967;font-size:.95rem}
 .upload-help{color:#59636c}
+.post-breakdown input{box-sizing:border-box;width:100px;max-width:48%;padding:7px 9px;border:1px solid #bccad6;border-radius:6px;text-align:right;color:#213146;background:white;font:inherit}.post-breakdown input::placeholder{color:#42576b;opacity:1}.charge .delivery-method{margin-top:0}
 #entryBatchOrders .card{margin-bottom:14px}
 #entryBatchOrders h3{margin-top:0}
 #entryBatchOrders .order{padding:9px 12px}
@@ -168,13 +169,14 @@
     <div class="document-actions"><fieldset style="border:0;padding:0;margin:0"><legend style="font-weight:bold;font-size:.9rem;margin-bottom:8px">Document type</legend><div class="type-row"><label class="choice"><input type="radio" name="documentType" value="Invoice" checked> Invoice</label><label class="choice"><input type="radio" name="documentType" value="Pro Forma"> Pro Forma</label></div></fieldset></div>
 
     <div class="charge"><label class="charge-title"><input id="bankUK" type="checkbox" aria-describedby="orderVatHint"> UK</label><p id="orderVatHint" class="muted">Tick UK to apply the QuickBooks VAT rates to this order. Leave it unticked for an invoice or pro forma without VAT.</p></div>
-    <div class="charge"><label class="charge-title"><input id="bank" type="checkbox"> Bank charge</label><div id="bankFields" class="field" hidden><label for="bankAmount">Bank charge (£)</label><input id="bankAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Enter amount"></div></div>
-    <div class="charge"><label class="charge-title"><input id="smallFee" type="checkbox"> Small order fee — £25.00</label><p id="smallFeeHint" class="muted"></p></div>
-    <div class="charge"><label class="charge-title"><input id="postage" type="checkbox"> Post</label>
+    <div class="charge"><label class="charge-title"><input id="bank" type="checkbox"> Bank charge</label><div id="bankFields" class="field" hidden><label for="bankAmount">Bank charge (£)</label><input id="bankAmount" type="number" min="0" step="0.01" inputmode="decimal" value="11.00"></div></div>
+    <div class="charge"><label class="charge-title"><input id="smallFee" type="checkbox"> Small order fee</label><div class="field" id="smallFeeFields" hidden><label for="smallFeeAmount">Small order fee (£)</label><input id="smallFeeAmount" type="number" min="0" step="0.01" inputmode="decimal" value="25.00"></div><p id="smallFeeHint" class="muted"></p></div>
+    <div class="charge"><div class="field delivery-method"><label for="deliveryMethod">Delivery method</label><select id="deliveryMethod"><option value="post">Post</option><option value="collection" selected>Collection</option><option value="ups">Courier UPS</option><option value="fedex">Courier Fed-Ex</option></select></div>
+     <div class="field" id="courierFields" hidden><label for="courierAmount">Courier charge (£)</label><input id="courierAmount" type="number" min="0" step="0.01" inputmode="decimal" value="13.50"></div>
      <div id="postFields" class="post-fields" hidden>
      <div class="field post-service-choice"><label for="postService">Royal Mail service</label><select id="postService"><option value="tracked24">Royal Mail Tracked 24</option><option value="tracked48">Royal Mail Tracked 48</option><option value="international">International</option></select></div>
       <div class="grid post-adjustments"><div class="field"><label for="postPacking">Packaging fee for the order (£)</label><input id="postPacking" type="number" min="0" step="0.01" value="0" inputmode="decimal"><small>Leave blank or 0 if not required.</small></div><div class="field"><label for="postMarkup">Add percentage (%)</label><input id="postMarkup" type="number" min="0" step="0.1" value="10" inputmode="decimal"><small>Applied to postage plus packaging. Leave blank or 0 if not required.</small></div></div>
-      <div class="post-breakdown" aria-live="polite"><div><span id="postBaseLabel">Royal Mail postage</span><strong id="postBaseDisplay">—</strong></div><div><span>Packaging</span><strong id="postPackingDisplay">—</strong></div><div><span>Percentage uplift</span><strong id="postMarkupDisplay">—</strong></div><div><span>Postage charge for invoice</span><strong id="postChargeDisplay">—</strong></div></div>
+      <div class="post-breakdown" aria-live="polite"><div><span id="postBaseLabel">Royal Mail postage</span><input id="postBaseDisplay" type="number" min="0" step="0.01" inputmode="decimal" aria-label="Royal Mail postage (£)"></div><div><span>Packaging</span><strong id="postPackingDisplay">—</strong></div><div><span>Percentage uplift</span><strong id="postMarkupDisplay">—</strong></div><div><label for="postChargeDisplay">Postage charge for invoice (£)</label><input id="postChargeDisplay" type="number" min="0" step="0.01" inputmode="decimal" aria-label="Postage charge for invoice (£)"></div></div>
       <div id="postParcelDetails" class="parcel-details" hidden>
        <h3>Parcel details</h3><p id="postPackingNote" class="muted"></p>
        <div class="grid post-destination"><div class="field"><label for="postCountry">Delivery country code (3 letters)</label><input id="postCountry" maxlength="3" autocomplete="off" placeholder="e.g. GBR"></div><div class="field"><label for="postCode">Delivery postcode</label><input id="postCode" maxlength="30" autocomplete="off"></div></div>
@@ -188,14 +190,14 @@
       </div>
      </div>
     </div>
-    <div class="totals" aria-live="polite"><div class="total-row"><span>Products</span><span id="sumGoods">—</span></div><div class="total-row"><span>Bank charge</span><span id="sumBank">—</span></div><div class="total-row"><span>Small order fee</span><span id="sumFee">—</span></div><div class="total-row"><span>Postage</span><span id="sumPost">—</span></div><div class="total-row strong"><span>Preview total</span><span id="sumTotal">—</span></div><small id="sumUKNote" hidden>QuickBooks calculates the applicable VAT when you commit this order.</small></div>
+    <div class="totals" aria-live="polite"><div class="total-row"><span>Products</span><span id="sumGoods">—</span></div><div class="total-row"><span>Bank charge</span><span id="sumBank">—</span></div><div class="total-row"><span>Small order fee</span><span id="sumFee">—</span></div><div class="total-row"><span id="deliverySumLabel">Delivery</span><span id="sumPost">—</span></div><div class="total-row strong"><span>Preview total</span><span id="sumTotal">—</span></div><small id="sumUKNote" hidden>QuickBooks calculates the applicable VAT when you commit this order.</small></div>
    </section>
    <p id="error" class="message" role="alert"></p><div class="actions"><button id="next" class="soft" type="button">✓ Confirm and next</button><button id="complete" class="primary" type="button">✓ Confirm and complete</button></div>
    <p class="muted">“Next” adds another order. “Complete” opens the batch review.</p>
   </div>
  </div>
 </form>
-<section id="batchReview" hidden><div class="card"><h2>📋 Batch review</h2><p class="muted">Review the drafts prepared in this WSC session.</p><div id="invoicePreview" class="invoice-preview" role="region" aria-label="Illustrative invoice preview" hidden></div><div id="reviewBatchOrders"><section id="batchOrders" aria-labelledby="batchOrdersTitle" hidden><h3 id="batchOrdersTitle">Orders in this batch</h3><div id="batchList"></div><div class="totals" id="batchTotals"><div class="total-row strong"><span>Available preview totals</span><span id="batchTotal">—</span></div><small>Preview totals include orders with complete prices and charges. QuickBooks calculates any applicable tax at commit.</small></div></section></div><p id="emptyBatch" class="muted" hidden>There are no orders in this batch.</p><div class="actions"><button class="soft" id="more" type="button">＋ Add another order</button></div></div></section>
+<section id="batchReview" hidden><div class="card"><h2>📋 Batch review</h2><p class="muted">Review the drafts prepared in this WSC session.</p><div id="invoicePreview" class="invoice-preview" role="region" aria-label="Illustrative invoice preview" hidden></div><div id="reviewBatchOrders"><section id="batchOrders" aria-labelledby="batchOrdersTitle" hidden><h3 id="batchOrdersTitle">Orders in this batch</h3><div id="batchList"></div><div class="totals" id="batchTotals"><div class="total-row strong"><span>Available preview totals</span><span id="batchTotal">—</span></div><small>Preview totals include orders with complete prices and charges. QuickBooks calculates any applicable tax at commit.</small></div></section></div><p id="emptyBatch" class="muted" hidden>There are no orders in this batch.</p><div class="actions"><button class="soft" id="more" type="button">＋ Add another order</button><button class="primary" id="finishBatch" type="button">Finish</button></div></div></section>
 
 <p id="batchPreviewFooter" class="footer">WSC workflow preview · Files are read locally · No QuickBooks connection</p>
 </main>
@@ -826,7 +828,10 @@ let postGenerated=false,postGeneratedSignature='';
 let postAuto={status:'idle',key:'',message:'',raw:null,boxes:0,source:'',expires:0},postSerial=0,postTimer=null;
 let customerState={status:'idle',query:'',matches:[],selected:null,staff:'',exactCount:0},customerLookupSerial=0,customerLookupTimer=null;
 const money=n=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'}).format(n/100);
-const amount=input=>{const value=input.value.trim();return value!==''&&Number.isFinite(Number(value))&&Number(value)>=0?Math.round(Number(value)*100):null;};
+const amount=input=>{
+ const pounds=WSCInvoicePostage.number(input.value,2);
+ return pounds===null||input.validity.badInput ? null : Math.round(pounds*100);
+};
 function make(tag,text,cls){const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;return e;}
 function matchLabel(entry){
  const detail=[entry.name,entry.sheetName&&entry.sheetName!==entry.name?'Price sheet: '+entry.sheetName:'',entry.description].filter(Boolean).join(' — ').slice(0,180),regular=WSCPriceSheets.displayedPence(entry.price),bulk=WSCPriceSheets.displayedPence(entry.bulk);
@@ -1181,6 +1186,9 @@ function lineTotal(row){const pence=priceFor(row),q=Number(row.quantity);if(penc
 function goodsTotal(){const rows=includedItems();if(!rows.length)return null;let sum=0;for(const row of rows){const line=lineTotal(row);if(line===null||!Number.isSafeInteger(sum+line))return null;sum+=line;}return sum;}
 // Postage is read-only. A price is never inferred from an unverified box.
 let postParcelSignature='';
+const DELIVERY_METHODS = {post:'Post',collection:'Collection',ups:'Courier UPS',fedex:'Courier Fed-Ex'};
+function orderDeliveryMethod(order){return order.deliveryMethod || (order.postOn?'post':'collection');}
+function isCourier(method){return method==='ups'||method==='fedex';}
 const POST_SERVICES = {tracked24:'Royal Mail Tracked 24', tracked48:'Royal Mail Tracked 48', international:'International'};
 const postPacking = window.WSCPacking;
 const postOverrides = new Map();
@@ -1401,11 +1409,11 @@ async function generatePostage() {
   return;
  }
  if(postAuto.status === 'loading') return;
- $('postage').checked = true;
+ if($('deliveryMethod').value!=='post')return;
  $('error').textContent = '';
  clearPostLive();
  const serial = postSerial, email = customerStaff(), bridge = customerBridge();
- const isCurrent = () => serial === postSerial && $('postage').checked &&
+ const isCurrent = () => serial === postSerial && $('deliveryMethod').value==='post' &&
   confirmedSignature === detailsSignature() && (examplePricing || customerStaff() === email);
  postGenerated=true;postGeneratedSignature=JSON.stringify([postKey(),$('postPacking').value,$('postMarkup').value]);
  postAuto.status = 'loading';
@@ -1421,6 +1429,7 @@ async function generatePostage() {
   postGeneratedSignature=JSON.stringify([key,$('postPacking').value,$('postMarkup').value]);
   const count = plan.parcels.length, boxes = count + (count === 1 ? ' box' : ' boxes');
   if(examplePricing){
+   $('postBaseDisplay').value='';$('postChargeDisplay').value='';
    postAuto = {status:'ready',key,email,raw:4.65 * count,boxes:count,source:'example',estimated:postEstimated,
     serviceName:POST_SERVICES[plan.service],expires:0,message:'Example only. Simulated postage added for ' + boxes + '.'};
    return;
@@ -1437,6 +1446,7 @@ async function generatePostage() {
   const total = picks.reduce((sum,pick)=>sum + Math.round(pick.amount * 1000000),0);
   if(!Number.isSafeInteger(total)) throw new Error('The postage amount needs checking.');
   const names = [...new Set(picks.map(pick=>pick.name))].join(' / ');
+  $('postBaseDisplay').value='';$('postChargeDisplay').value='';
   postAuto = {status:'ready',key,email,raw:total / 1000000,boxes:count,source:'live',estimated:postEstimated,
    serviceName:names,quotedAt:[...new Set(quotes.map(quote=>String(quote.quotedAt || '')))].filter(Boolean).join(', '),
    expires:Date.now() + 300000,
@@ -1460,23 +1470,38 @@ async function generatePostage() {
  }
 }
 function getPostQuote() {
- if(!$('postage').checked) return {total:0,off:true};
+ const method=$('deliveryMethod').value;
+ if(method==='collection')return {total:0,off:true};
+ if(isCourier(method)){
+  const total=amount($('courierAmount'));
+  return {total,source:'courier',service:DELIVERY_METHODS[method],error:total===null?'Enter a valid courier charge.':''};
+ }
  if(postAuto.status === 'ready' && (postAuto.key !== postKey() || (postAuto.source === 'live' &&
    (postAuto.email !== customerStaff() || Date.now() >= postAuto.expires)))){
   clearPostLive();
   postAuto.message = 'The postage details changed or the live price expired. Recalculate postage.';
  }
- if(postAuto.status !== 'ready') return {total:null,error:postAuto.message || 'Select Generate Postage to get a price.'};
- const packaging = $('postPacking').value.trim() === '' ? 0 : WSCInvoicePostage.number($('postPacking').value,2);
- const markup = $('postMarkup').value.trim() === '' ? 0 : WSCInvoicePostage.number($('postMarkup').value,4);
+ const base=$('postBaseDisplay'),charge=$('postChargeDisplay');
+ const manualBase=base.value!==''||base.validity.badInput;
+ const manualTotal=charge.value!==''||charge.validity.badInput;
+ const quoted=postAuto.status==='ready';
+ const raw=manualBase?WSCInvoicePostage.number(base.value,2):quoted?postAuto.raw:null;
+ const total=manualTotal?amount(charge):null;
+ if((manualBase&&raw===null)||(manualTotal&&total===null))return {total:null,error:'Enter a valid postage price.'};
+ const packaging = $('postPacking').value.trim() === '' && !$('postPacking').validity.badInput ? 0 : WSCInvoicePostage.number($('postPacking').value,2);
+ const markup = $('postMarkup').value.trim() === '' && !$('postMarkup').validity.badInput ? 0 : WSCInvoicePostage.number($('postMarkup').value,4);
  if(packaging === null || markup === null) return {total:null,error:'Enter a valid packaging fee and percentage.'};
- const parts = WSCInvoicePostage.calculate(postAuto.raw,packaging,markup);
+ if(raw===null&&!manualTotal)return {total:null,error:postAuto.message || 'Generate postage or enter the postage charge.'};
+ const parts = raw===null?{}:WSCInvoicePostage.calculate(raw,packaging,markup);
  if(!parts) return {total:null,error:'The postage or percentage is too large to calculate.'};
- return {...parts,source:postAuto.source,estimated:postAuto.estimated,boxes:postAuto.boxes,service:postAuto.serviceName,
-  category:POST_SERVICES[$('postService').value],raw:postAuto.raw,packaging,markup,quotedAt:postAuto.quotedAt || ''};
+ return {...parts,total:manualTotal?total:parts.total,calculated:parts.total,source:manualBase||manualTotal?'manual':postAuto.source,
+  estimated:quoted&&postAuto.estimated,boxes:quoted?postAuto.boxes:0,service:quoted?postAuto.serviceName:POST_SERVICES[$('postService').value],
+  category:POST_SERVICES[$('postService').value],raw,packaging,markup,quotedAt:postAuto.quotedAt || ''};
 }
 function updatePost() {
- const selected = $('postage').checked;
+ const method=$('deliveryMethod').value,selected=method==='post';
+ $('courierFields').hidden=!isCourier(method);
+ $('deliverySumLabel').textContent=method==='post'?'Postage':DELIVERY_METHODS[method];
  $('postFields').hidden = !selected;
  if(selected&&$('postParcelDetails').hidden){
   postOpenParcelDetails();
@@ -1491,10 +1516,13 @@ function updatePost() {
  progress.dataset.state = quote.error && postAuto.status === 'ready' ? 'error' : postAuto.status;
  progress.classList.toggle('is-loading',loading);
  $('postProgressGlobe').hidden = !loading;
- const message = selected ? quote.error || postAuto.message : '';
+ const message = selected ? quote.error || (quote.source==='manual'&&!loading?'Using the entered postage price.':postAuto.message) : '';
  if($('postCalcStatus').textContent !== message) $('postCalcStatus').textContent = message;
  const display = value => value === null || value === undefined ? '—' : money(value);
- for(const [id,key] of [['postBaseDisplay','postage'],['postPackingDisplay','packing'],['postMarkupDisplay','uplift'],['postChargeDisplay','total']]){
+ const placeholder=pence=>Number.isSafeInteger(pence)?(pence/100).toFixed(2):'0.00';
+ $('postBaseDisplay').placeholder=postAuto.status==='ready'?placeholder(Math.round(postAuto.raw*100)):'Enter price';
+ $('postChargeDisplay').placeholder=Number.isSafeInteger(quote.calculated)?placeholder(quote.calculated):'Enter price';
+ for(const [id,key] of [['postPackingDisplay','packing'],['postMarkupDisplay','uplift']]){
   $(id).textContent = quote.off ? '—' : display(quote[key]);
  }
  $('postBaseLabel').textContent = quote.boxes ? (quote.service || quote.category) + ' (' + quote.boxes +
@@ -1510,8 +1538,9 @@ function update(){
  if(!manualFee)$('smallFee').checked=goods!==null&&goods<25000;
  $('smallFee').disabled=goods===null;$('smallFeeHint').textContent=goods===null?'The fee can be suggested once all product prices are available.':goods<25000?'Product total is below £250. You can untick the fee.':'The product total is £250 or more.';
  $('bankFields').hidden=goods===null||!$('bank').checked;
+ $('smallFeeFields').hidden=!$('smallFee').checked;
  $('sumUKNote').hidden=!$('bankUK').checked;
- const bank=$('bank').checked?(goods!==null?amount($('bankAmount')):null):0,post=updatePost().total,fee=goods===null?null:($('smallFee').checked?2500:0);
+ const bank=$('bank').checked?(goods!==null?amount($('bankAmount')):null):0,post=updatePost().total,fee=goods===null?null:($('smallFee').checked?amount($('smallFeeAmount')):0);
  $('sumGoods').textContent=goods===null?'—':money(goods);$('sumBank').textContent=bank===null?'—':money(bank);$('sumPost').textContent=post===null?'—':money(post);$('sumFee').textContent=fee===null?'—':money(fee);
  $('sumTotal').textContent=goods!==null&&bank!==null&&post!==null&&fee!==null?money(goods+bank+post+fee):'—';$('batchCount').textContent=orders.length+' '+(orders.length===1?'order':'orders')+' in batch';
 }
@@ -1586,7 +1615,7 @@ async function readOrder(){
   setImportedDelivery(found.deliveryAddresses);
   $('customer').value=found.customer;clearCustomerLookup();refreshCustomerPrice(true);
   purchaseOrder=found.po;items.replaceChildren();if(found.items.length)found.items.forEach(addItem);else addItem();
-  confirmedSignature=null;examplePricing=false;manualFee=false;$('confirmedArea').hidden=true;$('bankUK').checked=false;$('bank').checked=false;$('postage').checked=false;$('bankAmount').value='';$('postPacking').value='0';$('postMarkup').value='10';clearPostLive();
+  confirmedSignature=null;examplePricing=false;manualFee=false;$('confirmedArea').hidden=true;$('bankUK').checked=false;$('bank').checked=false;$('deliveryMethod').value='collection';$('courierAmount').value='13.50';$('smallFeeAmount').value='25.00';$('bankAmount').value='11.00';$('postBaseDisplay').value='';$('postChargeDisplay').value='';$('postPacking').value='0';$('postMarkup').value='10';clearPostLive();
   $('recognitionNotes').textContent=[...new Set([...notes,...found.notes])].join(' ');$('detailError').textContent='';lastSourceSignature=scanFailed?null:signature;update();setStep(2);scheduleCustomerLookup(false,'',found.customerCandidates);
  }catch(_){$('uploadError').textContent='The order could not be read. Try pasting the email text.';}finally{button.disabled=false;$('extractStatus').textContent='';}
 }
@@ -1614,12 +1643,13 @@ function confirmDetails(){
 }
 function save(finish){
  const invalid=validateDetails();if(invalid||confirmedSignature!==detailsSignature()){$('error').textContent=invalid||'Confirm the order details again.';return;}
- const postQuote=updatePost(),goods=goodsTotal(),bank=$('bank').checked?(goods!==null?amount($('bankAmount')):null):0,post=postQuote.total,fee=goods===null?null:($('smallFee').checked?2500:0);
- if($('postage').checked&&post===null){$('error').textContent=postQuote.error||'Generate postage before confirming this order.';return;}
+ const postQuote=updatePost(),goods=goodsTotal(),bank=$('bank').checked?(goods!==null?amount($('bankAmount')):null):0,post=postQuote.total,fee=goods===null?null:($('smallFee').checked?amount($('smallFeeAmount')):0);
+ if(post===null){$('error').textContent=postQuote.error||'Enter a delivery charge before confirming this order.';return;}
+ if(goods!==null&&(bank===null||fee===null)){$('error').textContent='Enter a valid amount for each selected fee.';return;}
  const complete=goods!==null&&bank!==null&&post!==null&&fee!==null;
  const selected=includedItems().map(row=>{const entry=matchedEntry(row);return {...row,originalSku:row.sku,sku:entry?entry.sku:row.sku,productName:entry?entry.name:'',sheetProductName:entry?entry.sheetName:'',sheetRow:entry?entry.row:null,priceSourceSku:entry?entry.priceSku:'',priceSubstitutionConfirmed:!!entry?.substitution&&row.matchPriceApproval==='yes',unitPrice:priceFor(row),lineAmount:lineTotal(row)};});
- const postState={packing:$('postPacking').value,markup:$('postMarkup').value,service:$('postService').value};
- const order={quickBooksKey:crypto.randomUUID(),customer:$('customer').value.trim(),customerQB:customerSnapshot(),deliveryAddress:chosenOrderAddress()||customerSnapshot()?.shippingAddress||null,importedDelivery,deliveryChoice:$('importedDeliveryChoice').value,items:selected,sourceRows:getItems(),po:purchaseOrder,sources:inputSources(),type:document.querySelector('[name=documentType]:checked').value,example:examplePricing,priceChoice,priceBook,bankOn:$('bank').checked,bankUK:$('bankUK').checked,bankInput:$('bankAmount').value,postOn:$('postage').checked,postState,postQuote,feeOn:$('smallFee').checked,feeManual:manualFee,goods,bank,post,fee,total:complete?goods+bank+post+fee:null};
+ const postState={base:$('postBaseDisplay').value,charge:$('postChargeDisplay').value,packing:$('postPacking').value,markup:$('postMarkup').value,service:$('postService').value};
+ const order={quickBooksKey:crypto.randomUUID(),customer:$('customer').value.trim(),customerQB:customerSnapshot(),deliveryAddress:chosenOrderAddress()||customerSnapshot()?.shippingAddress||null,importedDelivery,deliveryChoice:$('importedDeliveryChoice').value,items:selected,sourceRows:getItems(),po:purchaseOrder,sources:inputSources(),type:document.querySelector('[name=documentType]:checked').value,example:examplePricing,priceChoice,priceBook,bankOn:$('bank').checked,bankUK:$('bankUK').checked,bankInput:$('bankAmount').value,deliveryMethod:$('deliveryMethod').value,postOn:$('deliveryMethod').value==='post',postState,postQuote,feeOn:$('smallFee').checked,feeManual:manualFee,goods,bank,post,fee,total:complete?goods+bank+post+fee:null};
  const savedIndex=editing===null?orders.length:editing;if(editing===null)orders.push(order);else orders[editing]=order;reset();if(finish){invoicePreviewIndex=savedIndex;showBatch();}else {renderBatchOrders(false);window.scrollTo({top:0,behavior:'smooth'});}
 }
 function orderActions(order, index){
@@ -1650,9 +1680,10 @@ function renderBatchOrders(inReview){
   if(inReview){
    card.append(make('p',o.items.map(i=>i.sku+(i.productName?' — '+i.productName:'')+(i.sheetProductName&&i.sheetProductName!==i.productName?' (price sheet: '+i.sheetProductName+')':'')+(i.priceSubstitutionConfirmed?' (price from '+i.priceSourceSku+')':'')+' × '+i.quantity).join(' · ')));
    card.append(make('p',o.total===null?'Prices or charges need checking or are awaiting connection.':(o.example?'Example preview total: ':'Preview total: ')+money(o.total)));
-   const charges=[o.bankOn?'Bank charge':'',o.feeOn?'Small order fee':'',o.postOn?(o.postQuote?.category||'Postage'):''].filter(Boolean);
+   const charges=[o.bankOn?'Bank charge':'',o.feeOn?'Small order fee':'',o.postOn?(o.postQuote?.category||'Postage'):DELIVERY_METHODS[orderDeliveryMethod(o)]].filter(Boolean);
    if(charges.length)card.append(make('p','Selected: '+charges.join(', ')));
-   if(o.postOn){const q=o.postQuote;card.append(make('p',q&&q.total!==null?(q.service||q.category||'Royal Mail')+' postage ('+q.boxes+' '+(q.boxes===1?'box':'boxes')+'): '+money(q.postage)+' + packaging '+money(q.packing)+' + '+q.markup+'% uplift '+money(q.uplift)+' = '+money(q.total)+(q.source==='live'?' (live quote; recheck before use)':' (example only — simulated, not live)'):'Postage needs a valid quote.','muted'));}
+   if(o.postOn){const q=o.postQuote;card.append(make('p',q?.source==='manual'?'Entered postage charge: '+money(q.total):q&&q.total!==null?(q.service||q.category||'Royal Mail')+' postage ('+q.boxes+' '+(q.boxes===1?'box':'boxes')+'): '+money(q.postage)+' + packaging '+money(q.packing)+' + '+q.markup+'% uplift '+money(q.uplift)+' = '+money(q.total)+(q.source==='live'?' (live quote; recheck before use)':' (example only — simulated, not live)'):'Postage needs a valid quote.','muted'));}
+   if(isCourier(orderDeliveryMethod(o)))card.append(make('p','Courier charge: '+money(o.post)));
    if(o.quickBooksReceipt)card.append(make('p',batchReceiptText(o),'muted'));
    const actions=orderActions(o,index),preview=make('button',o.type==='Pro Forma'?'View pro forma preview':'View invoice preview','minor');
    preview.type='button';
@@ -1669,6 +1700,7 @@ function showBatch(scrollToTop=true){
  form.hidden=true;$('exampleButton').hidden=true;$('batchReview').hidden=false;
  renderBatchOrders(true);
  $('emptyBatch').hidden=!!orders.length;
+ $('finishBatch').disabled=orders.some(order=>order.quickBooksPending&&!order.quickBooksError);
  invoicePreviewIndex=Math.max(0,Math.min(invoicePreviewIndex,orders.length-1));
  renderInvoicePreview(invoicePreviewIndex);
  if(scrollToTop)window.scrollTo({top:0,behavior:'smooth'});
@@ -1698,7 +1730,7 @@ function renderInvoicePreview(index){
  billing.append(make('strong','Bill to'),make('div',o.customerQB?.displayName||o.customer));const billLines=addressLines(o.customerQB?.billingAddress);if(billLines.length)billLines.forEach(line=>billing.append(make('div',line)));else billing.append(make('div','Billing address not available','invoice-missing'));
  shipping.append(make('strong','Ship to'));const shipLines=addressLines(o.deliveryAddress||o.customerQB?.shippingAddress);if(shipLines.length)shipLines.forEach(line=>shipping.append(make('div',line)));else shipping.append(make('div','Delivery address not available','invoice-missing'));address.append(billing,shipping);host.append(address);
  const meta=make('div','','invoice-blue invoice-meta'),shippingInfo=make('div'),details=make('div'),extra=make('div');
- shippingInfo.append(make('strong','Shipping info'),make('div',o.postOn?(o.postQuote?.service||o.postQuote?.category||'Royal Mail'):'Not selected'));
+ shippingInfo.append(make('strong','Shipping info'),make('div',o.postOn?(o.postQuote?.service||o.postQuote?.category||'Royal Mail'):DELIVERY_METHODS[orderDeliveryMethod(o)]));
  if(o.postOn&&o.postQuote?.estimated)shippingInfo.append(make('div',o.postQuote.boxes+(o.postQuote.boxes===1?' estimated box':' estimated boxes'),'invoice-missing'));
  details.append(make('strong',o.type==='Pro Forma'?'Pro forma details':'Invoice details'),make('div',(o.type==='Pro Forma'?'Pro forma':'Invoice')+' number: '+(o.quickBooksReceipt?(String(o.quickBooksReceipt.number??'').trim()||'Unavailable'):o.quickBooksPending?'Awaiting confirmation':'Not created')),make('div',o.quickBooksReceipt?'See the QuickBooks PDF for date and terms.':'Date and terms: Not set'));
  extra.append(make('strong','Purchase order'),make('div',o.po||'Not provided'));meta.append(shippingInfo,details,extra);host.append(meta);
@@ -1709,7 +1741,8 @@ function renderInvoicePreview(index){
  for(const item of o.items)addLine(item.sku,item.productName||item.sheetProductName||'Product details awaiting connection',item.quantity,asMoney(item.unitPrice),asMoney(item.lineAmount));
  if(o.bankOn)addLine('Bank charge','Bank charge','1',asMoney(o.bank),asMoney(o.bank));
  if(o.feeOn)addLine('Small order fee','Small order fee','1',asMoney(o.fee),asMoney(o.fee));
- if(o.postOn)addLine('Post',(o.postQuote?.service||o.postQuote?.category||'Royal Mail')+' (including packaging and percentage)','1',asMoney(o.post),asMoney(o.post));
+ if(isCourier(orderDeliveryMethod(o)))addLine('Shipping:UPS/KN',DELIVERY_METHODS[orderDeliveryMethod(o)],'1',asMoney(o.post),asMoney(o.post));
+ if(o.postOn)addLine('Post',(o.postQuote?.service||o.postQuote?.category||'Royal Mail')+(o.postQuote?.source==='manual'?'':' (including packaging and percentage)'),'1',asMoney(o.post),asMoney(o.post));
  table.append(body);wrapper.append(table);host.append(wrapper);
  const totals=make('div','','invoice-amounts');
  function totalLine(label,value,strong){const line=make('div','','invoice-amount-row'+(strong?' invoice-final':''));line.append(make('span',label),make('strong',value));totals.append(line);}
@@ -1735,7 +1768,7 @@ function addQuickBooksActions(host,order){
  if(!bridge?.salesDocument){host.append(make('p','Open this order inside WSC to commit it to QuickBooks.','message'));return;}
  const label=batchDocumentLabel(order),saved=!!order.quickBooksReceipt;
  const sending=order.quickBooksPending&&!order.quickBooksError;
- const eligible=order.customerQB?.id&&order.total!==null&&(!order.postOn||order.postQuote?.source==='live');
+ const eligible=order.customerQB?.id&&order.total!==null&&(!order.postOn||['live','manual'].includes(order.postQuote?.source));
  const status=make('p','','qb-commit-status muted');
  status.setAttribute('role','status');status.setAttribute('aria-live','polite');
  if(saved){status.dataset.state='saved';status.textContent=batchReceiptText(order);}
@@ -1752,7 +1785,8 @@ function addQuickBooksActions(host,order){
    const document={key:order.quickBooksKey,type:order.type==='Pro Forma'?'proforma':'invoice',
     customerId:order.customerQB.id,po:order.po,deliveryAddress:order.deliveryAddress,
     lines:order.items.map(item=>({sku:item.sku,quantity:Number(item.quantity),unitPence:item.unitPrice})),
-    bankUK:order.bankUK===true,ukVAT:order.bankUK===true,charges:{bank:order.bankOn?order.bank:null,minimum:order.feeOn?order.fee:null,postage:order.postOn?order.post:null}};
+    bankUK:order.bankUK===true,ukVAT:order.bankUK===true,charges:{bank:order.bankOn?order.bank:null,minimum:order.feeOn?order.fee:null,postage:order.postOn||isCourier(orderDeliveryMethod(order))?order.post:null}};
+   if(order.deliveryMethod)document.deliveryMethod=order.deliveryMethod;
    order.quickBooksChecking=!!order.quickBooksPending;
    order.quickBooksError='';order.quickBooksPending=true;
    showBatch(false);
@@ -1786,8 +1820,13 @@ function addQuickBooksActions(host,order){
 
 function editOrder(index){
  const o=orders[index];form.hidden=false;$('batchReview').hidden=true;$('exampleButton').hidden=!!customerBridge();reset();editing=index;renderBatchOrders(false);exampleSource=o.example;savedSources=o.sources;purchaseOrder=o.po;setImportedDelivery(o.importedDelivery,o.deliveryChoice);$('sourceInfo').textContent='Previously selected: '+savedSources.join(', ');$('customer').value=o.customer;priceCustomer=WSCPriceSheets.key(o.customer);priceChoice=o.priceChoice;priceBook=o.priceBook;showPriceStatus();items.replaceChildren();(o.sourceRows||o.items).forEach(addItem);
- document.querySelectorAll('[name=documentType]').forEach(r=>r.checked=r.value===o.type);$('bank').checked=o.bankOn;$('bankUK').checked=o.bankUK===true;$('bankAmount').value=o.bankInput;$('postage').checked=o.postOn;
- const ps=o.postState||{};for(const [id,key] of [['postPacking','packing'],['postMarkup','markup'],['postService','service']])if(ps[key]!==undefined)$(id).value=ps[key];
+ document.querySelectorAll('[name=documentType]').forEach(r=>r.checked=r.value===o.type);$('bank').checked=o.bankOn;$('bankUK').checked=o.bankUK===true;$('bankAmount').value=o.bankInput;$('deliveryMethod').value=orderDeliveryMethod(o);
+ $('courierAmount').value=isCourier(orderDeliveryMethod(o))?(o.post/100).toFixed(2):'13.50';
+ $('smallFeeAmount').value=o.feeOn&&Number.isSafeInteger(o.fee)?(o.fee/100).toFixed(2):'25.00';
+ const ps=o.postState||{};
+ $('postBaseDisplay').value=ps.base||'';
+ $('postChargeDisplay').value=ps.charge||(o.postOn&&!ps.base&&Number.isSafeInteger(o.post)?(o.post/100).toFixed(2):'');
+ for(const [id,key] of [['postPacking','packing'],['postMarkup','markup'],['postService','service']])if(ps[key]!==undefined)$(id).value=ps[key];
  postServiceTouched=!!ps.service;
  clearPostLive();$('smallFee').checked=o.feeOn;manualFee=o.feeManual;lastSourceSignature=sourceSignature();update();setStep(2);scheduleCustomerLookup(true,o.customerQB?.id||'');
 }
@@ -1882,7 +1921,9 @@ $('noPriceSheet').addEventListener('click',()=>{if(!$('customer').value.trim()){
 function handleChange(event){
  if(event.target.matches('.price input'))event.target.closest('.item').dataset.priceOverride='yes';
  if(event.target===$('customer')){refreshCustomerPrice();scheduleCustomerLookup();}if(event.target.matches('.sku input'))matchForRow(event.target.closest('.item'));
- if(event.target.id==='postage'&&!$('postage').checked)clearPostLive();
+ if(event.target.id==='deliveryMethod'&&$('deliveryMethod').value!=='post')clearPostLive();
+ if(['postBaseDisplay','postPacking','postMarkup'].includes(event.target.id))$('postChargeDisplay').value='';
+ if(['postBaseDisplay','postChargeDisplay'].includes(event.target.id)&&postAuto.status==='loading')clearPostLive();
  if(event.target.id==='postService')postServiceTouched=true;
  if(event.target.id==='importedDeliveryChoice'){paintImportedDelivery();clearPostForChangedOrder();}
  if(event.target.matches('.post-box input'))postManualPacking=true;
@@ -1901,6 +1942,19 @@ $('postAddBox').addEventListener('click',()=>{
  clearPostLive();update();
 });
 $('addItem').addEventListener('click',()=>{addItem();invalidate();update();});$('next').addEventListener('click',()=>save(false));$('complete').addEventListener('click',()=>save(true));
+$('finishBatch').addEventListener('click',()=>{
+ if(orders.some(order=>order.quickBooksPending&&!order.quickBooksError))return;
+ const unconfirmed=orders.some(order=>order.quickBooksPending&&!order.quickBooksReceipt);
+ const drafts=orders.some(order=>!order.example&&!order.quickBooksReceipt);
+ if(unconfirmed&&!window.confirm('A QuickBooks result is still unconfirmed. Finish and leave this batch? Check the order in QuickBooks before entering it again.'))return;
+ if(!unconfirmed&&drafts&&!window.confirm('Finish this batch and discard its unsubmitted drafts?'))return;
+ orders=[];invoicePreviewIndex=0;
+ $('invoicePreview').replaceChildren();$('invoicePreview').hidden=true;
+ $('batchTotal').textContent='—';
+ $('batchReview').hidden=true;form.hidden=false;$('exampleButton').hidden=!!customerBridge();
+ reset();renderBatchOrders(false);
+ $('emailFile').focus({preventScroll:true});
+});
 $('more').addEventListener('click',()=>{form.hidden=false;$('batchReview').hidden=true;$('exampleButton').hidden=!!customerBridge();reset();renderBatchOrders(false);});
 $('homeButton').addEventListener('click',()=>{const host=customerBridge();if(host&&typeof host.close==='function'){host.close();return;}if(!$('batchReview').hidden){form.hidden=false;$('batchReview').hidden=true;$('exampleButton').hidden=!!customerBridge();}setStep(1);});
 for(const type of ['pointerdown','keydown','wheel','touchstart','input'])document.addEventListener(type,event=>{const host=customerBridge();if(host&&typeof host.noteActivity==='function'&&host.noteActivity()===false){event.preventDefault();event.stopImmediatePropagation();}},{capture:true,passive:false});
