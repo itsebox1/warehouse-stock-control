@@ -61,6 +61,8 @@
 .post-packing-choices .field{margin-top:8px}
 .parcel-details{border:1px solid #c8d4df;border-radius:8px;padding:14px;margin-top:14px;background:#f9fbfd}
 .post-box{border-top:1px solid #d5dfe8;padding:12px 0}.post-box-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.post-carton{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-weight:600;margin-bottom:8px}
+.post-carton select{max-width:100%;padding:8px;border:1px solid #bccad6;border-radius:6px;background:white;color:inherit;font:inherit}
 .post-destination{grid-template-columns:1fr 1fr}
 @media(max-width:650px){.document-actions{align-items:stretch;flex-direction:column}.document-actions button{width:100%}.post-box-grid{grid-template-columns:1fr 1fr}}
 @media(prefers-reduced-motion:reduce){.is-loading .post-globe{animation:none}}
@@ -1192,7 +1194,7 @@ function isCourier(method){return method==='ups'||method==='fedex';}
 const POST_SERVICES = {tracked24:'Royal Mail Tracked 24', tracked48:'Royal Mail Tracked 48', international:'International'};
 const postPacking = window.WSCPacking;
 const postOverrides = new Map();
-let postPackingKey = '', postManualPacking = false, postEstimated = false, postServiceTouched = false;
+let postPackingKey = '', postManualContents = '', postManualPacking = false, postEstimated = false, postServiceTouched = false;
 
 function clearPostLive() {
  postSerial++;
@@ -1201,7 +1203,9 @@ function clearPostLive() {
  postAuto = {status:'idle', key:'', message:'', raw:null, boxes:0, source:'', expires:0};
 }
 function clearPostForChangedOrder() {
- clearPostLive();
+ if(postManualPacking)clearParcelPrice();
+ else clearPostLive();
+ postManualContents='';
  postParcelSignature = '';
  postPackingKey = '';
  postManualPacking = false;
@@ -1216,7 +1220,7 @@ function clearPostForChangedOrder() {
 function postRenumberBoxes() {
  const rows = [...$('postBoxes').children];
  for(const [i,row] of rows.entries()){
-  row.querySelector('strong').textContent = 'Box ' + (i + 1) + (row.dataset.carton ? ' · ' + row.dataset.carton : '');
+  row.querySelector('.box-number').textContent = 'Box ' + (i + 1);
  }
  $('postAddBox').textContent = rows.length ? '＋ Add another box' : 'Enter parcel manually';
  $('postAddBox').disabled = rows.length >= postPacking.maxBoxes;
@@ -1224,9 +1228,16 @@ function postRenumberBoxes() {
 function postAddBox(parcel = {}) {
  const list = $('postBoxes'), row = document.createElement('div');
  row.className = 'post-box';
- row.dataset.carton = parcel.name || '';
- row.append(document.createElement('strong'));
- if(parcel.counts) row.append(make('p',postPacking.contents(parcel.counts),'muted'));
+ const label=make('label','','post-carton'),cartons=make('select','','box-carton');
+ cartons.add(new Option('Custom dimensions',''));
+ for(const [name,sides] of Object.entries(postPacking.dimensions)){
+  cartons.add(new Option(name+' — '+sides.join(' × ')+' cm',name));
+ }
+ cartons.value=parcel.name||'';
+ label.append(make('span','','box-number'),cartons);
+ row.append(label);
+ const contents=parcel.counts?postPacking.contents(parcel.counts):parcel.contents;
+ if(contents)row.append(make('p',contents,'muted box-contents'));
  const fields = document.createElement('div');
  fields.className = 'grid post-box-grid';
  const [length,width,height] = parcel.dimensions || [];
@@ -1259,11 +1270,25 @@ function postAddBox(parcel = {}) {
    postManualPacking = false;
   }
   postRenumberBoxes();
-  clearPostLive();
+  clearParcelPrice();
   update();
  });
  row.append(fields,remove);
  list.append(row);
+}
+function clearParcelPrice(){
+ clearPostLive();
+ $('postBaseDisplay').value='';
+ $('postChargeDisplay').value='';
+}
+function manualParcels(){
+ if(!postManualPacking || $('deliveryMethod').value!=='post')return undefined;
+ return [...$('postBoxes').children].map(row=>({
+  name:row.querySelector('.box-carton').value,
+  weight:row.querySelector('.box-weight').value,
+  dimensions:['length','width','height'].map(side=>row.querySelector('.box-'+side).value),
+  contents:row.querySelector('.box-contents')?.textContent||''
+ }));
 }
 function postOpenParcelDetails() {
  const signature = detailsSignature();
@@ -1363,7 +1388,7 @@ function postPlan() {
 }
 function postKey() {
  return JSON.stringify([detailsSignature(),document.querySelector('[name=documentType]:checked').value,$('bank').checked,$('bankUK').checked,$('bankAmount').value,$('smallFee').checked,$('postService').value,$('postCountry').value,$('postCode').value,
-  $('postVat').value,[...$('postBoxes').querySelectorAll('input')].map(el=>el.value),[...postOverrides]]);
+  $('postVat').value,[...$('postBoxes').querySelectorAll('input,select')].map(el=>el.value),[...postOverrides]]);
 }
 function postMatches(service,category) {
  if(!service) return false;
@@ -1503,6 +1528,11 @@ function updatePost() {
  $('courierFields').hidden=!isCourier(method);
  $('deliverySumLabel').textContent=method==='post'?'Postage':DELIVERY_METHODS[method];
  $('postFields').hidden = !selected;
+ if(selected && postManualPacking){
+  const contents=JSON.stringify(includedItems().map(row=>[row.sku,row.matchSelection,row.quantity]));
+  if(postManualContents && postManualContents!==contents)clearPostForChangedOrder();
+  else postManualContents=contents;
+ }
  if(selected&&$('postParcelDetails').hidden){
   postOpenParcelDetails();
   try{postFillFromGuide($('postCountry').value.trim().toUpperCase());}catch(error){postAuto.message=String(error.message||error);}
@@ -1648,7 +1678,7 @@ function save(finish){
  if(goods!==null&&(bank===null||fee===null)){$('error').textContent='Enter a valid amount for each selected fee.';return;}
  const complete=goods!==null&&bank!==null&&post!==null&&fee!==null;
  const selected=includedItems().map(row=>{const entry=matchedEntry(row);return {...row,originalSku:row.sku,sku:entry?entry.sku:row.sku,productName:entry?entry.name:'',sheetProductName:entry?entry.sheetName:'',sheetRow:entry?entry.row:null,priceSourceSku:entry?entry.priceSku:'',priceSubstitutionConfirmed:!!entry?.substitution&&row.matchPriceApproval==='yes',unitPrice:priceFor(row),lineAmount:lineTotal(row)};});
- const postState={base:$('postBaseDisplay').value,charge:$('postChargeDisplay').value,packing:$('postPacking').value,markup:$('postMarkup').value,service:$('postService').value};
+ const postState={parcels:manualParcels(),base:$('postBaseDisplay').value,charge:$('postChargeDisplay').value,packing:$('postPacking').value,markup:$('postMarkup').value,service:$('postService').value};
  const order={quickBooksKey:crypto.randomUUID(),customer:$('customer').value.trim(),customerQB:customerSnapshot(),deliveryAddress:chosenOrderAddress()||customerSnapshot()?.shippingAddress||null,importedDelivery,deliveryChoice:$('importedDeliveryChoice').value,items:selected,sourceRows:getItems(),po:purchaseOrder,sources:inputSources(),type:document.querySelector('[name=documentType]:checked').value,example:examplePricing,priceChoice,priceBook,bankOn:$('bank').checked,bankUK:$('bankUK').checked,bankInput:$('bankAmount').value,deliveryMethod:$('deliveryMethod').value,postOn:$('deliveryMethod').value==='post',postState,postQuote,feeOn:$('smallFee').checked,feeManual:manualFee,goods,bank,post,fee,total:complete?goods+bank+post+fee:null};
  const savedIndex=editing===null?orders.length:editing;if(editing===null)orders.push(order);else orders[editing]=order;reset();if(finish){invoicePreviewIndex=savedIndex;showBatch();}else {renderBatchOrders(false);window.scrollTo({top:0,behavior:'smooth'});}
 }
@@ -1824,6 +1854,13 @@ function editOrder(index){
  $('courierAmount').value=isCourier(orderDeliveryMethod(o))?(o.post/100).toFixed(2):'13.50';
  $('smallFeeAmount').value=o.feeOn&&Number.isSafeInteger(o.fee)?(o.fee/100).toFixed(2):'25.00';
  const ps=o.postState||{};
+ if(o.postOn && ps.parcels?.length){
+  $('postBoxes').replaceChildren();
+  for(const parcel of ps.parcels)postAddBox(parcel);
+  postManualPacking=true;
+  postRenumberBoxes();
+  $('postPackingNote').textContent='Check the selected boxes, packed weights and dimensions before generating postage.';
+ }
  $('postBaseDisplay').value=ps.base||'';
  $('postChargeDisplay').value=ps.charge||(o.postOn&&!ps.base&&Number.isSafeInteger(o.post)?(o.post/100).toFixed(2):'');
  for(const [id,key] of [['postPacking','packing'],['postMarkup','markup'],['postService','service']])if(ps[key]!==undefined)$(id).value=ps[key];
@@ -1926,9 +1963,17 @@ function handleChange(event){
  if(['postBaseDisplay','postChargeDisplay'].includes(event.target.id)&&postAuto.status==='loading')clearPostLive();
  if(event.target.id==='postService')postServiceTouched=true;
  if(event.target.id==='importedDeliveryChoice'){paintImportedDelivery();clearPostForChangedOrder();}
- if(event.target.matches('.post-box input'))postManualPacking=true;
+ if(event.target.matches('.box-carton')){
+  const row=event.target.closest('.post-box'),sides=postPacking.dimensions[event.target.value];
+  if(sides)['length','width','height'].forEach((side,i)=>{row.querySelector('.box-'+side).value=sides[i];});
+ }
+ if(event.target.closest('.post-box') && event.target.matches('input,select')){
+  postManualPacking=true;
+  if(event.target.matches('.box-length,.box-width,.box-height'))event.target.closest('.post-box').querySelector('.box-carton').value='';
+  clearParcelPrice();
+ }
  if(event.target.id==='postCountry'||event.target.id==='postCode')$('postAddressNote').hidden=true;
- if(event.target.id==='postService'||event.target.closest('#postParcelDetails'))clearPostLive();
+ if(event.target.id==='postService'||(event.target.closest('#postParcelDetails')&&!event.target.closest('.post-box')))clearPostLive();
  invalidate();update();
 }
 form.addEventListener('input',handleChange);form.addEventListener('change',handleChange);$('smallFee').addEventListener('input',()=>{manualFee=true;});$('smallFee').addEventListener('change',()=>{manualFee=true;update();});
@@ -1939,7 +1984,7 @@ $('postAddBox').addEventListener('click',()=>{
  postAddBox();
  postRenumberBoxes();
  if(!postEstimated)$('postPackingNote').textContent='Enter the actual packed details for every parcel.';
- clearPostLive();update();
+ clearParcelPrice();update();
 });
 $('addItem').addEventListener('click',()=>{addItem();invalidate();update();});$('next').addEventListener('click',()=>save(false));$('complete').addEventListener('click',()=>save(true));
 $('finishBatch').addEventListener('click',()=>{
