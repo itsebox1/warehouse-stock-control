@@ -20,6 +20,10 @@
   input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: max(16px, 1em) !important; }
 }
 #wscDatesScreen input,#wscDatesAmendScreen input,#wscDatesScreen select,#wscDatesAmendScreen select,#wscDatesScreen textarea,#wscDatesAmendScreen textarea{font-size:16px!important;max-width:100%;}#wscDatesScreen,#wscDatesAmendScreen{width:100%;box-sizing:border-box;}@keyframes wscUnifiedSpin {to {transform:rotate(360deg)}}
+#wscStockMaintenance {margin-bottom:10px}
+#wscStockMaintenance > summary {cursor:pointer;text-align:center;padding:14px 12px;background:#244b72;color:white;border-radius:8px;font-weight:600}
+#wscStockMaintenance > summary:focus-visible {outline:3px solid #edaa26;outline-offset:2px}
+#wscStockMaintenance[open] > .wsc-manager-action {margin-left:14px}
 </style>
   <title>Warehouse Stock Control</title>
   <link rel="stylesheet" href="./wsc-buttons.css?v=1.0.5">
@@ -734,15 +738,18 @@ input[type="reset"]:disabled,
   <section id="wscStockManagerScreen" data-wsc-home-view="stock" aria-labelledby="wscStockManagerHeading" hidden>
     <button data-wsc-back type="button" onclick="wscCloseManager('stock')" style="width:100%;">← Home</button>
     <h2 id="wscStockManagerHeading" tabindex="-1" style="text-align:center;">📦 Stock Manager</h2>
+    <details id="wscStockMaintenance">
+      <summary>Stock Maintenance</summary>
     <div class="wsc-module-header wsc-manager-action" hidden>
       <button id="wscDatesHomeButton" class="wsc-module-main" data-wsc-favourite="dates" data-wsc-area="DATES" type="button" onclick="wscOpenDates()">📅 Check Dates</button>
-    </div>
-    <div class="wsc-module-header wsc-manager-action">
-      <button id="wscHomeReportsButton" class="wsc-module-main" data-wsc-favourite="reports" type="button" onclick="showReportsScreen()">📄 Reports</button>
     </div>
     <div class="wsc-module-header wsc-manager-action" hidden>
       <button id="wscWeeklyBOMButton" class="wsc-module-main" data-wsc-favourite="bom" data-wsc-area="WEEKLY_BOM" type="button" onclick="wscStartWeeklyBOM(this)">🧩 Weekly BOM</button>
     </div>
+    <div class="wsc-module-header wsc-manager-action">
+      <button id="wscHomeReportsButton" class="wsc-module-main" data-wsc-favourite="reports" type="button" onclick="showReportsScreen()">📄 Reports</button>
+    </div>
+    </details>
 
   <div class="wsc-module" data-module="ST"><div class="wsc-module-header">
     <button class="wsc-module-main" data-wsc-favourite="st" data-wsc-area="ST" type="button" onclick="wscModuleMainClick('ST')">📦 ST – Stock Take</button>
@@ -1832,7 +1839,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.3.2";
+const WSC_VERSION = "1.3.3";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
