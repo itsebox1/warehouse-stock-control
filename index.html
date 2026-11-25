@@ -20,10 +20,6 @@
   input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: max(16px, 1em) !important; }
 }
 #wscDatesScreen input,#wscDatesAmendScreen input,#wscDatesScreen select,#wscDatesAmendScreen select,#wscDatesScreen textarea,#wscDatesAmendScreen textarea{font-size:16px!important;max-width:100%;}#wscDatesScreen,#wscDatesAmendScreen{width:100%;box-sizing:border-box;}@keyframes wscUnifiedSpin {to {transform:rotate(360deg)}}
-#wscStockMaintenance {margin-bottom:10px}
-#wscStockMaintenance > summary {cursor:pointer;text-align:center;padding:14px 12px;background:#244b72;color:white;border-radius:8px;font-weight:600}
-#wscStockMaintenance > summary:focus-visible {outline:3px solid #edaa26;outline-offset:2px}
-#wscStockMaintenance[open] > .wsc-manager-action {margin-left:14px}
 </style>
   <title>Warehouse Stock Control</title>
   <link rel="stylesheet" href="./wsc-buttons.css?v=1.0.5">
@@ -664,7 +660,7 @@ input[type="reset"]:disabled,
 
   </div>
   <nav id="wscHomeNavigation" data-wsc-home-view="home" aria-label="Home navigation">
-    <button id="wscStockManagerButton" class="wsc-manager-entry" type="button" onclick="wscOpenManager('stock')">📦 Stock Manager</button>
+    <button id="wscStockManagerButton" class="wsc-manager-entry" type="button" onclick="wscOpenManager('stock')">📦 Stock Management</button>
     <p id="wscStockManagerSummary" role="status" aria-live="polite" hidden style="text-align:center;font-size:12px;margin:0 0 10px;"></p>
     <button id="wscPostButton" class="wsc-manager-entry" type="button" onclick="wscOpenManager('post')" hidden>📮 Post Manager</button>
     <button id="wscOfficeManagerButton" class="wsc-manager-entry" type="button" onclick="wscOpenManager('office')" hidden><span class="wsc-office-icon" aria-hidden="true"></span>Office Manager</button>
@@ -735,11 +731,9 @@ input[type="reset"]:disabled,
       <button id="wscBackOrdersButton" class="wsc-module-main" data-wsc-favourite="back-orders" data-wsc-area="BACK_ORDERS" type="button" onclick="wscOpenBackOrders()">📦 Back Orders</button>
     </div>
   </section>
-  <section id="wscStockManagerScreen" data-wsc-home-view="stock" aria-labelledby="wscStockManagerHeading" hidden>
-    <button data-wsc-back type="button" onclick="wscCloseManager('stock')" style="width:100%;">← Home</button>
-    <h2 id="wscStockManagerHeading" tabindex="-1" style="text-align:center;">📦 Stock Manager</h2>
-    <details id="wscStockMaintenance">
-      <summary>Stock Maintenance</summary>
+  <section id="wscStockToolsScreen" data-wsc-home-view="stock-manager" aria-labelledby="wscStockToolsHeading" hidden>
+    <button data-wsc-back type="button" onclick="wscShowHomeView('stock', 'wscStockToolsButton')">← Stock Management</button>
+    <h2 id="wscStockToolsHeading" tabindex="-1" style="text-align:center;">📦 Stock Manager</h2>
     <div class="wsc-module-header wsc-manager-action" hidden>
       <button id="wscDatesHomeButton" class="wsc-module-main" data-wsc-favourite="dates" data-wsc-area="DATES" type="button" onclick="wscOpenDates()">📅 Check Dates</button>
     </div>
@@ -749,7 +743,11 @@ input[type="reset"]:disabled,
     <div class="wsc-module-header wsc-manager-action">
       <button id="wscHomeReportsButton" class="wsc-module-main" data-wsc-favourite="reports" type="button" onclick="showReportsScreen()">📄 Reports</button>
     </div>
-    </details>
+  </section>
+  <section id="wscStockManagerScreen" data-wsc-home-view="stock" aria-labelledby="wscStockManagerHeading" hidden>
+    <button data-wsc-back type="button" onclick="wscCloseManager('stock')" style="width:100%;">← Home</button>
+    <h2 id="wscStockManagerHeading" tabindex="-1" style="text-align:center;">📦 Stock Management</h2>
+    <button id="wscStockToolsButton" class="wsc-manager-entry" type="button" onclick="wscOpenManager('stock-manager')">📦 Stock Manager</button>
 
   <div class="wsc-module" data-module="ST"><div class="wsc-module-header">
     <button class="wsc-module-main" data-wsc-favourite="st" data-wsc-area="ST" type="button" onclick="wscModuleMainClick('ST')">📦 ST – Stock Take</button>
@@ -1839,7 +1837,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.3.3";
+const WSC_VERSION = "1.3.4";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -5582,13 +5580,14 @@ async function hideITSSplash() {
   
 
 const wscManagerMenus = {
+  'stock-manager': {button:'wscStockToolsButton', heading:'wscStockToolsHeading'},
   stock: {button:'wscStockManagerButton', heading:'wscStockManagerHeading'},
   post: {button:'wscPostButton', heading:'wscPostMenuHeading'},
   office: {button:'wscOfficeManagerButton', heading:'wscOfficeManagerHeading'}
 };
 
 const wscHomePageNames = {
-  home:'Home', stock:'Stock Manager', office:'Office Manager', post:'Post Manager',
+  home:'Home', stock:'Stock Management', 'stock-manager':'Stock Manager', office:'Office Manager', post:'Post Manager',
   postage:'Postage Quotes', shopify:'Shopify Invoices', batch:'Batch Orders', 'back-orders':'Back Orders'
 };
 function wscShowHomeView(view = 'home', focusId) {
