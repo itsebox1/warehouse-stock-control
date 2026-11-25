@@ -160,7 +160,7 @@
           </div>
 
           <div class="wscp-panel wscp-pad">
-            <h2>Products</h2>
+            <h2 class="wscp-details-heading"><span>Products</span><button type="button" id="wscp-products-toggle" class="wscp-details-toggle cursor-interaction" aria-expanded="true" aria-controls="wscp-lines" aria-label="Collapse products"><span aria-hidden="true">▼</span></button></h2>
             <div id="wscp-lines" class="wscp-lines"></div>
             <div class="wscp-product-search">
               <div class="wscp-field wscp-picker">
@@ -178,7 +178,9 @@
           </div>
 
           <div id="wscp-error" class="wscp-error" role="alert" hidden></div>
+          <div id="wscp-save-status" role="status"></div>
           <div class="wscp-footer">
+            <button type="button" id="wscp-save-continue" class="wscp-secondary cursor-interaction">Save and Continue</button>
             <button type="button" id="wscp-cancel" class="wscp-secondary cursor-interaction">Cancel</button>
             <button type="button" id="wscp-save" class="wscp-primary cursor-interaction">Save and Close</button>
           </div>
@@ -2109,14 +2111,14 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
       draft.customer = '';
       draft.quickBooksCustomer = null;
       draft.indexedCustomer = null;
-      dirty = true;
+      markDirty();
       paintCustomer();
     },
     onSelect({customer, row}) {
       draft.customer = wscCustomerLookup ? 'qb:' + customer.id : 'index:' + row;
       draft.quickBooksCustomer = wscCustomerLookup ? customer : null;
       draft.indexedCustomer = wscCustomerLookup ? null : customer;
-      dirty = true;
+      markDirty();
       paintCustomer();
       clearError();
     }
@@ -2151,6 +2153,14 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
     productOptions.hidden = true;
   }
 
+  function setProductsOpen(open) {
+    ui('lines').hidden = !open;
+    const toggle = ui('products-toggle');
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.setAttribute('aria-label', open ? 'Collapse products' : 'Expand products');
+    toggle.firstElementChild.textContent = open ? '▼' : '▶';
+  }
+
   function addProduct(item) {
     if (view !== 'editor' || !draft) return;
     closeProducts();
@@ -2159,11 +2169,12 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
       return;
     }
     draft.lines.push({sku: item.sku, name: item.name, reference: '', backordered: 1, price: '', backorderDate: ''});
-    dirty = true;
+    markDirty();
     productInput.value = '';
     productStatus.textContent = '';
     clearError();
     renderLines();
+    setProductsOpen(true);
     ui('lines').lastElementChild.querySelector('input').focus();
   }
 
@@ -2276,7 +2287,7 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
         input.value = line[key] ?? '';
         input.addEventListener('input', () => {
           line[key] = input.value;
-          dirty = true;
+          markDirty();
           if (key === 'backordered' || key === 'price') updateOrderAmounts();
         });
         wrapper.append(input);
@@ -2284,7 +2295,7 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
       }
       const remove = control('Remove', 'wscp-secondary wscp-remove', () => {
         draft.lines.splice(index, 1);
-        dirty = true;
+        markDirty();
         renderLines();
         (ui('lines').children[index]?.querySelector('input') || ui('find-product')).focus();
       });
@@ -2299,6 +2310,11 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
     });
     ui('lines').replaceChildren(...lines);
     updateOrderAmounts();
+  }
+
+  function markDirty() {
+    dirty = true;
+    ui('save-status').textContent = '';
   }
 
   function clearError() {
@@ -2331,6 +2347,8 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
     ui('customer').value = companyName(draft);
     for (const field of ['currency', 'notes']) ui(field).value = draft[field];
     setOrderDetailsOpen(true);
+    setProductsOpen(true);
+    ui('save-status').textContent = '';
     ui('product').value = '';
     ui('product-status').textContent = '';
     customerPicker.reset({hasCustomer: !!draft.customer});
@@ -2343,13 +2361,15 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
     void loadProducts().catch(() => {});
   }
 
-  async function saveOrder() {
-    const save = ui('save');
+  async function saveOrder(keepOpen = false) {
+    const save = ui(keepOpen ? 'save-continue' : 'save');
+    const otherSave = ui(keepOpen ? 'save' : 'save-continue');
     const form = ui('form');
     const back = ui('list-link');
     if (view !== 'editor' || !draft || save.disabled || customerPicker.isSelecting()) return;
     if (!draft.customer) return showError('Choose a customer from the results.', ui('customer'));
     if (!draft.lines.length) return showError('Add at least one product.', ui('product'));
+    if (ui('lines').querySelector('input:invalid')) setProductsOpen(true);
     if (!form.reportValidity()) return;
     const {number, revision, customer, quickBooksCustomer, indexedCustomer, lines} = draft;
     const savedLines = lines.map(line => ({...line, reference: line.reference.trim(), backordered: Number(line.backordered)}));
@@ -2365,7 +2385,8 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
     const changesSinceLastSave = unconfirmedSave && JSON.stringify(request.order) !== JSON.stringify(order);
     const method = number ? 'PUT' : 'POST';
     clearError();
-    back.disabled = save.disabled = form.inert = true;
+    ui('save-status').textContent = '';
+    back.disabled = otherSave.disabled = save.disabled = form.inert = true;
     save.textContent = 'Saving…';
     try {
       const result = await requestOrders(number, method, request);
@@ -2377,13 +2398,15 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
       }
       unconfirmedSave = undefined;
       orders = [...orders.filter(record => record.number !== saved.number), saved];
-      if (changesSinceLastSave) {
-        // A retry may confirm a previous save while the editor contains newer changes.
+      if (keepOpen || changesSinceLastSave) {
         draft.number = saved.number;
         draft.revision = saved.revision;
         ui('editor-title').textContent = 'Edit ' + orderId(saved.number);
         ui('page-context').textContent = ui('editor-title').textContent;
-        throw new Error('The earlier save was confirmed. Click Save and Close to save your latest changes.');
+        if (changesSinceLastSave) throw new Error('The earlier save was confirmed. Save again to keep your latest changes.');
+        dirty = false;
+        ui('save-status').textContent = orderId(saved.number) + ' saved.';
+        return;
       }
       ui('filter').value = '';
       ui('notice').textContent = orderId(saved.number) + ' saved.';
@@ -2393,12 +2416,12 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
       if (uncertain) unconfirmedSave = request;
       else if (error.status === 409) unconfirmedSave = undefined;
       ui('error').textContent = uncertain
-        ? 'WSC could not confirm the save. Your changes are still here. Click Save and Close to retry.'
+        ? 'WSC could not confirm the save. Your changes are still here. Use either save button to retry.'
         : error.message;
       ui('error').hidden = false;
     } finally {
-      back.disabled = save.disabled = form.inert = false;
-      save.textContent = 'Save and Close';
+      back.disabled = otherSave.disabled = save.disabled = form.inert = false;
+      save.textContent = keepOpen ? 'Save and Continue' : 'Save and Close';
       if (view === 'editor') save.focus();
     }
   }
@@ -2604,10 +2627,12 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
   ui('list-sort-direction').addEventListener('click', () => changeListSort(listSortColumn));
   ui('filter').addEventListener('input', renderList);
   ui('retry').addEventListener('click', loadOrders);
-  ui('save').addEventListener('click', saveOrder);
+  ui('products-toggle').addEventListener('click', () => setProductsOpen(ui('lines').hidden));
+  ui('save-continue').addEventListener('click', () => saveOrder(true));
+  ui('save').addEventListener('click', () => saveOrder());
   ui('form').addEventListener('submit', event => { event.preventDefault(); saveOrder(); });
-  ui('form').addEventListener('input', () => { dirty = true; clearError(); });
-  ui('form').addEventListener('change', () => { dirty = true; });
+  ui('form').addEventListener('input', () => { markDirty(); clearError(); });
+  ui('form').addEventListener('change', () => { markDirty(); });
   ui('currency').addEventListener('change', updateOrderAmounts);
 
   renderReportMenu();
