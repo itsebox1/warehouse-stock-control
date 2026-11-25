@@ -24,6 +24,8 @@
   <title>Warehouse Stock Control</title>
   <link rel="stylesheet" href="./wsc-buttons.css?v=1.0.5">
   <script src="./wsc-buttons.js?v=1.0.5" defer></script>
+  <script src="./wsc-pdf-access.js?v=1" defer></script>
+  <script src="./wsc-pdf-admin.js?v=1" defer></script>
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="theme-color" content="#163e6e">
   <link rel="icon" type="image/png" sizes="192x192" href="wsc-icon-192.png">
@@ -927,6 +929,7 @@ input[type="reset"]:disabled,
     <button id="wscDatesScanButton" type="button" onclick="wscDatesStartScanner()" style="width:100%;margin-top:10px;">📷 Scan QR Code</button>
     <div id="wscDatesQrReader" style="display:none;width:100%;max-width:420px;margin:12px auto;"></div>
     <button id="wscDatesStopScanButton" type="button" onclick="wscDatesStopScanner()" style="display:none;width:100%;">Stop Scanning</button>
+    <button type="button" onclick="wscOpenSavedReportPdf('', this, {requestedPdf:'DATES_WEEKLY'})" style="width:100%;margin-top:10px;">Weekly Check Dates PDF</button>
     <button id="wscDatesAmendButton" type="button" onclick="wscDatesToggleAmendments()" style="display:none;width:100%;margin-top:20px;background:#294766;color:white;">✏️ Amendments (Admin)</button>
     <p id="wscDatesMessage" role="status" aria-live="polite"></p>
     <div id="wscDatesResults"></div>
@@ -965,6 +968,7 @@ input[type="reset"]:disabled,
       <h2>⚙️ Administrator Settings</h2>
       <p id="wscAdminStatus" role="status">Loading settings…</p>
       <div id="wscAdminControls" style="display:none;">
+        <button id="wscPdfAdminOpen" type="button" aria-haspopup="dialog" aria-controls="wscPdfAdminDialog" hidden>PDF</button>
         <details class="wsc-admin-section"><summary>Staff function access</summary>
         <div class="wsc-admin-section-body">
         <label for="wscStaffSelect">Select staff member</label>
@@ -1016,6 +1020,54 @@ input[type="reset"]:disabled,
     .wsc-admin-section > summary {cursor:pointer;font-weight:700;padding:14px 12px;background:#f2f6fb;}
     .wsc-admin-section[open] > summary {border-bottom:1px solid #d8e0e9;}
     .wsc-admin-section-body {padding:12px;}
+  </style>
+  <dialog id="wscPdfAdminDialog" aria-labelledby="wscPdfAdminTitle">
+    <header><h2 id="wscPdfAdminTitle">PDF</h2><button id="wscPdfAdminClose" type="button" autofocus>Close</button></header>
+    <p id="wscPdfAdminStatus" role="status" aria-live="polite"></p>
+    <button id="wscPdfAdminReload" type="button" hidden>Reload PDF settings</button>
+    <div id="wscPdfAdminList"></div>
+    <form id="wscPdfAdminForm" hidden>
+      <fieldset><legend id="wscPdfAdminDocument"></legend>
+        <p id="wscPdfAdminDescription"></p>
+        <label for="wscPdfAdminMode">When the PDF appears</label>
+        <select id="wscPdfAdminMode" required></select>
+        <div id="wscPdfAdminSchedule" hidden>
+          <label for="wscPdfAdminDay">Day of the week</label>
+          <select id="wscPdfAdminDay"></select>
+          <label for="wscPdfAdminTime">Time (UK)</label>
+          <input type="time" id="wscPdfAdminTime" step="60">
+        </div>
+        <div id="wscPdfAdminWindow" hidden>
+          <label for="wscPdfAdminStart">Available from (UK)</label>
+          <input type="time" id="wscPdfAdminStart" step="60">
+          <label for="wscPdfAdminEnd">Available until (UK)</label>
+          <input type="time" id="wscPdfAdminEnd" step="60">
+        </div>
+        <label class="wsc-pdf-suspend"><input id="wscPdfAdminSuspended" type="checkbox"> Suspend this PDF</label>
+      </fieldset>
+      <div class="wsc-pdf-buttons"><button type="submit">Save</button><button id="wscPdfAdminCancel" type="button">Cancel</button></div>
+    </form>
+  </dialog>
+  <style>
+    #wscPdfAdminOpen[hidden],#wscPdfAdminDialog [hidden]{display:none!important}
+    #wscPdfAdminDialog{width:min(94vw,650px);max-height:88vh;box-sizing:border-box;margin:auto;padding:20px;border:1px solid #c8d5df;border-radius:12px;color:#203247;background:white;text-align:left}
+    #wscPdfAdminDialog::backdrop{background:#0f223980}
+    #wscPdfAdminDialog header,#wscPdfAdminDialog .wsc-pdf-row,#wscPdfAdminDialog .wsc-pdf-buttons{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    #wscPdfAdminDialog h2,#wscPdfAdminDialog h3{margin:0;text-align:left}
+    #wscPdfAdminDialog h3{font-size:1.05rem;padding:.55rem .7rem;background:#edf3f8;color:#244b72;border-radius:6px}
+    #wscPdfAdminDialog section{margin:1.2rem 0}
+    #wscPdfAdminDialog button{width:auto;min-height:42px;padding:.45rem .75rem;margin:0}
+    #wscPdfAdminDialog .wsc-pdf-row{padding:.65rem .25rem;border-bottom:1px solid #d7e0e8}
+    #wscPdfAdminDialog .wsc-pdf-row p,#wscPdfAdminDialog #wscPdfAdminDescription{font-size:.93rem;line-height:1.45;margin:.25rem 0;color:#435970}
+    #wscPdfAdminDialog .wsc-pdf-row .wsc-pdf-suspended{color:#844619;font-weight:bold}
+    #wscPdfAdminDialog fieldset{padding:0;border:0;margin:1rem 0}
+    #wscPdfAdminDialog legend{font-weight:bold;font-size:1.1rem;padding:0}
+    #wscPdfAdminDialog form label{display:block;margin:.85rem 0 .35rem;font-weight:600}
+    #wscPdfAdminDialog form select,#wscPdfAdminDialog input[type=time]{width:100%;min-height:42px;border:1px solid #aab8c7;border-radius:6px;padding:.5rem;color:inherit;background:white;box-sizing:border-box}
+    #wscPdfAdminDialog .wsc-pdf-suspend{display:flex;align-items:center;gap:.55rem;padding:.35rem 0}
+    #wscPdfAdminDialog .wsc-pdf-suspend input{width:20px;height:20px;flex:none;margin:0}
+    #wscPdfAdminDialog .wsc-pdf-buttons{justify-content:flex-start}
+    #wscPdfAdminDialog #wscPdfAdminStatus:empty{margin:0}
   </style>
   <!-- DL - Delivery Setup Screen -->
 <div id="deliverySetupScreen" data-wsc-page style="display:none;">
@@ -1837,7 +1889,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.3.4";
+const WSC_VERSION = "1.3.5";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -3315,6 +3367,7 @@ document.getElementById("tradeShowEmailButton").onclick = async function () {
     return;
   }
 
+  if (!await window.wscPdfAllowed('TR_REPORT', 'request')) return;
   const recipient = await window.showWSCInput("Email Trade Show Report", "Email report to:");
 
   if (recipient === null) return;
@@ -3680,10 +3733,14 @@ async function wscPrepareStockTake(button) {
   const oldText = button ? button.textContent : '';
   if (button) button.disabled = true;
   try {
-    const generatePdf = await window.showWSCConfirm(
+    const [zero, stocked] = await Promise.all(['ST_PRE_ZERO','ST_PRE_STOCK'].map(id =>
+      window.wscPdfAllowed(id, 'request', {silent:true})));
+    const groups = [zero && 'zero-quantity products', stocked && 'products with quantities'].filter(Boolean);
+    const generatePdf = groups.length && await window.showWSCConfirm(
       'Preliminary Stock Reports',
-      'Would you like to generate and email the preliminary stock PDFs?<br><br>This sends two reports: zero-quantity products and products with quantities, to tmerry@sensafe.com and nmerry@sensafe.com.<br><br>Choose No to continue without generating or emailing reports.',
-      {confirmLabel:'Yes, generate and email PDFs', cancelLabel:'No, continue without PDFs'}
+      'Email the preliminary stock PDF' + (groups.length > 1 ? 's' : '') + ' for ' + groups.join(' and ') +
+        ' to tmerry@sensafe.com and nmerry@sensafe.com?',
+      {confirmLabel:'Generate and email', cancelLabel:'Continue without emailing'}
     );
     if (!generatePdf) {
       wscShowBOMChoice(button);
@@ -3774,24 +3831,20 @@ function wscShowBOMChoice(button) {
       if(missing){
         const warning=document.createElement('p');
         warning.style.cssText='font-weight:600;color:#9a4514';
-        warning.textContent='Warning: '+missing+' SKU(s) missing from QuickBooks Production. Calculations are incomplete; see PDF.';
+        warning.textContent=missing+' SKU(s) missing from QuickBooks Production. Check the incomplete calculations before committing.';
         panel.appendChild(warning);
       }
       const download=document.createElement('button');download.type='button';
-      download.textContent='Download PDF';
+      download.textContent=result.pdfSuppressed?'Request PDF':'Download PDF';
+      if(result.pdfSuppressed && result.pdfMessage){
+        const availability=document.createElement('p');
+        availability.textContent=result.pdfMessage;
+        panel.appendChild(availability);
+      }
       download.style.cssText='display:block;width:100%;padding:13px;margin:12px 0;background:#24578b;color:#fff;border:0;border-radius:7px;font-weight:700;cursor:pointer';
       const close=document.createElement('button');close.type='button';close.textContent='Close';
       close.style.cssText='display:block;width:100%;padding:12px;background:#eee;color:#222;border:0;border-radius:7px;cursor:pointer';
-      download.onclick=()=>{
-        try{
-          const bytes=atob(result.pdfBase64);const array=new Uint8Array(bytes.length);
-          for(let i=0;i<bytes.length;i++)array[i]=bytes.charCodeAt(i);
-          const url=URL.createObjectURL(new Blob([array],{type:'application/pdf'}));
-          const link=document.createElement('a');link.href=url;link.download=result.filename||'WSC_BOM_Report_Only.pdf';
-          document.body.appendChild(link);link.click();link.remove();
-          setTimeout(()=>URL.revokeObjectURL(url),60000);
-        }catch(downloadError){window.showWSCMessage('BOM PDF',String(downloadError.message||downloadError));}
-      };
+      download.onclick=()=>wscOpenSavedReportPdf(result.reportNumber, download, {download:true});
       close.textContent='Continue to Stock Take';
       close.onclick=()=>{done.remove();wscShowBOMChoice(button);};
       panel.append(download,close);done.appendChild(panel);document.body.appendChild(done);
@@ -4552,7 +4605,7 @@ function reviewDeliveryInvoiceIssues(products) {
   return new Promise(resolve=>{
     const dialog=document.createElement('dialog');dialog.style.cssText='width:min(720px,90vw);max-height:85vh;overflow:auto;border:0;border-radius:12px;padding:24px';
     const title=document.createElement('h2');title.textContent='Review invoice details';dialog.append(title);
-    const note=document.createElement('p');note.textContent='Check the details below. Lot and expiry may be left blank. Missing details will be emailed to Terry as a PDF after the delivery is saved.';dialog.append(note);
+    const note=document.createElement('p');note.textContent='Check the details below. Lot and expiry may be left blank. WSC records any missing details when you save the delivery.';dialog.append(note);
     const fields=queried.map(p=>{
       const box=document.createElement('fieldset');box.style.marginBottom='16px';
       const heading=document.createElement('legend');heading.textContent=p.sku+' — '+p.productName;box.append(heading);
@@ -5162,6 +5215,11 @@ emailPdfButton.onclick = () => {
 };
       
 item.append(heading, details, viewPdfButton, emailPdfButton, wscMakePrintPdfButton(delivery.reportNumber));
+const missingPdf = document.createElement('button');
+missingPdf.type = 'button';
+missingPdf.textContent = 'Missing lot / expiry details PDF';
+missingPdf.onclick = () => wscOpenSavedReportPdf(delivery.reportNumber, missingPdf, {requestedPdf:'DL_MISSING'});
+item.appendChild(missingPdf);
 results.appendChild(item);
     });
 
@@ -6320,11 +6378,10 @@ if (!result || result.verificationRequired) {
 
     
     document.getElementById("wscFinishStockTakeOverlay")?.remove();
-    if (result && result.completionEmailState && result.completionEmailState !== 'SENT') {
+    const completionEmailState=String(result?.completionEmailState||'').toUpperCase();
+    if (completionEmailState && !['SENT','DISABLED','SKIPPED','SUPPRESSED','OFF'].includes(completionEmailState)) {
       await new Promise(resolve => window.showWSCMessage('Stock Take finished — email needs attention',
-        'The count is saved, but the completion PDF email to nmerry@sensafe.com was not confirmed. ' + (result.completionEmailMessage || '') + ' Use Email PDF on the report after checking whether it arrived.', resolve));
-    } else if (!result || !result.completionEmailState) {
-      await new Promise(resolve => window.showWSCMessage('Check completion email', 'The Stock Take is closed, but the completion email status could not be confirmed. Check Nicola’s inbox before sending the PDF manually.', resolve));
+        'The count is saved. ' + (result.completionEmailMessage || 'Check the completion email status before sending the PDF again.'), resolve));
     }
     localStorage.removeItem('wscBOMChoice_' + stockTake.reportNumber);
 
@@ -6920,13 +6977,6 @@ function wscReportsUpdateFields() {
   document.getElementById('wscReportTextLabel').textContent=selected?selected.textContent:'Search';
   document.getElementById('wscReportInfo').textContent='';
 }
-function wscDownloadBOMPdf_(result) {
-  const bytes=atob(result.pdfBase64), array=new Uint8Array(bytes.length);
-  for(let i=0;i<bytes.length;i++)array[i]=bytes.charCodeAt(i);
-  const url=URL.createObjectURL(new Blob([array],{type:'application/pdf'}));
-  const link=document.createElement('a');link.href=url;link.download=result.filename||'WSC_BOM_Report.pdf';
-  document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
-}
 function wscUnifiedBusy(active){
   const loading=document.getElementById('wscUnifiedLoading');if(loading)loading.style.display=active?'block':'none';
   const button=document.getElementById('wscReportRunButton');if(button)button.disabled=!!active;
@@ -6938,47 +6988,54 @@ async function wscBOMRequest(payload){
   const response=await fetch('https://warehouse-stock-reports.tmerry.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,idToken})});
   const data=await response.json();if(!response.ok||!data.success)throw new Error(data.error||'BOM report unavailable');return data;
 }
-function wscOpenBOMPdf(result,print){
-  const bytes=atob(result.pdfBase64),array=new Uint8Array(bytes.length);
-  for(let i=0;i<bytes.length;i++)array[i]=bytes.charCodeAt(i);
-  const url=URL.createObjectURL(new Blob([array],{type:'application/pdf'}));
-  const win=window.open(url,'_blank');
-  if(!win){wscDownloadBOMPdf_(result);return;}
-  if(print)win.addEventListener('load',()=>{try{win.print();}catch(e){}},{once:true});
-  setTimeout(()=>URL.revokeObjectURL(url),120000);
+function wscPdfStaffEmail() {
+  return window.wscHasUnlockedSession?.() ? String(window.getCurrentStaffEmail?.()||'').trim().toLowerCase() : '';
 }
-// Every report Print action opens the actual server-generated PDF used for email.
-async function wscPrintReportPdf(reportNumber,button){
+function wscPrintReportPdf(reportNumber,button) {
+  return wscOpenSavedReportPdf(reportNumber,button,{print:true});
+}
+async function wscOpenSavedReportPdf(reportNumber,button,{action='getReportPdf',print=false,download=false,requestedPdf=''}={}) {
   const number=String(reportNumber||'').trim().toUpperCase();
-  if(!/^(ST|SC|TR|DL|BOM)-\d{6}$/.test(number)){
-    window.showWSCMessage('Print PDF','Open a saved report before printing.');return;
-  }
+  const match=/^(ST|SC|TR|DL|BOM)-\d{6}$/.exec(number);
+  const weeklyDates=requestedPdf==='DATES_WEEKLY';
+  if(!weeklyDates && (!match || (requestedPdf==='DL_MISSING' && match[1]!=='DL'))){window.showWSCMessage('Report PDF','Open a saved report first.');return;}
+  const title=weeklyDates?'Weekly Check Dates':number;
   if(button?.dataset.pdfBusy==='true')return;
-  // Reserve the tab during the click, before awaiting the authenticated PDF request.
-  const viewer=window.open('about:blank','_blank');
-  if(!viewer){window.showWSCMessage('Print PDF','Allow pop-ups for WSC, then press Print PDF again.');return;}
-  viewer.document.title=number+' — PDF';
-  viewer.document.body.textContent='Preparing '+number+' PDF… When it opens, use the PDF viewer’s Print icon if the print dialog does not open automatically.';
-  const oldLabel=button?.textContent;
+  const staff=wscPdfStaffEmail();
+  // Reserve the browser tab while the original click still has user activation.
+  const viewer=download ? null : window.open('about:blank','_blank');
+  const downloadInstead=download || (!viewer && action==='openBOMReport' && !print);
+  if(!downloadInstead && !viewer){window.showWSCMessage('Report PDF','Allow pop-ups for WSC and try again.');return;}
+  if(viewer){
+    viewer.opener=null;
+    viewer.document.title=title+' — PDF';
+    viewer.document.body.textContent='Preparing '+title+' PDF…';
+  }
+  const previous=button?.textContent;
   if(button){button.dataset.pdfBusy='true';button.disabled=true;button.textContent='Preparing PDF…';}
-  try{
-    const result=await wscBOMRequest({action:'getReportPdf',reportNumber:number});
-    if(typeof result.pdfBase64!=='string')throw new Error('The server did not return a PDF.');
-    const bytes=atob(result.pdfBase64);
-    if(!bytes.startsWith('%PDF-'))throw new Error('The returned report is not a valid PDF.');
-    if(viewer.closed)return;
-    const array=Uint8Array.from(bytes,c=>c.charCodeAt(0));
-    const url=URL.createObjectURL(new Blob([array],{type:'application/pdf'}));
-    viewer.addEventListener('load',()=>{
-      try{viewer.focus();viewer.print();}catch(e){/* The native PDF viewer still provides Print. */}
-    },{once:true});
-    viewer.location.replace(url);
+  try {
+    const id=requestedPdf || (action==='getFinalPdf'?'ST_FINAL':match[1]+'_REPORT');
+    if(!await window.wscPdfAllowed(id,'request') || !staff || wscPdfStaffEmail()!==staff){viewer?.close();return;}
+    if(viewer?.closed)return;
+    const result=requestedPdf ? await window.wscPdfFile(id,number) : await wscBOMRequest({action,reportNumber:number});
+    if(wscPdfStaffEmail()!==staff){viewer?.close();return;}
+    const bytes=atob(result.pdfBase64||'');
+    if(!bytes.startsWith('%PDF-'))throw new Error('WSC did not return a valid PDF.');
+    if(viewer?.closed)return;
+    const url=URL.createObjectURL(new Blob([Uint8Array.from(bytes,c=>c.charCodeAt(0))],{type:'application/pdf'}));
+    if(downloadInstead){
+      const link=document.createElement('a');link.href=url;link.download=result.filename||number+'.pdf';
+      document.body.append(link);link.click();link.remove();
+    }else{
+      if(print)viewer.addEventListener('load',()=>{try{viewer.focus();viewer.print();}catch(_){}},{once:true});
+      viewer.location.replace(url);
+    }
     setTimeout(()=>URL.revokeObjectURL(url),600000);
-  }catch(e){
-    if(!viewer.closed)viewer.close();
-    window.showWSCMessage('Print PDF',String(e.message||e));
+  }catch(error){
+    viewer?.close();
+    window.showWSCMessage('Report PDF',escapeHtml(error.message||error));
   }finally{
-    if(button){button.disabled=false;delete button.dataset.pdfBusy;button.textContent=oldLabel;}
+    if(button){button.disabled=false;delete button.dataset.pdfBusy;button.textContent=previous;}
   }
 }
 function wscMakePrintPdfButton(number){
@@ -6994,7 +7051,7 @@ function wscAddPrintButtons(container){
   });
 }
 async function wscEmailBOMPdf(number,button){
-  if(button.disabled)return;
+  if(button.disabled || !await window.wscPdfAllowed('BOM_REPORT','request'))return;
   const recipient=await window.showWSCInput('Email PDF Report','Email '+number+' to:',window.getCurrentStaffEmail?.()||'');
   if(recipient===null)return;
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient.trim())){window.showWSCMessage('Email PDF','Enter a valid email address.');return;}
@@ -7035,7 +7092,8 @@ function wscRenderExpiryReport(report, target) {
   const print = make('button', 'Print report');
   print.type = 'button';
   print.className = 'wsc-expiry-print';
-  print.onclick = () => {
+  print.onclick = async () => {
+    if (!await window.wscPdfAllowed('DATES_EXPIRY', 'request') || !article.isConnected) return;
     document.body.classList.add('wsc-expiry-printing');
     window.print();
   };
@@ -7126,8 +7184,8 @@ async function wscRunUnifiedReport() {
         const heading=document.createElement('strong');heading.textContent=item.reportNumber+' — '+(item.createdAt||'');card.appendChild(heading);
         const note=document.createElement('p');note.textContent='QuickBooks: '+(item.qbStatus||'Not Committed');card.appendChild(note);
         const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
-        const open=async print=>{wscUnifiedBusy(true);try{const data=await wscBOMRequest({action:'openBOMReport',reportNumber:item.reportNumber});wscOpenBOMPdf(data,print);}catch(e){window.showWSCMessage('BOM Reports',String(e.message||e));}finally{wscUnifiedBusy(false);}};
-        const viewPdf=document.createElement('button');viewPdf.type='button';viewPdf.textContent='View PDF';viewPdf.style.width='auto';viewPdf.onclick=()=>open(false);
+        const viewPdf=document.createElement('button');viewPdf.type='button';viewPdf.textContent='View PDF';viewPdf.style.width='auto';
+        viewPdf.onclick=()=>wscOpenSavedReportPdf(item.reportNumber,viewPdf,{action:'openBOMReport'});
         const emailPdf=document.createElement('button');emailPdf.type='button';emailPdf.textContent='✉ Email PDF';emailPdf.style.width='auto';emailPdf.onclick=()=>wscEmailBOMPdf(item.reportNumber,emailPdf);
         actions.append(viewPdf,emailPdf,wscMakePrintPdfButton(item.reportNumber));
         const previewButton=document.createElement('button');previewButton.type='button';previewButton.textContent='Review QB Adjustment';previewButton.style.width='auto';
@@ -7673,8 +7731,6 @@ document.getElementById("reportOptionsScreen").insertAdjacentHTML(
   const isCancelled = String(stockTake?.status || "").trim().toLowerCase() === "cancelled";
   const cancellationReason = String(stockTake?.cancellationReason || "No cancellation reason recorded.");
   const committedToQB = stockTake?.committedToQB === true;
- const emailFailed =
-  String(stockTake?.emailStatus || "").trim().toLowerCase() === "failed";
     
   const inProgressStockTake = selectedReportType === "ST" && openStockTakes
   ? openStockTakes.stockTakes?.find(item => item.reportNumber === reportNumber)
@@ -7749,7 +7805,7 @@ const isInProgress = !!inProgressStockTake;
   >${committedToQB ? 'Committed to QB' : 'QB Submissions Disabled'}</button>
   `}
 `}
-${committedToQB && emailFailed ? `
+${committedToQB ? `
   <button
     type="button"
     onclick="event.preventDefault(); event.stopPropagation(); openFinalPdf('${reportNumber}');"
@@ -8185,12 +8241,12 @@ async function wscSubmitStockQBPartial(number) {
     wscBOMLoadingEnd();
     const isBOM=number.startsWith('BOM-');
     const lines=isBOM?'\n\nVerified adjustments to send:\n'+(checked.verifiedItems||[]).filter(i=>i.qtyDiff!==0).map(i=>i.sku+': '+i.previous+' → '+i.target+' ('+(i.qtyDiff>0?'+':'')+i.qtyDiff+')').join('\n'):'';
-    const warning=isBOM?'\n\nThese adjustments are applied independently. Related finished products and components may be out of balance until manually reconciled. Review the excluded and related products in QuickBooks. A report will be available to download.':'\n\nTheir details will be emailed to nmerry@sensafe.com for manual review.';
+    const warning=isBOM?'\n\nThese adjustments are applied independently. Related finished products and components may be out of balance until manually reconciled. Review the excluded and related products in QuickBooks. The outstanding issues remain available in WSC.':'\n\nOpen Outstanding issues in WSC to review the unresolved products after the commit.';
     const message='Commit '+number+' and report?\n\n'+checked.adjustmentLineCount+' verified product adjustment(s) will be sent to QuickBooks. '+checked.issues.length+' unresolved product(s) will be LEFT UNCHANGED:\n'+
       checked.issues.map(i=>i.sku).join(', ')+lines+warning+'\n\nThis report cannot be committed again.';
     const safeMessage=message.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])).replace(/\n/g,'<br>');
     if(!await window.showWSCConfirm('Commit and report',safeMessage))return;
-    wscBOMLoading('Committing verified products and preparing the issue report…');
+    wscBOMLoading('Committing verified products and recording outstanding issues…');
     sent=true;wscLiveQBUncertain(number,true);
     result=await wscLiveQBRequest(wscStockQBAction(number),number,{operation:'commitAndReport',partialToken:checked.partialToken,confirmation:'COMMIT AND REPORT '+number});
     if(!result.submitted)throw new Error('QuickBooks outcome has not been confirmed.');
@@ -8239,14 +8295,17 @@ async function wscOpenStockQBReview(number) {
       const p=document.createElement('p');p.textContent=issue.sku+' — Saved QB: '+issue.saved+'; '+(number.startsWith('BOM-')?'calculated target':'saved actual')+': '+issue.actual+'; Live QB at check: '+(issue.live??'Unavailable')+'. '+issue.message;body.appendChild(p);
     }
     if(data.manualReviewResolved)status.textContent='Review resolved by '+data.reviewResolvedBy+' on '+new Date(data.reviewResolvedAt).toLocaleString()+'. Original excluded items are retained below. Email status: '+data.reportEmailState+'.';
-    send.textContent=data.reportEmailState==='UNSENT'?'Send issue report':'Resend issue report';
+    send.textContent=['UNSENT','DISABLED','SUPPRESSED','SKIPPED'].includes(data.reportEmailState)?'Send issue report':'Resend issue report';
     wscPaintLiveQBReport(number,data);
   };
   download.onclick=async()=>{
     if(busy||!result?.submitted)return;
+    const staff=wscPdfStaffEmail();
     setBusy(true,'Generating issue report PDF…');
     try {
+      if(!await window.wscPdfAllowed('QB_ISSUES','request') || !staff || wscPdfStaffEmail()!==staff)return;
       const report=await wscLiveQBRequest(wscStockQBAction(number),number,{operation:'viewIssueReport',includePdf:true});
+      if(!dialog.open || wscPdfStaffEmail()!==staff)return;
       if(typeof report.pdfBase64!=='string'||!report.pdfBase64)throw new Error('PDF is unavailable. Check that the latest Code.gs is deployed.');
       const bytes=atob(report.pdfBase64),array=new Uint8Array(bytes.length);
       for(let i=0;i<bytes.length;i++)array[i]=bytes.charCodeAt(i);
@@ -8259,7 +8318,11 @@ async function wscOpenStockQBReview(number) {
   };
   send.onclick=async()=>{
     if(busy||!result)return;
-    const resend=result.reportEmailState!=='UNSENT';
+    setBusy(true,'Checking the PDF setting…');
+    const allowed=await window.wscPdfAllowed('QB_ISSUES','request');
+    setBusy(false);
+    if(!allowed||!dialog.open)return;
+    const resend=!['UNSENT','DISABLED','SUPPRESSED','SKIPPED'].includes(result.reportEmailState);
     if(resend&&!window.confirm('Resend the issue report to nmerry@sensafe.com? The earlier email may already have arrived. This will not send another stock adjustment.'))return;
     setBusy(true,resend?'Resending issue report…':'Sending issue report…');
     try{render(await wscLiveQBRequest(wscStockQBAction(number),number,{operation:'sendIssueReport',allowResend:resend}));}
@@ -8296,6 +8359,7 @@ async function wscConfirmStockQBReviewResolved(number) {
 // End shared Live QuickBooks UI.
 
 function wscPaintPermissions(permissions) {
+  window.wscPdfAdminRefreshAccess?.();
   window.wscPaintMailbox?.();
   const cog = document.getElementById("wscAdminCog");
   const areas = permissions?.functions || {};
@@ -8385,7 +8449,7 @@ async function wscRefreshPermissions({preserveOnError = false} = {}) {
     if (wscPermissionRequest === request) wscPermissionRequest = null;
   }
 }
-function wscCloseAdmin() {document.getElementById("wscAdminPanel").style.display="none";}
+function wscCloseAdmin() {window.wscPdfAdminDismiss?.();document.getElementById("wscAdminPanel").style.display="none";}
 async function wscOpenAdmin() {
   const panel=document.getElementById("wscAdminPanel"),status=document.getElementById("wscAdminStatus");
   panel.style.display="block";
@@ -8413,6 +8477,7 @@ async function wscOpenAdmin() {
     document.getElementById("wscResetStaffButton").disabled=!resetSelect.options.length;
     document.getElementById("wscResetStaffStatus").textContent="";
     wscRenderAdminStaff();wscRenderAdminQB();
+    window.wscPdfAdminRefreshAccess?.();
     document.getElementById("wscAdminControls").style.display="block";
     status.textContent="Settings shared across devices";
   }catch(e){status.textContent=e.message;}
@@ -8772,6 +8837,7 @@ function wscResumeAfterIdlePIN() {
 }
 function wscLockForInactivity() {
   if(wscIdleDialog || !auth.currentUser || !sessionStorage.getItem(PIN_SESSION_KEY))return;
+  window.wscPdfAdminDismiss?.();
   window.wscCloseQuickCheck?.();
   const refreshAllowed=wscIdleSafeToRefresh();
   window.wscCloseMailbox?.();
@@ -8850,6 +8916,8 @@ window.addEventListener('focus',()=>wscIdleActivity());
 }); 
 
   window.emailStockReport = async function emailStockReport(reportNumber) {
+  const match = /^(ST|SC)-\d{6}$/.exec(String(reportNumber||'').trim().toUpperCase());
+  if (!match || !await window.wscPdfAllowed(match[1] + '_REPORT', 'request')) return;
   const email = await window.showWSCInput("Email PDF Report", "Email PDF report " + reportNumber + " to:", "tmerry@sensafe.com");
 
   if (email === null) return;
@@ -8912,63 +8980,11 @@ window.showWSCMessage(
   }
 };
   
-window.openFinalPdf = async function(reportNumber) {
-  try {
-    const user = auth.currentUser;
-
-    if (!user) {
-      throw new Error("Please sign in first.");
-    }
-
-    const idToken = await window.getCurrentStaffToken();
-
-    window.showWSCMessage(
-      "Generating Final PDF",
-      "Please wait while your QuickBooks confirmation is prepared."
-    );
-
-    const response = await fetch("https://warehouse-stock-reports.tmerry.workers.dev", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        action: "getFinalPdf",
-        reportNumber: reportNumber,
-        idToken: idToken
-      })
-    });
-
-    const result = await response.json();
-
-    if (!response.ok || !result.success) {
-      throw new Error(result.error || "Unable to generate Final PDF.");
-    }
-
-    const binary = atob(result.pdfBase64);
-    const bytes = new Uint8Array(binary.length);
-
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-
-    const pdfBlob = new Blob([bytes], {
-      type: "application/pdf"
-    });
-
-    const pdfUrl = URL.createObjectURL(pdfBlob);
-    window.open(pdfUrl, "_blank");
-
-  } catch (error) {
-    window.showWSCMessage(
-      "Final PDF Failed",
-      error.message
-    );
-  }
-};
+window.openFinalPdf = number => wscOpenSavedReportPdf(number,null,{action:'getFinalPdf'});
 
 // DL - Email finished Delivery PDF
 window.emailDeliveryPdf = async function(reportNumber) {
+  if(!await window.wscPdfAllowed('DL_REPORT','request'))return;
   const recipient = await window.showWSCInput("Email Delivery PDF", "Enter the email address for " + reportNumber + ":");
 
   if (recipient === null) return;
@@ -9027,57 +9043,8 @@ window.emailDeliveryPdf = async function(reportNumber) {
 };
   
 // DL - View finished Delivery PDF
-window.openDeliveryPdf = async function(reportNumber) {
-  try {
-    const idToken = await window.getCurrentStaffToken();
+window.openDeliveryPdf = number => wscOpenSavedReportPdf(number,null,{action:'getDeliveryPdf'});
 
-    if (!idToken) {
-      throw new Error("Please sign in first.");
-    }
-
-    const response = await fetch(
-      "https://warehouse-stock-reports.tmerry.workers.dev",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          action: "getDeliveryPdf",
-          reportNumber: reportNumber,
-          idToken: idToken
-        })
-      }
-    );
-
-    const result = await response.json();
-
-    if (!response.ok || !result.success) {
-      throw new Error(result.error || "Unable to generate Delivery PDF.");
-    }
-
-    const binary = atob(result.pdfBase64);
-    const bytes = new Uint8Array(binary.length);
-
-    for (let i = 0; i < binary.length; i++) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-
-    const pdfBlob = new Blob([bytes], {
-      type: "application/pdf"
-    });
-
-    const pdfUrl = URL.createObjectURL(pdfBlob);
-    window.open(pdfUrl, "_blank");
-
-  } catch (error) {
-    window.showWSCMessage(
-      "Delivery PDF Failed",
-      error.message || "Please try again."
-    );
-  }
-};
-  
 window.confirmQuickBooksCommit = function(reportNumber) {
   return wscSubmitLiveQB(reportNumber, document.getElementById('qb-'+reportNumber));
 };
@@ -10993,7 +10960,9 @@ function makePrint(kind){const customer=kind==='customer',table=$('printTable');
 let quoteStep=1;
 function setQuoteStep(step,focus=true){quoteStep=Math.max(1,Math.min(5,step));document.querySelectorAll('#wscPostageScreen [data-wsc-quote-step]').forEach(el=>{el.hidden=Number(el.dataset.wscQuoteStep)!==quoteStep;});$('stepBack').hidden=quoteStep===1;$('stepNext').hidden=quoteStep===5;$('stepStatus').textContent='Step '+quoteStep+' of 5'+(quoteStep===5?' — Quote summary':'');if(quoteStep===5)updateQuoteCurrency();window.scrollTo(0,0);if(focus){const heading=document.querySelector('#wscPostageScreen [data-wsc-quote-step="'+quoteStep+'"] h2');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}}}
 function closePdfDialog(returnFocus=true){const dialog=$('pdfDialog');if(dialog.open){if(typeof dialog.close==='function')dialog.close();else dialog.removeAttribute('open');}if(returnFocus)$('printQuote').focus({preventScroll:true});}
-function printSelectedQuote(kind){update();if(!currentQuote){closePdfDialog();$('actionMessage').textContent='Get a current price before printing.';return;}if(kind==='customer'&&!currentQuote.address){closePdfDialog(false);$('addressMessage').textContent='Please enter the destination address for the customer quote.';$('addressMessage').hidden=false;setQuoteStep(3,false);$('destinationAddress').focus({preventScroll:true});return;}makePrint(kind);closePdfDialog(false);document.body.classList.add('wsc-postage-printing');try{window.print();}catch(error){document.body.classList.remove('wsc-postage-printing');throw error;}}
+async function printSelectedQuote(kind){
+ if(!await window.wscPdfAllowed(kind==='customer'?'POSTAGE_CUSTOMER':'POSTAGE_INTERNAL','request')||!$('pdfDialog').open)return;
+ update();if(!currentQuote){closePdfDialog();$('actionMessage').textContent='Get a current price before printing.';return;}if(kind==='customer'&&!currentQuote.address){closePdfDialog(false);$('addressMessage').textContent='Please enter the destination address for the customer quote.';$('addressMessage').hidden=false;setQuoteStep(3,false);$('destinationAddress').focus({preventScroll:true});return;}makePrint(kind);closePdfDialog(false);document.body.classList.add('wsc-postage-printing');try{window.print();}catch(error){document.body.classList.remove('wsc-postage-printing');throw error;}}
 $('stepBack').addEventListener('click',()=>setQuoteStep(quoteStep-1));$('stepNext').addEventListener('click',()=>{if(quoteStep===1)suggestPackaging();setQuoteStep(quoteStep+1);});
 $('autoBox').addEventListener('click',()=>suggestPackaging(true));
 $('destinationAddress').addEventListener('input',()=>{$('addressMessage').hidden=true;});
@@ -11103,7 +11072,7 @@ window.wscOpenPostageQuotes=async()=>{
   function stopTimer(){if(timer!==null){clearInterval(timer);timer=null;}}
   function setBusy(value,label){busy=value;for(const name of ['Search','Find','SupplyDate','Recipient','Preview'])id(name).disabled=value;id('Send').disabled=value||!previewKey||mailUncertain;if(value)wscBOMLoading(label||'Processing…');else wscBOMLoadingEnd();}
   const currentKey=()=>selected?[selected.id,selected.updatedAt,selected.issueDate,id('SupplyDate').value].join('|'):'';
-  function current(seq,staff){return serial===seq && !screen().hidden && String(window.getCurrentStaffEmail?.()||'').toLowerCase()===staff;}
+  function current(seq,staff){return serial===seq && !screen().hidden && !!staff && wscPdfStaffEmail()===staff;}
   window.wscClearShopifyInvoices=()=>{stopTimer();clear();};
   window.wscCloseShopifyInvoices=()=>wscCloseManager('post');
   window.wscOpenShopifyInvoices=async()=>{
@@ -11142,9 +11111,22 @@ window.wscOpenPostageQuotes=async()=>{
     if(busy||!selected)return;if(!/^\d{4}-\d{2}-\d{2}$/.test(id('SupplyDate').value)){id('Message').textContent='Enter the date of supply.';return;}
     clearPdf();id('Message').textContent='';const seq=serial,staff=String(window.getCurrentStaffEmail?.()||'').toLowerCase(),order=selected,date=id('SupplyDate').value;setBusy(true,'Preparing invoice PDF…');
     try{
+      if(!await window.wscPdfAllowed('SHOPIFY_INVOICE','request')||!current(seq,staff))return;
       const result=await wscAdminRequest('getShopifyInvoicePdf',{orderId:order.id,expectedUpdatedAt:order.updatedAt,supplyDate:date,issueDate:order.issueDate});if(!current(seq,staff))return;
       if(!result.pdfBase64)throw new Error('The PDF could not be prepared.');const raw=atob(result.pdfBase64),bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);
-      pdfUrl=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));const link=document.createElement('a');link.href=pdfUrl;link.target='_blank';link.rel='noopener';link.download=result.filename||'ITS_Europe_Invoice.pdf';link.textContent='Open / download invoice PDF';id('PdfLink').appendChild(link);
+      pdfUrl=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+      const readyUrl=pdfUrl, button=document.createElement('button');
+      button.type='button';button.textContent='Open / download invoice PDF';
+      button.onclick=async()=>{
+        if(button.disabled)return;
+        button.disabled=true;
+        try{
+          if(!await window.wscPdfAllowed('SHOPIFY_INVOICE','request')||pdfUrl!==readyUrl||!current(seq,staff))return;
+          const link=document.createElement('a');link.href=readyUrl;link.target='_blank';link.rel='noopener';link.download=result.filename||'ITS_Europe_Invoice.pdf';
+          document.body.append(link);link.click();link.remove();
+        }finally{button.disabled=false;}
+      };
+      id('PdfLink').append(button);
       previewKey=currentKey();id('Message').textContent='Review the PDF and recipient before emailing.';
     }catch(error){if(current(seq,staff))id('Message').textContent=String(error.message||error);}finally{setBusy(false);}
   });
@@ -11154,6 +11136,7 @@ window.wscOpenPostageQuotes=async()=>{
     const seq=serial,staff=String(window.getCurrentStaffEmail?.()||'').toLowerCase(),order=selected,date=id('SupplyDate').value,confirmedPreview=previewKey;
     let confirmed=false;confirming=true;
     try{
+      if(!await window.wscPdfAllowed('SHOPIFY_INVOICE','request')||!current(seq,staff))return;
       confirmed=await window.showWSCConfirm('Email Invoice','Email invoice <strong>'+escapeHtml(order.name)+'</strong> to <strong>'+escapeHtml(recipient)+'</strong>?',{confirmLabel:'Send invoice',cancelLabel:'Cancel'});
     }catch(error){if(current(seq,staff))id('Message').textContent='Unable to show confirmation. Please try again.';return;}finally{confirming=false;}
     if(!confirmed)return;
@@ -11273,7 +11256,7 @@ window.wscOpenPostageQuotes=async()=>{
    if(!cachedPermission)await wscRefreshPermissions();
    if(wscPermissions?.functions?.BATCH_ORDERS!==true)throw new Error('Batch Orders access is disabled for this account.');
    const f=frame();if(!f)throw new Error('Batch Orders is unavailable.');
-   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v=20261124-batch-carton-guide');batchUser=user;}
+   if(batchUser!==user||!f.getAttribute('src')){f.setAttribute('src','./WSC_Batch_Order_Review_Preview.html?v='+encodeURIComponent(WSC_VERSION));batchUser=user;}
    wscShowHomeView('batch', 'wscBatchOrderHome');
    tidyBatchNavigation();
    if(cachedPermission)void wscRefreshPermissions();

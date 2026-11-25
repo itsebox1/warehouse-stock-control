@@ -110,6 +110,7 @@
           <h1 id="wscp-report-title" tabindex="-1"></h1>
           <button type="button" id="wscp-report-print" class="wscp-secondary wscp-print cursor-interaction">Print as PDF</button>
         </div>
+        <p id="wscp-report-print-status" role="status" hidden></p>
         <div class="wscp-filters wscp-report-filters">
           <label class="wscp-field">Search column <select id="wscp-report-search-column"></select></label>
           <label class="wscp-field">Search report <input type="search" id="wscp-report-search" autocomplete="off"></label>
@@ -195,7 +196,7 @@
         <p id="wscp-email-status" role="status"></p>
         <div class="wscp-footer">
           <button type="button" id="wscp-email-close" class="wscp-secondary cursor-interaction">Close</button>
-          <a id="wscp-email-download" class="wscp-download" download>Download PDF</a>
+          <button type="button" id="wscp-email-download" class="wscp-secondary cursor-interaction">Download PDF</button>
           <button type="button" id="wscp-email-send" class="wscp-primary cursor-interaction">Send with PDF</button>
           <a id="wscp-email-wsc" class="wscp-download" href="https://itsebox1.github.io/warehouse-stock-control/" target="_blank" rel="noopener" hidden>Open WSC</a>
         </div>
@@ -1390,6 +1391,14 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
       document.addEventListener(type, requireActive, {capture: true, passive: false});
     }
   }
+  async function requestPdfAllowed(id) {
+    if (!isLive) return true;
+    if (!bridge?.isActive() || typeof window.parent.wscPdfAllowed !== 'function') {
+      throw new Error('Reopen Back Orders in WSC to check the PDF setting.');
+    }
+    return await window.parent.wscPdfAllowed(id, 'request') === true && bridge.isActive();
+  }
+
   const amounts = new Intl.NumberFormat('en-GB');
   const dates = new Intl.DateTimeFormat('en-GB', {day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC'});
   const textOrder = new Intl.Collator('en-GB', {numeric: true, sensitivity: 'base'});
@@ -1825,6 +1834,7 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
       reportHeaders.set(column, header);
       return header;
     }));
+    ui('report-print-status').hidden = true;
     renderReport();
     showView('report', 'report-title');
   }
@@ -2464,13 +2474,18 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
     emailPdf = null;
   }
 
-  function prepareEmailPdf() {
+  async function prepareEmailPdf() {
     if (view !== 'editor' || !draft || customerPicker.isSelecting()) return;
     if (!draft.customer) return showError('Choose a customer from the results.', ui('customer'));
     if (!draft.lines.some(line => remaining(line) > 0)) return showError('Add at least one outstanding product.', ui('product'));
     if (!ui('form').reportValidity()) return;
     clearError();
+    const currentDraft = draft;
+    const button = ui('email-pdf');
+    if (button.disabled) return;
+    button.disabled = true;
     try {
+      if (!await requestPdfAllowed('BK_ORDER') || view !== 'editor' || draft !== currentDraft) return;
       closeEmailPdf();
       const order = {...draft, currency: ui('currency').value, notes: ui('notes').value.trim()};
       const {bytes, filename} = window.wscBackOrderPdf.create(order);
@@ -2497,19 +2512,39 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
       }
       ui('email-to').value = order.quickBooksCustomer?.email || order.indexedCustomer?.email || '';
       ui('email-summary').textContent = companyName(order) + ' — ' + filename + (dirty ? ' (includes your current unsaved changes).' : '.');
-      ui('email-download').href = emailPdf.url;
-      ui('email-download').download = filename;
+      ui('email-download').disabled = false;
       ui('email-status').textContent = '';
       ui('email').showModal();
       ui(isLive ? 'email-to' : 'email-download').focus();
     } catch (error) {
-      showError('Could not prepare the PDF. ' + error.message, ui('email-pdf'));
+      showError('Could not prepare the PDF. ' + error.message, button);
+    } finally {
+      button.disabled = false;
     }
   }
 
   ui('details-toggle').addEventListener('click', () => setOrderDetailsOpen(ui('details-body').hidden));
   ui('email-pdf').addEventListener('click', prepareEmailPdf);
   ui('email-close').addEventListener('click', () => ui('email').close());
+  ui('email-download').addEventListener('click', async () => {
+    const pdf = emailPdf;
+    const button = ui('email-download');
+    if (!pdf || button.disabled) return;
+    button.disabled = true;
+    try {
+      if (!await requestPdfAllowed('BK_ORDER') || pdf !== emailPdf || !ui('email').open) return;
+      const link = document.createElement('a');
+      link.href = pdf.url;
+      link.download = pdf.file.name;
+      document.body.append(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      ui('email-status').textContent = error.message;
+    } finally {
+      button.disabled = false;
+    }
+  });
   ui('email').addEventListener('close', closeEmailPdf);
   ui('email').addEventListener('cancel', event => { if (emailPdf?.busy) event.preventDefault(); });
   ui('email-send').addEventListener('click', async () => {
@@ -2522,9 +2557,11 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
     }
     pdf.busy = true;
     ui('email-send').disabled = ui('email-to').disabled = ui('email-close').disabled = true;
-    ui('email-status').textContent = 'Sending the PDF…';
+    ui('email-status').textContent = '';
     let submitted = false;
     try {
+      if (!await requestPdfAllowed('BK_ORDER') || pdf !== emailPdf || !ui('email').open) return;
+      ui('email-status').textContent = 'Sending the PDF…';
       const pdfBase64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result.split(',')[1]);
@@ -2590,7 +2627,23 @@ const reportConfig = {"fields":{"number":{"label":"WSC ref"},"customer":{"label"
   });
   ui('report-search').addEventListener('input', renderReport);
   ui('report-search-column').addEventListener('change', renderReport);
-  ui('report-print').addEventListener('click', () => window.print());
+  ui('report-print').addEventListener('click', async () => {
+    const report = activeReport;
+    const button = ui('report-print');
+    if (!report || view !== 'report' || button.disabled) return;
+    const id = report.kind === 'po' ? 'BK_PO' : report.kind === 'bareBones' ? 'BK_BARE' : 'BK_CUSTOM';
+    const status = ui('report-print-status');
+    status.hidden = true;
+    button.disabled = true;
+    try {
+      if (await requestPdfAllowed(id) && activeReport === report && view === 'report') window.print();
+    } catch (error) {
+      status.textContent = error.message;
+      status.hidden = false;
+    } finally {
+      button.disabled = false;
+    }
+  });
   for (const [column, {label}] of Object.entries(reportConfig.fields)) {
     const option = element('div', null, 'wscp-report-field-option');
     option.setAttribute('role', 'listitem');

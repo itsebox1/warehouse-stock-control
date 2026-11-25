@@ -1834,6 +1834,9 @@ function addQuickBooksActions(host,order){
    return;
   }
   try{
+   const policyId=order.quickBooksReceipt.entity==='Estimate'?'BATCH_PROFORMA':'BATCH_INVOICE';
+   if(typeof window.parent.wscPdfAllowed!=='function')throw new Error('Reopen Batch Orders in WSC to check the PDF setting.');
+   if(await window.parent.wscPdfAllowed(policyId,'request')!==true)return;
    const result=await bridge.salesDocument('getBatchQuickBooksPdf',{key:order.quickBooksKey});
    const bytes=Uint8Array.from(atob(result.pdf),c=>c.charCodeAt(0));
    const url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
