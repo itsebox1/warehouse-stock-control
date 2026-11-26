@@ -1889,7 +1889,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.3.6";
+const WSC_VERSION = "1.3.7";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
@@ -9326,6 +9326,65 @@ window.stopGlobeLoading = function() {
 // Check Dates front end. Existing ST/SC/TR/DL handlers are unchanged.
 window.wscDatesScanner = null;
 window.wscDatesScannerStarting = false;
+
+function wscDatesFollowField(event) {
+  const field = event.currentTarget;
+  const screen = document.getElementById('wscDatesAmendScreen');
+  const viewport = window.visualViewport;
+  const listeners = new AbortController();
+  const options = {passive: true, signal: listeners.signal};
+  let frame = 0;
+  let settleTimer;
+  let followPan = true;
+
+  function center() {
+    frame = 0;
+    if (document.activeElement !== field || !field.getClientRects().length) return;
+    const layoutHeight = document.documentElement.clientHeight;
+    const visibleHeight = viewport?.height || window.innerHeight;
+    const rect = field.getBoundingClientRect();
+    const fieldMiddle = rect.top + rect.height / 2;
+    const visibleMiddle = (viewport?.offsetTop || 0) + visibleHeight / 2;
+
+    // These fields are at the end of the page. Reserve room for the keyboard and the half-screen below the field.
+    const roomBelow = screen.getBoundingClientRect().bottom - fieldMiddle;
+    const margin = Math.max(0, Math.ceil(layoutHeight - visibleHeight / 2 - roomBelow)) + 'px';
+    if (screen.style.marginBottom !== margin) screen.style.marginBottom = margin;
+    const distance = fieldMiddle - visibleMiddle;
+    if (Math.abs(distance) > 1) window.scrollBy({top: distance, behavior: 'instant'});
+  }
+  function queueCenter() {
+    if (followPan && !frame) frame = requestAnimationFrame(center);
+  }
+  function resized() {
+    followPan = true;
+    queueCenter();
+    clearTimeout(settleTimer);
+    settleTimer = setTimeout(queueCenter, 450); // Recheck after the native keyboard animation.
+  }
+  function pause() {
+    followPan = false;
+    clearTimeout(settleTimer);
+    cancelAnimationFrame(frame);
+    frame = 0;
+  }
+
+  field.addEventListener('blur', () => {
+    pause();
+    listeners.abort();
+    // Retain scroll room until this screen is reopened so Confirm stays under the finger.
+  }, {once: true});
+  window.addEventListener('resize', resized, options);
+  viewport?.addEventListener('resize', resized, options);
+  viewport?.addEventListener('scroll', queueCenter, options);
+  window.addEventListener('touchmove', pause, options);
+  window.addEventListener('wheel', pause, options);
+  resized();
+}
+for (const id of ['wscDatesLot', 'wscDatesExpiry']) {
+  document.getElementById(id).addEventListener('focus', wscDatesFollowField);
+}
+
 function wscDatesRefreshAdminButton(){
   const button=document.getElementById('wscDatesAmendButton');
   if(!button)return;
@@ -9377,6 +9436,7 @@ async function wscDatesStartScanner(amend){
 }
 function wscDatesToggleAmendments(){
   if(wscDatesBusy || wscPermissions?.admin!==true)return;
+  document.getElementById('wscDatesAmendScreen').style.removeProperty('margin-bottom');
   document.getElementById('wscDatesScreen').style.display='none';
   document.getElementById('wscDatesAmendScreen').style.display='block';
   document.getElementById('wscDatesAdmin').style.display='block';
