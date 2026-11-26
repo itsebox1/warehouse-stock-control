@@ -929,7 +929,6 @@ input[type="reset"]:disabled,
     <button id="wscDatesScanButton" type="button" onclick="wscDatesStartScanner()" style="width:100%;margin-top:10px;">📷 Scan QR Code</button>
     <div id="wscDatesQrReader" style="display:none;width:100%;max-width:420px;margin:12px auto;"></div>
     <button id="wscDatesStopScanButton" type="button" onclick="wscDatesStopScanner()" style="display:none;width:100%;">Stop Scanning</button>
-    <button type="button" onclick="wscOpenSavedReportPdf('', this, {requestedPdf:'DATES_WEEKLY'})" style="width:100%;margin-top:10px;">Weekly Check Dates PDF</button>
     <button id="wscDatesAmendButton" type="button" onclick="wscDatesToggleAmendments()" style="display:none;width:100%;margin-top:20px;background:#294766;color:white;">✏️ Amendments (Admin)</button>
     <p id="wscDatesMessage" role="status" aria-live="polite"></p>
     <div id="wscDatesResults"></div>
@@ -1670,6 +1669,7 @@ function validateTradeShowFields() {
     <p id="wscReportInfo" aria-live="polite" style="font-size:13px;"></p>
     <div id="wscUnifiedLoading" style="display:none;text-align:center;padding:18px;border:1px solid #d5dce5;border-radius:10px;margin-top:15px;" role="status" aria-live="polite"><img src="Glossy%20Earth%20with%20Dynamic%20Water%20Splashes.png" alt="" style="width:54px;height:54px;object-fit:contain;animation:wscUnifiedSpin 1.6s linear infinite;"><div>Generating your WSC report…</div></div>
     <div id="wscUnifiedResults" style="margin-top:16px;" aria-live="polite"></div>
+    <button data-wsc-area="DATES" type="button" onclick="wscOpenSavedReportPdf('', this, {requestedPdf:'DATES_WEEKLY'})" style="display:none;width:100%;margin-top:10px;">Weekly Check Dates PDF</button>
   </div>
 </div>
 
@@ -1889,7 +1889,7 @@ function validateTradeShowFields() {
   
 <script>
 // Keep version.txt in sync with this version so installed apps can pick up releases.
-const WSC_VERSION = "1.3.5";
+const WSC_VERSION = "1.3.6";
 let scanner = null;
 let lookupInProgress = false;
 const productCache = new Map();
